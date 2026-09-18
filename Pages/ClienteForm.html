@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cliente - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-page="clientes">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2 id="tituloPagina"><i class="bi bi-person-plus"></i> Nuevo Cliente
+          <span class="mode-badge" id="modoBadge">Alta</span>
+        </h2>
+        <span class="subtitle">Los campos marcados con * son obligatorios</span>
+      </div>
+      <a href="ClientesListado.html" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Volver al listado
+      </a>
+    </div>
+
+    <form id="formCliente" novalidate>
+      <div class="panel">
+        <div class="panel-header"><span class="num">1</span> Datos personales</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">DNI <span class="required">*</span></label>
+              <input type="text" id="dni" class="form-control" maxlength="8" required>
+              <div class="form-text">7 u 8 dígitos, sin puntos.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Nombre <span class="required">*</span></label>
+              <input type="text" id="nombre" class="form-control" required>
+              <div class="form-text">Solo letras.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Apellido <span class="required">*</span></label>
+              <input type="text" id="apellido" class="form-control" required>
+              <div class="form-text">Solo letras.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="num">2</span> Contacto y dirección</div>
+        <div class="panel-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Teléfono</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                <input type="text" id="telefono" class="form-control" placeholder="351 222-1111">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Correo electrónico</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" id="mail" class="form-control" placeholder="nombre@correo.com">
+              </div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Calle</label>
+              <input type="text" id="calle" class="form-control" maxlength="100" placeholder="Av. Colón">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Número</label>
+              <input type="text" id="numero" class="form-control" maxlength="15" placeholder="1234">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="id">
+
+      <div class="actions">
+        <a href="ClientesListado.html" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-save"></i> Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiCliente = API_BASE + "Cliente";
+    const usuario = Auth.getUsuario();
+    const puedeEditar = usuario && (usuario.Rol === "Administrador" || usuario.Rol === "Vendedor");
+
+    if (!puedeEditar) {
+      Swal.fire({ icon: "error", title: "Acceso denegado", text: "No tiene permisos para gestionar clientes." })
+        .then(() => window.location.href = "ClientesListado.html");
+    }
+
+    const dni = document.getElementById("dni");
+    const nombre = document.getElementById("nombre");
+    const apellido = document.getElementById("apellido");
+    const telefono = document.getElementById("telefono");
+    const mail = document.getElementById("mail");
+    const calle = document.getElementById("calle");
+    const numero = document.getElementById("numero");
+    const idInput = document.getElementById("id");
+
+    const params = new URLSearchParams(window.location.search);
+    const idCliente = params.get("id");
+
+    dni.addEventListener("input", () => { dni.value = dni.value.replace(/[^0-9]/g, ""); });
+    function soloLetras(c) {
+      c.addEventListener("input", () => { c.value = c.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g, ""); });
+    }
+    soloLetras(nombre); soloLetras(apellido);
+    telefono.addEventListener("input", () => { telefono.value = telefono.value.replace(/[^0-9+\-() ]/g, ""); });
+    numero.addEventListener("input", () => { numero.value = numero.value.replace(/[^A-Za-z0-9/\- ]/g, ""); });
+
+    function mostrarError(err) {
+      if (err && (err.message === "401 Unauthorized" || err.message === "403 Forbidden")) return;
+      Swal.fire("Error", (err && err.message) || "Ocurrió un error.", "error");
+    }
+
+    function obtenerMensajeError(response, defecto) {
+      return response.json().then(err => err && err.Message ? err.Message : defecto).catch(() => defecto);
+    }
+
+    function validar(c) {
+      if (c.Dni === "") return "Debe ingresar el DNI.";
+      if (c.Dni.length < 7 || c.Dni.length > 8) return "El DNI debe tener 7 u 8 dígitos.";
+      if (c.Nombre === "") return "Debe ingresar el nombre.";
+      if (c.Apellido === "") return "Debe ingresar el apellido.";
+      if (c.Mail !== "" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.Mail))
+        return "El correo no es válido.";
+      return "";
+    }
+
+    function cargarCliente(id) {
+      fetchAuth(apiCliente + "/" + id).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar el cliente.");
+        return r.json();
+      }).then(data => {
+        const c = data[0];
+        if (!c) return Swal.fire("Atención", "No se encontró el cliente.", "warning").then(() => window.location.href = "ClientesListado.html");
+
+        idInput.value = c.Id;
+        dni.value = c.Dni || "";
+        nombre.value = c.Nombre || "";
+        apellido.value = c.Apellido || "";
+        telefono.value = c.Telefono || "";
+        mail.value = c.Mail || "";
+        calle.value = c.Calle || "";
+        numero.value = c.Numero || "";
+      }).catch(mostrarError);
+    }
+
+    function guardar(e) {
+      e.preventDefault();
+      const cliente = {
+        Id: idInput.value.trim() === "" ? 0 : parseInt(idInput.value.trim()),
+        Dni: dni.value.trim(),
+        Nombre: nombre.value.trim(),
+        Apellido: apellido.value.trim(),
+        Telefono: telefono.value.trim(),
+        Mail: mail.value.trim(),
+        Calle: calle.value.trim(),
+        Numero: numero.value.trim()
+      };
+      const error = validar(cliente);
+      if (error !== "") { Swal.fire("Atención", error, "warning"); return; }
+
+      const esEdicion = idInput.value.trim() !== "";
+      const metodo = esEdicion ? "PUT" : "POST";
+      const url = esEdicion ? apiCliente + "/" + cliente.Id : apiCliente;
+
+      fetchAuth(url, { method: metodo, body: JSON.stringify(cliente) }).then(r => {
+        if (!r.ok) return obtenerMensajeError(r, "No se pudo guardar.").then(m => { throw new Error(m); });
+        Swal.fire({ icon: "success", title: "Guardado", timer: 1200, showConfirmButton: false })
+          .then(() => window.location.href = "ClientesListado.html");
+      }).catch(mostrarError);
+    }
+
+    window.onload = function () {
+      document.getElementById("formCliente").addEventListener("submit", guardar);
+      if (idCliente) {
+        document.getElementById("tituloPagina").innerHTML =
+          '<i class="bi bi-pencil-square"></i> Editar Cliente <span class="mode-badge">Edición</span>';
+        cargarCliente(idCliente);
+      } else {
+        dni.focus();
+      }
+    };
+  </script>
+</body>
+</html>

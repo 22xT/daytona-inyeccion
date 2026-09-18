@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Modelos - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .repuesto-discontinuado {
+      opacity: 0.55;
+      background-color: #f5f5f5 !important;
+    }
+    .badge-discontinuado {
+      background: #6c757d;
+      color: white;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .badge-marca {
+      background: #e7f1ff;
+      color: #0d6efd;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+
+<body data-page="modelos">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-car-front"></i> Modelos</h2>
+        <span class="subtitle">Catálogo de modelos de vehículos por marca</span>
+      </div>
+      <a href="ModeloForm.html" class="btn btn-danger admin-only">
+        <i class="bi bi-plus-lg"></i> Nuevo Modelo
+      </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="bi bi-car-front"></i></div>
+          <div>
+            <p class="stat-value" id="statTotal">0</p>
+            <p class="stat-label">Modelos activos</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="bi bi-tag"></i></div>
+          <div>
+            <p class="stat-value" id="statMarcas">0</p>
+            <p class="stat-label">Marcas distintas</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="bi bi-x-circle"></i></div>
+          <div>
+            <p class="stat-value" id="statInactivas">0</p>
+            <p class="stat-label">Discontinuados</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros y búsqueda</div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Buscar por nombre</label>
+            <input type="text" id="busqueda" class="form-control" placeholder="Ej: Fiesta, Sandero...">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Marca</label>
+            <select id="filtroMarca" class="form-select">
+              <option value="">Todas las marcas</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Estado</label>
+            <select id="filtroEstado" class="form-select">
+              <option value="activos" selected>Solo activos</option>
+              <option value="discontinuados">Discontinuados</option>
+              <option value="todos">Todos</option>
+            </select>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button id="btnLimpiar" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" id="panelResultados"><i class="bi bi-list-ul"></i> Listado de modelos</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Modelo</th>
+              <th>Marca</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaModelos">
+            <tr class="loading-row"><td colspan="4">Cargando modelos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty-state d-none">
+        <div class="icon"><i class="bi bi-search"></i></div>
+        <h4>No se encontraron modelos</h4>
+        <p>Probá cambiar los filtros o limpiar la búsqueda.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiModelo = API_BASE + "Modelo";
+    const apiMarca = API_BASE + "Marca";
+
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+    if (esAdmin) document.body.classList.add('is-admin');
+
+    let modelos = [];
+
+    function esActivo(m) {
+      return m.Activo === true || m.Activo === 1 || m.Activo === undefined;
+    }
+
+    function cargarMarcas() {
+      fetchAuth(apiMarca).then(r => r.json()).then(data => {
+        const sel = document.getElementById("filtroMarca");
+        data.filter(esActivo).forEach(x => {
+          const opt = document.createElement("option");
+          opt.value = x.Nombre;
+          opt.textContent = x.Nombre;
+          sel.appendChild(opt);
+        });
+      }).catch(() => {});
+    }
+
+    function cargar() {
+      fetchAuth(apiModelo).then(r => r.json()).then(data => {
+        modelos = data;
+        actualizarStats();
+        aplicarFiltros();
+      }).catch(() => {
+        document.getElementById("tablaModelos").innerHTML =
+          "<tr><td colspan='4' class='text-center text-danger p-4'>No se pudieron cargar los modelos.</td></tr>";
+      });
+    }
+
+    function actualizarStats() {
+      const activos = modelos.filter(esActivo);
+      const inactivos = modelos.filter(m => !esActivo(m));
+      document.getElementById("statTotal").textContent = activos.length;
+      document.getElementById("statInactivas").textContent = inactivos.length;
+      const marcas = new Set(activos.map(m => m.Marca));
+      document.getElementById("statMarcas").textContent = marcas.size;
+    }
+
+    function aplicarFiltros() {
+      const texto = document.getElementById("busqueda").value.trim().toLowerCase();
+      const marca = document.getElementById("filtroMarca").value;
+      const estado = document.getElementById("filtroEstado").value;
+
+      let lista = modelos.slice();
+      if (estado === "activos") lista = lista.filter(esActivo);
+      else if (estado === "discontinuados") lista = lista.filter(m => !esActivo(m));
+      if (marca) lista = lista.filter(m => m.Marca === marca);
+      if (texto) lista = lista.filter(m => (m.Nombre || "").toLowerCase().includes(texto));
+
+      lista.sort((a, b) => {
+        const cmpMarca = (a.Marca || "").localeCompare(b.Marca || "");
+        if (cmpMarca !== 0) return cmpMarca;
+        return (a.Nombre || "").localeCompare(b.Nombre || "");
+      });
+      renderizar(lista);
+    }
+
+    function renderizar(lista) {
+      const tbody = document.getElementById("tablaModelos");
+      const empty = document.getElementById("emptyState");
+      const panel = document.getElementById("panelResultados");
+      panel.innerHTML = '<i class="bi bi-list-ul"></i> Listado de modelos (' + lista.length + ')';
+
+      if (lista.length === 0) {
+        tbody.innerHTML = "";
+        empty.classList.remove("d-none");
+        return;
+      }
+      empty.classList.add("d-none");
+
+      let html = "";
+      lista.forEach(m => {
+        const activo = esActivo(m);
+        const claseFila = activo ? "" : "repuesto-discontinuado";
+        const badge = activo ? "" : "<span class='badge-discontinuado'>Discontinuado</span>";
+
+        html += "<tr class='" + claseFila + "'>";
+        html += "<td><strong>#" + m.Id + "</strong></td>";
+        html += "<td>" + escapeHtml(m.Nombre) + badge + "</td>";
+        html += "<td><span class='badge-marca'>" + escapeHtml(m.Marca || "-") + "</span></td>";
+        if (esAdmin) {
+          html += "<td class='text-center'>";
+          html += "<a href='ModeloForm.html?id=" + m.Id + "' class='btn btn-sm btn-outline-primary me-1' title='Editar'><i class='bi bi-pencil'></i></a>";
+          if (activo) {
+            html += "<button class='btn btn-sm btn-outline-danger' onclick='descontinuar(" + m.Id + ")' title='Descontinuar'><i class='bi bi-x-circle'></i></button>";
+          } else {
+            html += "<button class='btn btn-sm btn-outline-success' onclick='reactivar(" + m.Id + ")' title='Reactivar'><i class='bi bi-arrow-counterclockwise'></i></button>";
+          }
+          html += "</td>";
+        } else {
+          html += "<td class='text-center'><span class='text-muted small'>Solo lectura</span></td>";
+        }
+        html += "</tr>";
+      });
+      tbody.innerHTML = html;
+    }
+
+    function descontinuar(id) {
+      Swal.fire({
+        title: "¿Descontinuar modelo?",
+        text: "Dejará de aparecer en los formularios de carga de repuestos.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#ff3333",
+        confirmButtonText: "Sí, descontinuar",
+        cancelButtonText: "Cancelar"
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetchAuth(apiModelo + "/" + id, { method: "DELETE" }).then(r => {
+          if (r.ok) { Swal.fire("Listo", "El modelo fue descontinuado.", "success"); cargar(); }
+          else leerError(r).then(msg => Swal.fire("Error", msg, "error"));
+        });
+      });
+    }
+
+    function reactivar(id) {
+      fetchAuth(apiModelo + "/" + id + "/Activar", { method: "PUT" }).then(r => {
+        if (r.ok) { Swal.fire("Listo", "El modelo fue reactivado.", "success"); cargar(); }
+        else leerError(r).then(msg => Swal.fire("Error", msg, "error"));
+      });
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const data = JSON.parse(text); return data.Message || data.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+
+    window.onload = function () {
+      cargarMarcas();
+      cargar();
+      document.getElementById("busqueda").addEventListener("input", aplicarFiltros);
+      document.getElementById("filtroMarca").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroEstado").addEventListener("change", aplicarFiltros);
+      document.getElementById("btnLimpiar").addEventListener("click", () => {
+        document.getElementById("busqueda").value = "";
+        document.getElementById("filtroMarca").value = "";
+        document.getElementById("filtroEstado").value = "activos";
+        aplicarFiltros();
+      });
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Usuarios - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    /* Boton de solicitudes con badge */
+    .btn-solicitudes {
+      position: relative;
+      background: white;
+      color: var(--navy);
+      border: 1px solid var(--border);
+    }
+    .btn-solicitudes:hover {
+      background: var(--bg-soft);
+      border-color: var(--navy);
+      color: var(--navy);
+    }
+    .badge-solicitudes {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--red);
+      color: white;
+      border-radius: 50%;
+      min-width: 22px;
+      height: 22px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      box-shadow: 0 2px 6px rgba(255, 51, 51, 0.4);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%   { box-shadow: 0 2px 6px rgba(255, 51, 51, 0.4); }
+      50%  { box-shadow: 0 2px 12px rgba(255, 51, 51, 0.8); }
+      100% { box-shadow: 0 2px 6px rgba(255, 51, 51, 0.4); }
+    }
+
+    /* Card de solicitud en el modal */
+    .solicitud-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 12px;
+      border-left: 4px solid var(--red);
+    }
+    .solicitud-card .header-sol {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+    .solicitud-card .correo-sol {
+      font-weight: 600;
+      color: var(--navy);
+      font-size: 0.95rem;
+    }
+    .solicitud-card .fecha-sol {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .solicitud-card .mensaje-sol {
+      background: white;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      color: var(--text);
+      margin: 8px 0;
+      font-style: italic;
+    }
+    .solicitud-card .acciones-sol {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+    .solicitud-card.no-encontrado {
+      border-left-color: #6c757d;
+      opacity: 0.85;
+    }
+    .badge-no-encontrado {
+      background: #6c757d;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+    }
+    .badge-usuario-ok {
+      background: #d4edda;
+      color: #155724;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+    }
+  </style>
+</head>
+
+<body data-page="usuarios">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-people-fill"></i> Usuarios</h2>
+        <span class="subtitle">Gestión de usuarios del sistema</span>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-solicitudes" id="btnSolicitudes" style="display:none;">
+          <i class="bi bi-bell-fill"></i> Solicitudes
+          <span class="badge-solicitudes" id="badgeSolicitudes">0</span>
+        </button>
+        <a href="UsuarioForm.html" class="btn btn-danger admin-only">
+          <i class="bi bi-plus-lg"></i> Nuevo usuario
+        </a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros y búsqueda</div>
+      <div class="panel-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="btn-group">
+            <button type="button" class="btn btn-outline-primary active" data-filtro="todos">Todos</button>
+            <button type="button" class="btn btn-outline-primary" data-filtro="activos">Activos</button>
+            <button type="button" class="btn btn-outline-primary" data-filtro="inactivos">Inactivos</button>
+          </div>
+          <input type="text" id="buscador" class="form-control" style="max-width: 320px;" placeholder="Buscar por nombre, correo o rol...">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-list-ul"></i> Listado</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Nombre</th><th>Correo</th><th>Rol</th>
+              <th>Alta</th><th>Último acceso</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaUsuarios"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-2">
+      <span id="infoPagina" class="text-muted small"></span>
+      <div>
+        <button type="button" id="btnAnterior" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-chevron-left"></i> Anterior
+        </button>
+        <button type="button" id="btnSiguiente" class="btn btn-outline-secondary btn-sm">
+          Siguiente <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Solicitudes Pendientes -->
+  <div class="modal fade" id="modalSolicitudes" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-bell-fill"></i> Solicitudes de reseteo de contraseña
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Estas son las solicitudes pendientes de usuarios que olvidaron su contraseña.
+            Al resetear desde acá, la solicitud queda marcada como procesada automáticamente.
+          </p>
+          <div id="listaSolicitudes">
+            <p class="text-center text-muted p-3">Cargando solicitudes...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiUsuario = API_BASE + "Usuario";
+    const apiSolicitudReset = API_BASE + "SolicitudReset";
+
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+    if (esAdmin) document.body.classList.add('is-admin');
+
+    if (!esAdmin) {
+      Swal.fire({ icon: "error", title: "Acceso denegado", text: "Solo administradores." })
+        .then(() => window.location.href = "index.html");
+    }
+
+    const buscador = document.getElementById("buscador");
+    const infoPagina = document.getElementById("infoPagina");
+    const btnAnterior = document.getElementById("btnAnterior");
+    const btnSiguiente = document.getElementById("btnSiguiente");
+
+    let usuarios = [];
+    let solicitudesPendientes = [];
+    let filtroActual = "todos";
+    const POR_PAGINA = 10;
+    let paginaActual = 1;
+
+    function mostrarError(err) {
+      if (err && (err.message === "401 Unauthorized" || err.message === "403 Forbidden")) return;
+      Swal.fire("Error", (err && err.message) || "Ocurrió un error.", "error");
+    }
+    function obtenerMensajeError(response, defecto) {
+      return response.json().then(err => err && err.Message ? err.Message : defecto).catch(() => defecto);
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeJs(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function fmtFecha(f) {
+      if (!f) return '-';
+      return new Date(f).toLocaleDateString('es-AR');
+    }
+    function fmtFechaHora(f) {
+      if (!f) return 'Nunca';
+      return new Date(f).toLocaleString('es-AR');
+    }
+
+    function filtrados() {
+      const texto = buscador.value.trim().toLowerCase();
+      return usuarios.filter(u => {
+        if (filtroActual === "activos" && !u.Activo) return false;
+        if (filtroActual === "inactivos" && u.Activo) return false;
+        if (texto !== "") {
+          const matchea =
+            String(u.Nombre || '').toLowerCase().includes(texto) ||
+            String(u.Correo || '').toLowerCase().includes(texto) ||
+            String(u.NombreRol || '').toLowerCase().includes(texto);
+          if (!matchea) return false;
+        }
+        return true;
+      });
+    }
+
+    function listar() {
+      fetchAuth(apiUsuario).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar la lista.");
+        return r.json();
+      }).then(data => { usuarios = data; render(); }).catch(mostrarError);
+    }
+
+    function render() {
+      const lista = filtrados();
+      const totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+      if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+      const pagina = lista.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
+
+      let filas = "";
+      pagina.forEach(u => {
+        const estado = u.Activo
+          ? '<span class="badge-estado badge-activo"><i class="bi bi-check-circle"></i> Activo</span>'
+          : '<span class="badge-estado badge-inactivo"><i class="bi bi-x-circle"></i> Inactivo</span>';
+
+        let acciones = "";
+        acciones += `<a class="btn btn-sm btn-outline-primary me-1" href="UsuarioForm.html?id=${u.Id}" title="Editar"><i class="bi bi-pencil"></i></a>`;
+        acciones += `<button class="btn btn-sm btn-outline-warning me-1" onclick="resetearClave(${u.Id}, '${escapeJs(u.Nombre)}')" title="Resetear contraseña" ${u.Activo ? '' : 'disabled'}><i class="bi bi-key"></i></button>`;
+        if (u.Activo) {
+          acciones += `<button class="btn btn-sm btn-outline-danger" onclick="darDeBaja(${u.Id})" title="Dar de baja"><i class="bi bi-arrow-down-circle"></i></button>`;
+        } else {
+          acciones += `<button class="btn btn-sm btn-outline-success" onclick="activar(${u.Id})" title="Activar"><i class="bi bi-arrow-up-circle"></i></button>`;
+        }
+
+        filas += `<tr>
+          <td><strong>#${u.Id}</strong></td>
+          <td>${escapeHtml(u.Nombre)}</td>
+          <td>${escapeHtml(u.Correo)}</td>
+          <td><span class="badge bg-secondary">${escapeHtml(u.NombreRol)}</span></td>
+          <td>${fmtFecha(u.FechaAlta)}</td>
+          <td>${fmtFechaHora(u.UltimoAcceso)}</td>
+          <td class="text-center">${estado}</td>
+          <td class="text-center">${acciones}</td>
+        </tr>`;
+      });
+
+      document.getElementById("tablaUsuarios").innerHTML =
+        filas !== "" ? filas : '<tr><td colspan="8" class="text-center text-muted p-4">Sin resultados.</td></tr>';
+
+      infoPagina.textContent = lista.length === 0
+        ? "Sin resultados."
+        : "Página " + paginaActual + " de " + totalPaginas + " (" + lista.length + " registros)";
+      btnAnterior.disabled = (paginaActual <= 1);
+      btnSiguiente.disabled = (paginaActual >= totalPaginas);
+    }
+
+    function darDeBaja(id) {
+      Swal.fire({
+        title: "¿Dar de baja al usuario?",
+        text: "El usuario no podrá iniciar sesión. Podrás reactivarlo más tarde.",
+        icon: "question", showCancelButton: true,
+        confirmButtonColor: "#ff3333", confirmButtonText: "Sí, dar de baja"
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetchAuth(apiUsuario + "/" + id, { method: "DELETE" }).then(r => {
+          if (!r.ok) return obtenerMensajeError(r, "No se pudo dar de baja.").then(m => { throw new Error(m); });
+          Swal.fire("Listo", "Usuario dado de baja.", "success"); listar();
+        }).catch(mostrarError);
+      });
+    }
+
+    function activar(id) {
+      fetchAuth(apiUsuario + "/" + id + "/Activar", { method: "PUT" }).then(r => {
+        if (!r.ok) return obtenerMensajeError(r, "No se pudo activar.").then(m => { throw new Error(m); });
+        Swal.fire("Listo", "Usuario activado.", "success"); listar();
+      }).catch(mostrarError);
+    }
+
+    /* ============================================================
+       RESETEAR CLAVE
+       Acepta opcionalmente el Id de una solicitud para procesarla
+       ============================================================ */
+    function resetearClave(id, nombre, idSolicitud) {
+  // Cerrar modal de Bootstrap si esta abierto para evitar conflicto de foco
+  const modalSolEl = document.getElementById("modalSolicitudes");
+  const modalSolInst = bootstrap.Modal.getInstance(modalSolEl);
+  if (modalSolInst && modalSolEl.classList.contains("show")) {
+    modalSolInst.hide();
+  }
+
+  // Pequeno delay para que el modal de Bootstrap termine de cerrarse
+  setTimeout(function () {
+    Swal.fire({
+      title: 'Resetear contraseña',
+      html: 'Ingresá una contraseña temporal nueva para <strong>' + escapeHtml(nombre) + '</strong>:',
+      input: 'password',
+      inputAttributes: { 
+        minlength: 8, 
+        maxlength: 100, 
+        autocapitalize: 'off',
+        autocomplete: 'new-password'
+      },
+      inputPlaceholder: 'Mínimo 8 caracteres',
+      showCancelButton: true,
+      confirmButtonText: 'Resetear',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ffc107',
+      allowOutsideClick: false,
+      focusConfirm: false,
+      didOpen: () => {
+        // Forzar el foco al input
+        const input = Swal.getInput();
+        if (input) {
+          input.focus();
+        }
+      },
+      inputValidator: (value) => {
+        if (!value) return 'La contraseña es obligatoria';
+        if (value.length < 8) return 'Mínimo 8 caracteres';
+        return null;
+      }
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const nuevaClave = result.value;
+
+      Swal.fire({
+        title: '¿Confirmar reset?',
+        html: 'Se reemplazará la contraseña actual de <strong>' + escapeHtml(nombre) + '</strong>.<br>Acordate de comunicarle la nueva.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, resetear',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#ffc107'
+      }).then(confirm => {
+        if (!confirm.isConfirmed) return;
+
+        fetchAuth(apiUsuario + "/" + id + "/ResetClave", {
+          method: "PUT",
+          body: JSON.stringify({ ClaveHash: nuevaClave })
+        }).then(r => {
+          if (!r.ok) return obtenerMensajeError(r, "No se pudo resetear la clave.").then(m => { throw new Error(m); });
+
+          if (idSolicitud) {
+            procesarSolicitud(idSolicitud, "Procesada", true);
+          } else {
+            Swal.fire("Listo", "Contraseña reseteada. Comunicale al usuario la nueva.", "success");
+          }
+        }).catch(mostrarError);
+      });
+    });
+  }, 200);
+}
+
+    /* ============================================================
+       SOLICITUDES DE RESET DE CLAVE
+       ============================================================ */
+    function cargarSolicitudes() {
+      fetchAuth(apiSolicitudReset + "/Pendientes").then(r => {
+        if (!r.ok) throw new Error("No se pudieron cargar las solicitudes.");
+        return r.json();
+      }).then(data => {
+        solicitudesPendientes = data || [];
+        actualizarBadgeSolicitudes();
+      }).catch(() => {
+        // No mostramos error, solo silenciamos
+        solicitudesPendientes = [];
+        actualizarBadgeSolicitudes();
+      });
+    }
+
+    function actualizarBadgeSolicitudes() {
+      const btn = document.getElementById("btnSolicitudes");
+      const badge = document.getElementById("badgeSolicitudes");
+      const count = solicitudesPendientes.length;
+
+      if (count > 0) {
+        btn.style.display = "inline-flex";
+        badge.textContent = count > 9 ? "9+" : count;
+      } else {
+        btn.style.display = "none";
+      }
+    }
+
+    function renderSolicitudes() {
+      const cont = document.getElementById("listaSolicitudes");
+
+      if (solicitudesPendientes.length === 0) {
+        cont.innerHTML = '<p class="text-center text-muted p-4"><i class="bi bi-check2-circle" style="font-size:3rem; opacity:0.4;"></i><br>No hay solicitudes pendientes.</p>';
+        return;
+      }
+
+      let html = "";
+      solicitudesPendientes.forEach(s => {
+        const fecha = fmtFechaHora(s.FechaSolicitud);
+        const tieneUsuario = s.IdUsuario && s.IdUsuario > 0;
+        const claseExtra = tieneUsuario ? "" : "no-encontrado";
+
+        let badgeUsuario = "";
+        if (tieneUsuario) {
+          badgeUsuario = '<span class="badge-usuario-ok"><i class="bi bi-check"></i> ' +
+                         escapeHtml(s.NombreUsuario || '') + ' (' + escapeHtml(s.RolUsuario || '-') + ')</span>';
+        } else {
+          badgeUsuario = '<span class="badge-no-encontrado"><i class="bi bi-question-circle"></i> Correo no registrado</span>';
+        }
+
+        let mensajeHtml = "";
+        if (s.Mensaje && s.Mensaje.trim() !== "") {
+          mensajeHtml = '<div class="mensaje-sol"><i class="bi bi-chat-quote"></i> ' +
+                        escapeHtml(s.Mensaje) + '</div>';
+        }
+
+        let botones = "";
+        if (tieneUsuario) {
+          botones = '<button class="btn btn-sm btn-warning" onclick="resetearClave(' + s.IdUsuario +
+                    ', \'' + escapeJs(s.NombreUsuario) + '\', ' + s.Id + ')">' +
+                    '<i class="bi bi-key"></i> Resetear clave</button>';
+        }
+        botones += '<button class="btn btn-sm btn-outline-secondary" onclick="descartarSolicitud(' + s.Id + ')">' +
+                   '<i class="bi bi-x-lg"></i> Descartar</button>';
+
+        html += '<div class="solicitud-card ' + claseExtra + '">';
+        html += '  <div class="header-sol">';
+        html += '    <div>';
+        html += '      <div class="correo-sol"><i class="bi bi-envelope"></i> ' + escapeHtml(s.Correo) + '</div>';
+        html += '      <div class="fecha-sol"><i class="bi bi-clock"></i> ' + fecha + '</div>';
+        html += '    </div>';
+        html += '    <div>' + badgeUsuario + '</div>';
+        html += '  </div>';
+        html += mensajeHtml;
+        html += '  <div class="acciones-sol">' + botones + '</div>';
+        html += '</div>';
+      });
+
+      cont.innerHTML = html;
+    }
+
+    function procesarSolicitud(id, estado, mostrarExito) {
+      const url = apiSolicitudReset + "/" + id + "/Procesar?estado=" + encodeURIComponent(estado);
+      fetchAuth(url, { method: "PUT" }).then(r => {
+        if (!r.ok) return obtenerMensajeError(r, "No se pudo procesar la solicitud.").then(m => { throw new Error(m); });
+
+        if (mostrarExito) {
+          Swal.fire({
+            icon: "success",
+            title: "Contraseña reseteada",
+            html: estado === "Procesada"
+              ? "La clave fue actualizada y la solicitud quedó marcada como procesada.<br><strong>Acordate de comunicarle la nueva clave al usuario.</strong>"
+              : "Solicitud descartada.",
+            confirmButtonColor: "#001f3f"
+          });
+        }
+        cargarSolicitudes();
+        // Si el modal esta abierto, actualizar la vista
+        const modalEl = document.getElementById("modalSolicitudes");
+        if (modalEl.classList.contains("show")) {
+          setTimeout(renderSolicitudes, 100);
+        }
+      }).catch(mostrarError);
+    }
+
+    function descartarSolicitud(id) {
+      Swal.fire({
+        title: "¿Descartar solicitud?",
+        text: "La solicitud se marcará como descartada sin resetear la contraseña.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, descartar",
+        cancelButtonText: "Cancelar"
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        procesarSolicitud(id, "Descartada", false);
+        Swal.fire("Listo", "Solicitud descartada.", "success");
+      });
+    }
+
+    // Abrir modal de solicitudes
+    document.getElementById("btnSolicitudes").addEventListener("click", function () {
+      renderSolicitudes();
+      new bootstrap.Modal(document.getElementById("modalSolicitudes")).show();
+    });
+
+    /* ============================================================
+       EVENTOS Y FILTROS
+       ============================================================ */
+    document.querySelectorAll("[data-filtro]").forEach(btn => {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll("[data-filtro]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        filtroActual = btn.getAttribute("data-filtro");
+        paginaActual = 1; render();
+      });
+    });
+
+    buscador.addEventListener("input", () => { paginaActual = 1; render(); });
+    btnAnterior.addEventListener("click", () => { if (paginaActual > 1) { paginaActual--; render(); } });
+    btnSiguiente.addEventListener("click", () => { paginaActual++; render(); });
+
+    window.onload = function () {
+      listar();
+      cargarSolicitudes();
+      // Refrescar el badge cada 30 segundos
+      setInterval(cargarSolicitudes, 30000);
+    };
+  </script>
+</body>
+</html>

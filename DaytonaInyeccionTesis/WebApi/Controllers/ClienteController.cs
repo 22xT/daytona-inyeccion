@@ -1,0 +1,241 @@
+using System.Data;
+using System.Data.SqlClient;
+using System.Text.RegularExpressions;
+using System.Web.Http;
+using WebApi.Filters;
+using WebApi.Models;
+
+namespace WebApi.Controllers
+{
+    [AuthorizeJwt]
+    public class ClienteController : ApiController
+    {
+        // GET: api/Cliente  (Dueño, Administrador, Supervisor, Vendedor)
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public DataTable Get()
+        {
+            Cliente oCliente = new Cliente();
+            return oCliente.ListarTodos();
+        }
+
+        // GET: api/Cliente/5  (Dueño, Administrador, Supervisor, Vendedor)
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public DataTable Get(int id)
+        {
+            Cliente oCliente = new Cliente();
+            oCliente.Id = id;
+            return oCliente.ListarPorId();
+        }
+
+        // POST: api/Cliente  (Administrador, Supervisor, Vendedor)
+        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Post([FromBody] Cliente cliente)
+        {
+            string error = ValidarCliente(cliente);
+            if (error != "")
+                return BadRequest(error);
+
+            NormalizarCliente(cliente);
+
+            try
+            {
+                int idNuevo = cliente.Guardar();
+                // Se devuelve el Id para poder dejarlo seleccionado en la venta
+                return Ok(new { Id = idNuevo });
+            }
+            catch (SqlException ex)
+            {
+                if (ex.Number == 2627 || ex.Number == 2601)
+                    return BadRequest("Ya existe un cliente con ese DNI.");
+
+                if (ex.Number >= 50000)
+                    return BadRequest(ex.Message);
+
+                return BadRequest("No se pudo guardar el cliente. " + ex.Message);
+            }
+        }
+
+        // PUT: api/Cliente/5  (Administrador, Supervisor, Vendedor)
+        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Put(int id, [FromBody] Cliente cliente)
+        {
+            string error = ValidarCliente(cliente);
+            if (error != "")
+                return BadRequest(error);
+
+            NormalizarCliente(cliente);
+            cliente.Id = id;
+
+            try
+            {
+                cliente.Editar();
+            }
+            catch (SqlException ex)
+            {
+                if (ex.Number == 2627 || ex.Number == 2601)
+                    return BadRequest("Ya existe un cliente con ese DNI.");
+
+                if (ex.Number >= 50000)
+                    return BadRequest(ex.Message);
+
+                return BadRequest("No se pudo editar el cliente. " + ex.Message);
+            }
+
+            return Ok();
+        }
+
+        // DELETE: api/Cliente/5  (Administrador, Supervisor, Vendedor)
+        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Delete(int id)
+        {
+            Cliente oCliente = new Cliente();
+            oCliente.Id = id;
+
+            try
+            {
+                oCliente.Eliminar();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest("No se pudo dar de baja el cliente. " + ex.Message);
+            }
+
+            return Ok();
+        }
+
+        // PUT: api/Cliente/5/Activar  (Administrador, Supervisor, Vendedor)
+        [HttpPut]
+        [Route("api/Cliente/{id:int}/Activar")]
+        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Activar(int id)
+        {
+            Cliente oCliente = new Cliente();
+            oCliente.Id = id;
+
+            try
+            {
+                oCliente.Activar();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest("No se pudo activar el cliente. " + ex.Message);
+            }
+
+            return Ok();
+        }
+
+        private string ValidarCliente(Cliente cliente)
+        {
+            if (cliente == null)
+                return "No se recibieron datos del cliente.";
+
+            // DNI: OPCIONAL. En el mostrador no se le pide el documento al
+            // mecanico. Si lo cargan, se valida igual que antes.
+            if (!string.IsNullOrWhiteSpace(cliente.Dni))
+            {
+                string dni = cliente.Dni.Trim();
+
+                if (dni.Length < 7 || dni.Length > 8)
+                    return "El DNI debe tener 7 u 8 dígitos.";
+
+                foreach (char c in dni)
+                {
+                    if (!char.IsDigit(c))
+                        return "El DNI debe contener solo números, sin puntos ni espacios.";
+                }
+            }
+
+            // Un mecanico sin telefono no se puede ubicar ni reclamar.
+            // Es la misma regla que el CHECK de la base, pero con mensaje claro.
+            if (cliente.EsMecanico && string.IsNullOrWhiteSpace(cliente.Telefono))
+                return "El teléfono es obligatorio para un mecánico: es el dato con el que lo vas a encontrar y contactar.";
+
+            // Nombre: obligatorio, solo letras
+            if (string.IsNullOrWhiteSpace(cliente.Nombre))
+                return "El nombre es obligatorio.";
+
+            if (!SoloLetras(cliente.Nombre))
+                return "El nombre solo puede contener letras.";
+
+            // Apellido: obligatorio, solo letras
+            if (string.IsNullOrWhiteSpace(cliente.Apellido))
+                return "El apellido es obligatorio.";
+
+            if (!SoloLetras(cliente.Apellido))
+                return "El apellido solo puede contener letras.";
+
+            // Telefono: opcional; si se carga, numeros y signos - + ( )
+            if (!string.IsNullOrWhiteSpace(cliente.Telefono))
+            {
+                foreach (char c in cliente.Telefono)
+                {
+                    if (!char.IsDigit(c) && c != ' ' && c != '-' &&
+                        c != '+' && c != '(' && c != ')')
+                        return "El teléfono solo puede contener números y los signos - + ( ).";
+                }
+            }
+
+            // Mail: opcional; si se carga, formato real
+            if (!string.IsNullOrWhiteSpace(cliente.Mail))
+            {
+                if (!Regex.IsMatch(cliente.Mail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                    return "El correo no es válido. Debe tener el formato nombre@dominio.com";
+            }
+
+            // Calle: opcional; si se carga, sin caracteres raros
+            if (!string.IsNullOrWhiteSpace(cliente.Calle))
+            {
+                foreach (char c in cliente.Calle)
+                {
+                    if (!char.IsLetterOrDigit(c) && c != ' ' && c != '.' && c != '°' && c != '-')
+                        return "La calle contiene caracteres no válidos.";
+                }
+            }
+
+            // Numero: opcional; si se carga, sin caracteres raros
+            if (!string.IsNullOrWhiteSpace(cliente.Numero))
+            {
+                if (cliente.Numero.Length > 15)
+                    return "El número de calle es demasiado largo.";
+
+                foreach (char c in cliente.Numero)
+                {
+                    if (!char.IsLetterOrDigit(c) && c != ' ' && c != '/' && c != '-')
+                        return "El número de calle contiene caracteres no válidos.";
+                }
+            }
+
+            return "";
+        }
+
+        // El DNI vacio tiene que quedar NULL, no "".
+        // El indice unico filtrado ignora los NULL, pero dos "" son iguales
+        // entre si y chocarian contra el indice al cargar el segundo cliente.
+        private void NormalizarCliente(Cliente cliente)
+        {
+            if (string.IsNullOrWhiteSpace(cliente.Dni))
+                cliente.Dni = null;
+            else
+                cliente.Dni = cliente.Dni.Trim();
+
+            if (string.IsNullOrWhiteSpace(cliente.Telefono)) cliente.Telefono = null;
+            if (string.IsNullOrWhiteSpace(cliente.Mail)) cliente.Mail = null;
+            if (string.IsNullOrWhiteSpace(cliente.Calle)) cliente.Calle = null;
+            if (string.IsNullOrWhiteSpace(cliente.Numero)) cliente.Numero = null;
+
+            if (!string.IsNullOrWhiteSpace(cliente.Nombre)) cliente.Nombre = cliente.Nombre.Trim();
+            if (!string.IsNullOrWhiteSpace(cliente.Apellido)) cliente.Apellido = cliente.Apellido.Trim();
+        }
+
+        // Solo letras (incluye acentos y ñ) y espacios.
+        private bool SoloLetras(string texto)
+        {
+            foreach (char c in texto)
+            {
+                if (!char.IsLetter(c) && c != ' ')
+                    return false;
+            }
+            return true;
+        }
+    }
+}

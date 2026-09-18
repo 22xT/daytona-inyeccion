@@ -1,0 +1,85 @@
+# ==========================================================
+# .gitignore — Daytona Inyección (ASP.NET Framework 4.5)
+# ==========================================================
+
+# --- Resultados de compilación ---
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.dll
+*.pdb
+*.exe
+*.cache
+
+# --- Paquetes NuGet ---
+# Se restauran solos con packages.config. Subirlos infla el
+# repositorio con cientos de megas que no aportan nada.
+packages/
+*.nupkg
+
+# --- Archivos de Visual Studio ---
+.vs/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+*_i.c
+*_p.c
+*.ncb
+*.aps
+*.tlb
+*.tlh
+*.tli
+*.tmp
+*.log
+*.vspscc
+*.vssscc
+
+# --- Publicación ---
+[Pp]ublish/
+*.publishsettings
+*.pubxml
+*.pubxml.user
+PublishScripts/
+
+# --- CONFIGURACIÓN CON SECRETOS ---
+# El Web.config contiene la cadena de conexión y la clave de
+# firma de los tokens. No va al repositorio.
+#
+# En su lugar se versiona Web.config.ejemplo, con la misma
+# estructura y los valores reemplazados por marcadores. Quien
+# clone el proyecto lo copia como Web.config y completa lo suyo.
+Web.config
+!Web.config.ejemplo
+
+# --- Frontend ---
+# config.js tiene la dirección del backend, que cambia según
+# el entorno.
+config.js
+!config.ejemplo.js
+
+# --- Archivos de datos ---
+# Las listas de proveedor pesan decenas de megas y se regeneran
+# desde el Excel del proveedor.
+*.bak
+*.bacpac
+lista_proveedor.txt
+expoyer.txt
+*.XLSX
+*.xlsx
+*.XLS
+*.zip
+*.ZIP
+
+# --- Sistema operativo ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# --- Varios ---
+node_modules/
+*.orig
+*.rej

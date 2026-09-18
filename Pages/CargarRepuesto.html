@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cargar Repuesto - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+</head>
+
+<body data-page="repuestos">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2 id="tituloPagina"><i class="bi bi-plus-square"></i> Nuevo Repuesto
+          <span class="mode-badge" id="modoBadge">Alta</span>
+        </h2>
+        <span class="subtitle" id="subtituloPagina">Completá los datos para agregar un repuesto al stock</span>
+      </div>
+      <a href="StockRepuestos.html" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Volver al stock
+      </a>
+    </div>
+
+    <form id="formRepuesto" novalidate>
+      <div class="panel">
+        <div class="panel-header"><span class="num">1</span> Categorización del repuesto</div>
+        <div class="panel-body">
+          <p class="form-text mb-3">Seleccioná rubro, marca y modelo (modelo se habilita después de elegir marca).</p>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="esUniversal">
+            <label class="form-check-label" for="esUniversal">
+              <strong>Repuesto universal</strong> — no corresponde a una marca ni modelo específico (ej: abrazaderas, aceites, tornillos)
+            </label>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Rubro <span class="required">*</span></label>
+              <select id="rubro" class="form-select" required>
+                <option value="">Seleccione rubro…</option>
+              </select>
+              <div class="invalid-feedback">Tenés que seleccionar un rubro.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Marca <span class="required">*</span></label>
+              <select id="marca" class="form-select">
+                <option value="">Seleccione marca…</option>
+              </select>
+              <div class="invalid-feedback">Tenés que seleccionar una marca.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Modelo <span class="required">*</span></label>
+              <select id="modelo" class="form-select" disabled>
+                <option value="">Seleccione marca primero…</option>
+              </select>
+              <div class="invalid-feedback">Tenés que seleccionar un modelo.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="num">2</span> Información del repuesto</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Descripción <span class="required">*</span></label>
+              <input type="text" id="descripcion" class="form-control" maxlength="100" required placeholder="Ej: Filtro de aceite K&amp;N HP-1004">
+              <div class="invalid-feedback" id="errDescripcion">La descripción es obligatoria.</div>
+              <div class="form-text">Hasta 100 caracteres.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Precio de venta <span class="required">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="text" id="precio" class="form-control" inputmode="decimal" required placeholder="0,00">
+              </div>
+              <div class="invalid-feedback" id="errPrecio">El precio debe ser mayor a cero.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="id">
+
+      <div class="actions">
+        <a href="StockRepuestos.html" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary" id="btnGuardar">
+          <i class="bi bi-save"></i> <span id="btnGuardarTexto">Guardar repuesto</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiRepuesto = API_BASE + "Repuesto";
+    const apiMarca = API_BASE + "Marca";
+    const apiModelo = API_BASE + "Modelo";
+    const apiRubro = API_BASE + "Rubro";
+
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+
+    if (!esAdmin) {
+      Swal.fire({
+        title: "Acceso restringido",
+        text: "Solo los administradores pueden cargar o editar repuestos.",
+        icon: "info",
+        confirmButtonText: "Volver al stock"
+      }).then(() => window.location.href = "StockRepuestos.html");
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("id");
+
+    function cargarRubros() {
+      return fetchAuth(apiRubro).then(r => r.json()).then(datos => {
+        const sel = document.getElementById("rubro");
+        datos.forEach(x => {
+          const opt = document.createElement("option");
+          opt.value = x.Id; opt.textContent = x.Nombre;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    function cargarMarcas() {
+      return fetchAuth(apiMarca).then(r => r.json()).then(datos => {
+        const sel = document.getElementById("marca");
+        datos.forEach(x => {
+          const opt = document.createElement("option");
+          opt.value = x.Id; opt.textContent = x.Nombre;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    function cargarModelosDeMarca(idMarca, idSeleccionado) {
+      const sel = document.getElementById("modelo");
+      sel.innerHTML = "<option value=''>Cargando…</option>";
+      sel.disabled = true;
+
+      return fetchAuth(apiModelo + "/" + idMarca).then(r => r.json()).then(datos => {
+        sel.innerHTML = "<option value=''>Seleccione modelo…</option>";
+        datos.forEach(x => {
+          const opt = document.createElement("option");
+          opt.value = x.Id; opt.textContent = x.Nombre;
+          if (idSeleccionado && String(idSeleccionado) === String(x.Id)) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.disabled = false;
+      });
+    }
+
+    function precargarEdicion(id) {
+      document.getElementById("tituloPagina").innerHTML =
+        '<i class="bi bi-pencil-square"></i> Editar Repuesto <span class="mode-badge">Edición</span>';
+      document.getElementById("subtituloPagina").textContent = "Modificá los datos y guardá los cambios";
+      document.getElementById("btnGuardarTexto").textContent = "Guardar cambios";
+
+      return fetchAuth(apiRepuesto + "/" + id).then(r => r.json()).then(data => {
+        const r = data[0];
+        if (!r) throw new Error("No se encontró el repuesto");
+
+        document.getElementById("id").value = r.Id;
+        document.getElementById("descripcion").value = r.Descripcion;
+        document.getElementById("precio").value = numeroAPrecio(r.PrecioDeVenta);
+        document.getElementById("rubro").value = r.IdRubro;
+
+        // Si el repuesto no tiene modelo, es universal: tildar el check y salir
+        if (r.IdModelo === null || r.IdModelo === undefined) {
+          const chk = document.getElementById("esUniversal");
+          chk.checked = true;
+          chk.dispatchEvent(new Event("change"));
+          return;
+        }
+
+        if (r.IdMarca) {
+          document.getElementById("marca").value = r.IdMarca;
+          return cargarModelosDeMarca(r.IdMarca, r.IdModelo);
+        } else {
+          return fetchAuth(apiModelo).then(x => x.json()).then(modelos => {
+            const mod = modelos.find(m => m.Id == r.IdModelo);
+            if (mod) {
+              document.getElementById("marca").value = mod.IdMarca;
+              return cargarModelosDeMarca(mod.IdMarca, r.IdModelo);
+            }
+          });
+        }
+      });
+    }
+
+    function validar() {
+      let ok = true;
+      const limpiar = id => document.getElementById(id).classList.remove("is-invalid");
+      const marcar = (id, msg) => {
+        const el = document.getElementById(id);
+        el.classList.add("is-invalid");
+        if (msg) {
+          const fb = el.parentElement.querySelector(".invalid-feedback");
+          if (fb) fb.textContent = msg;
+        }
+        ok = false;
+      };
+      ["rubro", "marca", "modelo", "descripcion", "precio"].forEach(limpiar);
+
+      if (!document.getElementById("rubro").value) marcar("rubro");
+      const universal = document.getElementById("esUniversal").checked;
+      if (!universal) {
+        if (!document.getElementById("marca").value) marcar("marca");
+        if (!document.getElementById("modelo").value) marcar("modelo");
+      }
+
+      const desc = document.getElementById("descripcion").value.trim();
+      if (desc === "") marcar("descripcion", "La descripción es obligatoria.");
+      else if (desc.length < 2) marcar("descripcion", "La descripción es demasiado corta.");
+
+      const precio = precioANumero(document.getElementById("precio").value);
+      if (isNaN(precio)) marcar("precio", "Ingresá un precio válido.");
+      else if (precio <= 0) marcar("precio", "El precio debe ser mayor a cero.");
+
+      return ok;
+    }
+
+    function setLoading(loading) {
+      document.getElementById("btnGuardar").disabled = loading;
+      document.getElementById("btnGuardarTexto").textContent =
+        loading ? "Guardando…" : (editId ? "Guardar cambios" : "Guardar repuesto");
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const data = JSON.parse(text); return data.Message || data.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function guardar(e) {
+      e.preventDefault();
+      if (!validar()) { const p = document.querySelector(".is-invalid"); if (p) p.focus(); return; }
+
+      const id = document.getElementById("id").value;
+      const repuesto = {
+        Id: id ? parseInt(id) : 0,
+        Descripcion: document.getElementById("descripcion").value.trim(),
+        PrecioDeVenta: precioANumero(document.getElementById("precio").value),
+        IdModelo: document.getElementById("esUniversal").checked
+          ? null
+          : parseInt(document.getElementById("modelo").value),
+        IdRubro: parseInt(document.getElementById("rubro").value)
+      };
+
+      const metodo = id === "" ? "POST" : "PUT";
+      const url = id === "" ? apiRepuesto : apiRepuesto + "/" + id;
+
+      setLoading(true);
+      fetchAuth(url, { method: metodo, body: JSON.stringify(repuesto) })
+        .then(r => {
+          if (r.ok) {
+            Swal.fire({
+              title: "Guardado",
+              text: id === "" ? "El repuesto se cargó correctamente." : "Cambios guardados.",
+              icon: "success",
+              confirmButtonText: "Ir al stock",
+              showCancelButton: id === "",
+              cancelButtonText: "Cargar otro"
+            }).then(result => {
+              if (result.isConfirmed) window.location.href = "StockRepuestos.html";
+              else {
+                document.getElementById("formRepuesto").reset();
+                document.getElementById("id").value = "";
+                document.getElementById("modelo").innerHTML = "<option value=''>Seleccione marca primero…</option>";
+                document.getElementById("modelo").disabled = true;
+                setLoading(false);
+              }
+            });
+          } else {
+            leerError(r).then(msg => { Swal.fire("No se pudo guardar", msg, "error"); setLoading(false); });
+          }
+        })
+        .catch(() => { Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error"); setLoading(false); });
+    }
+
+    // Checkbox "repuesto universal": deshabilita marca y modelo
+    document.getElementById("esUniversal").addEventListener("change", function () {
+      const universal = this.checked;
+      const marca = document.getElementById("marca");
+      const modelo = document.getElementById("modelo");
+      const lblMarca = marca.previousElementSibling; // no usado, por claridad
+      if (universal) {
+        marca.value = "";
+        marca.disabled = true;
+        marca.classList.remove("is-invalid");
+        modelo.innerHTML = "<option value=''>No aplica</option>";
+        modelo.disabled = true;
+        modelo.classList.remove("is-invalid");
+      } else {
+        marca.disabled = false;
+        modelo.innerHTML = "<option value=''>Seleccione marca primero…</option>";
+        modelo.disabled = true; // se habilita al elegir marca
+      }
+    });
+
+    document.getElementById("marca").addEventListener("change", function () {
+      const idMarca = this.value;
+      const sel = document.getElementById("modelo");
+      if (idMarca === "") {
+        sel.innerHTML = "<option value=''>Seleccione marca primero…</option>";
+        sel.disabled = true;
+        return;
+      }
+      cargarModelosDeMarca(idMarca);
+    });
+
+    document.getElementById("formRepuesto").addEventListener("submit", guardar);
+
+    ["rubro", "marca", "modelo", "descripcion", "precio"].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener("input", () => el.classList.remove("is-invalid"));
+      el.addEventListener("change", () => el.classList.remove("is-invalid"));
+    });
+
+    window.onload = function () {
+      activarInputPrecio("precio");
+      if (!esAdmin) return;
+      Promise.all([cargarRubros(), cargarMarcas()]).then(() => {
+        if (editId) {
+          precargarEdicion(editId).catch(() => {
+            Swal.fire("Error", "No se pudo cargar el repuesto a editar.", "error")
+              .then(() => window.location.href = "StockRepuestos.html");
+          });
+        }
+      });
+    };
+  </script>
+</body>
+</html>

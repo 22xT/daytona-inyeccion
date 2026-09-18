@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Catálogo de Proveedores - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    .codigo-repuesto {
+      font-family: 'Courier New', monospace; font-weight: 700;
+      color: #2c3e50; letter-spacing: 0.5px;
+    }
+
+    /* ---- Buscador ---- */
+    .buscador-grande { position: relative; }
+    .buscador-grande i.lupa {
+      position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 1.15rem; pointer-events: none;
+    }
+    .buscador-grande input {
+      height: 50px; font-size: 1rem; padding-left: 44px;
+      border: 2px solid var(--border); border-radius: 10px;
+    }
+    .buscador-grande input:focus {
+      border-color: var(--nav-accent);
+      box-shadow: 0 0 0 0.2rem rgba(18,102,209,0.12);
+    }
+
+    /* ---- Botones de proveedor, estilo catálogo mayorista ---- */
+    .prov-botones { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+    .btn-prov {
+      background: #fff; border: 2px solid var(--border); border-radius: 8px;
+      padding: 5px 14px; font-size: 0.82rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; transition: 0.12s;
+    }
+    .btn-prov:hover { border-color: #b9d3f2; }
+    .btn-prov.activo {
+      background: var(--nav-accent-soft); border-color: var(--nav-accent);
+      color: var(--nav-accent-dark);
+    }
+
+    /* ---- Resultados ---- */
+    .res-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+    }
+    .res-item:last-child { border-bottom: none; }
+    .res-item:hover { background: var(--bg-soft); }
+    .res-item.en-catalogo { background: #f6fbf7; }
+
+    .res-info { flex: 1; min-width: 0; }
+    .res-desc { font-size: 0.9rem; color: var(--text); line-height: 1.3; }
+    .res-meta { font-size: 0.74rem; color: var(--text-muted); margin-top: 3px; }
+
+    .res-precios { text-align: right; white-space: nowrap; flex-shrink: 0; }
+    .res-costo { font-size: 0.76rem; color: var(--text-muted); }
+    .res-venta { font-size: 1rem; font-weight: 700; color: var(--navy); }
+    .res-margen { font-size: 0.7rem; color: var(--green); }
+
+    .btn-incorporar {
+      width: 40px; height: 40px; flex-shrink: 0;
+      border-radius: 9px; border: none;
+      background: var(--green); color: #fff;
+      font-size: 1.1rem; cursor: pointer; transition: 0.15s;
+    }
+    .btn-incorporar:hover { background: #1e7e34; transform: scale(1.06); }
+
+    .badge-catalogo {
+      background: var(--green-soft); color: #155724; border: 1px solid #badbcc;
+      border-radius: 8px; font-size: 0.68rem; padding: 2px 8px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .badge-fabricante {
+      background: var(--bg); color: var(--text-muted); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 0.68rem; padding: 1px 7px; font-weight: 600;
+    }
+
+    .lista-resultados { max-height: 56vh; overflow-y: auto; }
+
+    .aviso-inicial {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 60px 20px; color: var(--text-muted);
+      text-align: center;
+    }
+    .aviso-inicial i { font-size: 3rem; opacity: 0.35; color: var(--navy); margin-bottom: 12px; }
+  </style>
+</head>
+
+<body data-page="catalogo-proveedores">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-search"></i> Catálogo de Proveedores</h2>
+        <span class="subtitle">Buscá en las listas y sumá repuestos a tu catálogo</span>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="btnStats" class="btn-stats">
+          <i class="bi bi-bar-chart-line"></i>
+          <span class="txt">Ver estadísticas</span>
+          <i class="bi chev bi-chevron-down"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3 stats-wrap" id="statsWrap">
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="bi bi-list-ul"></i></div>
+          <div><p class="stat-value" id="kpiTotal">0</p><p class="stat-label">Artículos disponibles</p></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+          <div><p class="stat-value" id="kpiEnCatalogo">0</p><p class="stat-label">Ya en mi catálogo</p></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon violet"><i class="bi bi-shop"></i></div>
+          <div><p class="stat-value" id="kpiProveedores">0</p><p class="stat-label">Proveedores cargados</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="filtros-bar">
+      <div class="buscador-grande">
+        <i class="bi bi-search lupa"></i>
+        <input type="text" id="buscar" class="form-control"
+               placeholder="Buscar por descripción, código del proveedor o código de fabricante..."
+               autocomplete="off">
+      </div>
+
+      <div class="prov-botones" id="botonesProveedor"></div>
+
+      <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="soloSinEnlazar" checked>
+          <label class="form-check-label" for="soloSinEnlazar" style="font-size:0.85rem;">
+            Ocultar los que ya tengo
+          </label>
+        </div>
+        <span class="text-muted" style="font-size:0.8rem;" id="contadorRes"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="lista-resultados" id="resultados">
+        <div class="aviso-inicial">
+          <i class="bi bi-search"></i>
+          <h5>Buscá un repuesto</h5>
+          <p class="mb-0">Escribí al menos 3 letras. Podés buscar por descripción,<br>
+            por el código del proveedor o por el código del fabricante.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    var api = API_BASE;
+    var proveedores = [];
+    var rubros = [];
+    var provActivo = 0;          // 0 = todos
+    var resultados = [];
+    var temporizador = null;
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function leerError(r) {
+      return r.text().then(function (t) {
+        try { var d = JSON.parse(t); return d.Message || d.message || t; }
+        catch (e) { return t; }
+      }).catch(function () { return "No se pudo completar la operación."; });
+    }
+
+    /* ================= PROVEEDORES ================= */
+
+    function cargarRubros() {
+      return fetchAuth(api + "Rubro")
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          rubros = (d || []).filter(function (x) {
+            return x.Activo !== false && x.Activo !== 0;
+          }).sort(function (a, b) {
+            return String(a.Nombre).localeCompare(String(b.Nombre));
+          });
+        })
+        .catch(function () { rubros = []; });
+    }
+
+    function cargarProveedores() {
+      return fetchAuth(api + "Proveedor")
+        .then(function (r) { return r.json(); })
+        .then(function (datos) {
+          proveedores = (datos || []).filter(function (p) {
+            return p.Activo !== false && p.Activo !== 0;
+          });
+          document.getElementById("kpiProveedores").textContent = proveedores.length;
+          pintarBotonesProveedor();
+        })
+        .catch(function () { proveedores = []; });
+    }
+
+    // Botones de encendido/apagado, como el catálogo del mayorista.
+    // Son pocos y estables: por eso van fijos. Las marcas de fabricante
+    // son cientos y no servirían como botón.
+    function pintarBotonesProveedor() {
+      var cont = document.getElementById("botonesProveedor");
+      var html = '<button type="button" class="btn-prov' +
+                 (provActivo === 0 ? ' activo' : '') +
+                 '" onclick="filtrarProveedor(0)">Todos</button>';
+
+      proveedores.forEach(function (p) {
+        html += '<button type="button" class="btn-prov' +
+                (provActivo === p.Id ? ' activo' : '') +
+                '" onclick="filtrarProveedor(' + p.Id + ')">' +
+                escapeHtml(p.RazonSocial) + '</button>';
+      });
+
+      cont.innerHTML = html;
+    }
+
+    function filtrarProveedor(id) {
+      provActivo = id;
+      pintarBotonesProveedor();
+      buscar();
+    }
+
+    /* ================= BÚSQUEDA ================= */
+
+    function buscar() {
+      var texto = document.getElementById("buscar").value.trim();
+      var soloSin = document.getElementById("soloSinEnlazar").checked;
+
+      // Con menos de 3 letras la consulta recorre miles de filas y
+      // devuelve resultados que no sirven.
+      if (texto.length > 0 && texto.length < 3) {
+        document.getElementById("contadorRes").textContent = "Escribí al menos 3 letras";
+        return;
+      }
+
+      if (texto.length === 0) {
+        document.getElementById("resultados").innerHTML =
+          '<div class="aviso-inicial">' +
+          '<i class="bi bi-search"></i><h5>Buscá un repuesto</h5>' +
+          '<p class="mb-0">Escribí al menos 3 letras.</p></div>';
+        document.getElementById("contadorRes").textContent = "";
+        return;
+      }
+
+      var url = api + "ProveedorRepuesto/Buscar?texto=" + encodeURIComponent(texto) +
+                "&soloSinEnlazar=" + soloSin + "&tope=100" +
+                (provActivo > 0 ? "&idProveedor=" + provActivo : "");
+
+      document.getElementById("resultados").innerHTML =
+        '<div class="p-4 text-center text-muted">' +
+        '<span class="spinner-border spinner-border-sm"></span> Buscando…</div>';
+
+      fetchAuth(url).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return r.json();
+      }).then(function (datos) {
+        resultados = datos || [];
+        pintarResultados();
+      }).catch(function (err) {
+        document.getElementById("resultados").innerHTML =
+          '<div class="p-4 text-center text-danger">' +
+          escapeHtml(err.message || "No se pudo buscar.") + '</div>';
+      });
+    }
+
+    function pintarResultados() {
+      var cont = document.getElementById("resultados");
+      var enCatalogo = resultados.filter(function (r) { return r.YaEnCatalogo === 1; }).length;
+
+      document.getElementById("kpiTotal").textContent = resultados.length;
+      document.getElementById("kpiEnCatalogo").textContent = enCatalogo;
+      document.getElementById("contadorRes").textContent =
+        resultados.length + " resultado" + (resultados.length === 1 ? "" : "s") +
+        (resultados.length === 100 ? " (afiná la búsqueda para ver más)" : "");
+
+      if (resultados.length === 0) {
+        cont.innerHTML = '<div class="empty-state">' +
+          '<div class="icon"><i class="bi bi-search"></i></div>' +
+          '<h4>Sin resultados</h4>' +
+          '<p>Probá con otras palabras o desmarcá "Ocultar los que ya tengo".</p></div>';
+        return;
+      }
+
+      var html = "";
+      resultados.forEach(function (r, idx) {
+        var yaEsta = r.YaEnCatalogo === 1;
+        var margen = Number(r.MargenAplicado);
+
+        html += '<div class="res-item' + (yaEsta ? ' en-catalogo' : '') + '">' +
+          '<div class="res-info">' +
+            '<div class="res-desc">' +
+              '<span class="codigo-repuesto">' + escapeHtml(r.CodigoProveedor) + '</span> ' +
+              escapeHtml(r.Descripcion) +
+            '</div>' +
+            '<div class="res-meta">' +
+              escapeHtml(r.Proveedor) +
+              (r.Articulo ? ' · Fab: <span class="badge-fabricante">' +
+                escapeHtml(r.Articulo) + '</span>' : '') +
+              ' · ' + escapeHtml(r.Rubro || r.RubroTexto || '-') +
+              (yaEsta
+                ? ' · <span class="badge-catalogo"><i class="bi bi-check-lg"></i> ' +
+                  escapeHtml(r.CodigoPropio || 'En catálogo') +
+                  ' · stock ' + r.StockPropio + '</span>'
+                : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="res-precios">' +
+            '<div class="res-costo">Costo ' + formatearMoneda(r.PrecioCompra) + '</div>' +
+            '<div class="res-venta">' + formatearMoneda(r.FinalSugerido) + '</div>' +
+            '<div class="res-margen">margen ' + margen + '%</div>' +
+          '</div>' +
+          (yaEsta
+            ? '<button class="btn-incorporar" style="background:#ced4da;cursor:default;" ' +
+              'title="Ya está en tu catálogo" disabled><i class="bi bi-check-lg"></i></button>'
+            : '<button class="btn-incorporar" onclick="incorporar(' + idx + ')" ' +
+              'title="Sumar a mi catálogo"><i class="bi bi-plus-lg"></i></button>') +
+        '</div>';
+      });
+
+      cont.innerHTML = html;
+    }
+
+    /* ================= INCORPORAR ================= */
+
+    function opcionesRubro(idSugerido) {
+      var html = '<option value="">— Elegí un rubro —</option>';
+      rubros.forEach(function (ru) {
+        html += '<option value="' + ru.Id + '"' +
+                (ru.Id === idSugerido ? ' selected' : '') + '>' +
+                escapeHtml(ru.Nombre) + '</option>';
+      });
+      return html;
+    }
+
+    function incorporar(idx) {
+      var r = resultados[idx];
+      if (!r) return;
+
+      Swal.fire({
+        title: "Sumar a mi catálogo",
+        html:
+          '<div style="text-align:left;font-size:0.9rem;">' +
+            '<div class="mb-2"><strong>' + escapeHtml(r.Descripcion) + '</strong></div>' +
+            '<div class="text-muted mb-3" style="font-size:0.8rem;">' +
+              escapeHtml(r.Proveedor) + ' · ' + escapeHtml(r.CodigoProveedor) +
+              ' · ' + escapeHtml(r.Rubro || '-') + '</div>' +
+
+            '<label class="form-label mb-1">Descripción</label>' +
+            '<input type="text" id="swDesc" class="form-control" maxlength="100" value="' +
+              escapeHtml(String(r.Descripcion).substring(0, 100)) + '">' +
+            '<div class="form-text mb-2">Podés acortarla o escribirla como la buscás vos.</div>' +
+
+            '<label class="form-label mb-1">Rubro</label>' +
+            '<select id="swRubro" class="form-select">' + opcionesRubro(r.IdRubro) + '</select>' +
+            '<div class="form-text mb-2">' +
+              (r.IdRubro
+                ? 'Viene sugerido del proveedor. Cambialo si en tu negocio va en otro lado.'
+                : 'Este proveedor no manda un rubro que se pueda usar. Elegí dónde va.') +
+            '</div>' +
+
+            '<div class="row g-2 mt-1">' +
+              '<div class="col-6">' +
+                '<label class="form-label mb-1">Precio de venta</label>' +
+                '<div class="input-group">' +
+                  '<span class="input-group-text">$</span>' +
+                  '<input type="text" inputmode="decimal" id="swPrecio" ' +
+                    'class="form-control text-end" value="' +
+                    numeroAPrecio(r.FinalSugerido) + '">' +
+                '</div>' +
+              '</div>' +
+              '<div class="col-6">' +
+                '<label class="form-label mb-1">Stock mínimo</label>' +
+                '<input type="number" id="swMinimo" class="form-control" min="0" value="5">' +
+              '</div>' +
+            '</div>' +
+
+            /* La cadena completa, desde el precio de lista del proveedor
+               hasta el precio al publico. Empezar en el costo escondia
+               de donde sale ese numero. */
+            '<div style="background:var(--bg-soft);border-radius:8px;padding:11px 13px;' +
+                 'margin-top:12px;font-size:0.82rem;">' +
+
+              '<div class="d-flex justify-content-between">' +
+                '<span>Precio de lista</span><span>' +
+                formatearMoneda(r.PrecioLista) + '</span></div>' +
+
+              (Number(r.DescuentoRubro) > 0
+                ? '<div class="d-flex justify-content-between" style="color:#157347;">' +
+                  '<span>Descuento rubro ' + Number(r.DescuentoRubro) + '%</span><span>-' +
+                  formatearMoneda(r.PrecioLista - r.PrecioLista * (1 - r.DescuentoRubro/100)) +
+                  '</span></div>'
+                : '') +
+
+              (Number(r.DescuentoGeneral) > 0
+                ? '<div class="d-flex justify-content-between" style="color:#157347;">' +
+                  '<span>Descuento general ' + Number(r.DescuentoGeneral) + '%</span><span>-' +
+                  formatearMoneda(r.PrecioLista * (1 - r.DescuentoRubro/100) - r.PrecioCompra) +
+                  '</span></div>'
+                : '') +
+
+              '<div class="d-flex justify-content-between" ' +
+                   'style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px;' +
+                   'font-weight:700;color:var(--navy);">' +
+                '<span>Costo</span><span>' + formatearMoneda(r.PrecioCompra) + '</span></div>' +
+
+              '<div class="d-flex justify-content-between" style="margin-top:5px;">' +
+                '<span>Utilidad ' + r.MargenAplicado + '%</span><span>+' +
+                formatearMoneda(r.NetoSugerido - r.PrecioCompra) + '</span></div>' +
+
+              '<div class="d-flex justify-content-between"><span>Neto</span><span>' +
+                formatearMoneda(r.NetoSugerido) + '</span></div>' +
+
+              '<div class="d-flex justify-content-between"><span>IVA 21%</span><span>+' +
+                formatearMoneda(r.FinalSugerido - r.NetoSugerido) + '</span></div>' +
+
+              '<div class="d-flex justify-content-between" ' +
+                   'style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px;' +
+                   'font-weight:700;color:var(--navy);font-size:0.92rem;">' +
+                '<span>Precio de venta</span><span>' +
+                formatearMoneda(r.FinalSugerido) + '</span></div>' +
+            '</div>' +
+            '<div class="form-text mt-2">Entra con stock en cero. Cargalo con un ajuste.</div>' +
+          '</div>',
+        width: 520,
+        showCancelButton: true,
+        confirmButtonText: "Sumar al catálogo",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28a745",
+        didOpen: function () { activarInputPrecio("swPrecio"); },
+        preConfirm: function () {
+          var desc = document.getElementById("swDesc").value.trim();
+          var idRubro = parseInt(document.getElementById("swRubro").value, 10);
+          var final = precioANumero(document.getElementById("swPrecio").value);
+          var minimo = parseInt(document.getElementById("swMinimo").value, 10);
+
+          if (desc === "") {
+            Swal.showValidationMessage("La descripción no puede quedar vacía.");
+            return false;
+          }
+          if (!idRubro) {
+            Swal.showValidationMessage("Elegí un rubro.");
+            return false;
+          }
+          if (isNaN(final) || final <= 0) {
+            Swal.showValidationMessage("El precio de venta debe ser mayor a cero.");
+            return false;
+          }
+          if (isNaN(minimo) || minimo < 0) minimo = 5;
+
+          // Se envía el NETO: el precio final lo recalcula el sistema
+          // a partir de él. Guardar los dos por separado los desincroniza.
+          var neto = Math.round((final / 1.21) * 100) / 100;
+
+          return { desc: desc, idRubro: idRubro, neto: neto, minimo: minimo };
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value) return;
+
+        fetchAuth(api + "Repuesto/IncorporarDesdeLista", {
+          method: "POST",
+          body: JSON.stringify({
+            IdListaProveedor: r.Id,
+            IdRubro: res.value.idRubro,
+            Descripcion: res.value.desc,
+            PrecioNetoVenta: res.value.neto,
+            StockMinimo: res.value.minimo
+          })
+        }).then(function (resp) {
+          if (!resp.ok) return leerError(resp).then(function (m) { throw new Error(m); });
+          return resp.json();
+        }).then(function (datos) {
+          buscar();
+          // El mejor momento para enlazar es este: ya se esta mirando
+          // esa pieza y no hay que volver a buscarla despues.
+          revisarOtrosProveedores(datos.Id, datos.Codigo || r.CodigoProveedor);
+        }).catch(function (err) {
+          Swal.fire("No se pudo incorporar", err.message || "Error de conexión.", "error");
+        });
+      });
+    }
+
+    /* ============ VINCULAR CON OTROS PROVEEDORES ============ */
+
+    /* Se ofrece justo despues de incorporar. Es el momento en que el
+       enlace sale mas barato: la pieza ya esta a la vista y no hay que
+       volver a buscarla.
+
+       Nada se enlaza solo: el codigo de fabricante es la mejor señal
+       pero no es una clave —hay miles repetidos y valores basura—, y
+       un enlace erroneo une repuestos distintos y corrompe el stock. */
+    function revisarOtrosProveedores(idRepuesto, codigo) {
+      fetchAuth(api + "Repuesto/" + idRepuesto + "/OtrosProveedores")
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (cands) {
+          if (!cands || cands.length === 0) {
+            // Sin candidatos confiables no se ofrece nada. Sugerir por
+            // parecido de texto trae piezas distintas del mismo auto.
+            abrirModalVinculacion(idRepuesto, codigo, "", 0);
+            return;
+          }
+
+          var filas = "";
+          cands.slice(0, 6).forEach(function (c, i) {
+            var alta = c.Confianza === "Alta";
+            var dif = c.DiferenciaPorc;
+            var color = dif < 0 ? "#157347" : (dif > 0 ? "#c0392b" : "#6c757d");
+
+            filas +=
+              '<label style="display:flex;align-items:center;gap:9px;padding:9px 11px;' +
+                     'border:1px solid ' + (alta ? '#b9d3f2' : '#dee2e6') + ';' +
+                     'border-radius:8px;margin-bottom:7px;cursor:pointer;' +
+                     'background:' + (alta ? '#f0f6fd' : '#fff') + ';">' +
+                '<input type="checkbox" class="form-check-input mt-0" value="' + c.Id + '"' +
+                  (alta ? ' checked' : '') + '>' +
+                '<div style="flex:1;min-width:0;text-align:left;">' +
+                  '<div style="font-size:0.85rem;font-weight:600;">' +
+                    escapeHtml(c.Proveedor) + ' · ' + escapeHtml(c.CodigoProveedor) +
+                    (alta ? ' <span style="background:#cfe2ff;color:#084298;border-radius:7px;' +
+                            'font-size:0.65rem;padding:1px 6px;">mismo código de fábrica</span>' : '') +
+                  '</div>' +
+                  '<div style="font-size:0.75rem;color:#6c757d;">' +
+                    escapeHtml(String(c.Descripcion).substring(0, 60)) + '</div>' +
+                '</div>' +
+                '<div style="text-align:right;white-space:nowrap;">' +
+                  '<div style="font-size:0.65rem;color:#6c757d;text-transform:uppercase;' +
+                       'letter-spacing:0.3px;">costo</div>' +
+                  '<div style="font-weight:700;">' + formatearMoneda(c.PrecioCompra) + '</div>' +
+                  (dif !== null
+                    ? '<div style="font-size:0.72rem;color:' + color + ';">' +
+                      (dif > 0 ? '+' : '') + dif + '% vs el tuyo</div>'
+                    : '') +
+                '</div>' +
+              '</label>';
+          });
+
+          abrirModalVinculacion(idRepuesto, codigo, filas, cands.length);
+        })
+        .catch(function () {
+          Swal.fire("Sumado al catálogo", "Código " + codigo, "success");
+        });
+    }
+
+    /* Modal de vinculacion: sugerencias automaticas arriba y buscador
+       manual abajo.
+
+       El automatico solo agarra cuando coincide el codigo de
+       fabricante. El resto de los casos —marcas escritas distinto,
+       codigos que no matchean— solo los reconoce una persona que
+       conoce el rubro. Por eso el buscador manual no es un accesorio:
+       es como se va a construir la mayor parte de los enlaces. */
+    function abrirModalVinculacion(idRepuesto, codigo, filasSugeridas, cantidad) {
+      var bloqueSug = cantidad > 0
+        ? '<div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">' +
+            'Mismo código de fabricante</div>' +
+          '<div class="form-text mb-2">Confirmá los que sean la misma pieza.</div>' +
+          '<div id="candidatos">' + filasSugeridas + '</div>' +
+          '<hr style="margin:14px 0;">'
+        : '<div class="form-text mb-3">Ningún otro proveedor lo tiene con el mismo ' +
+          'código de fabricante. Buscalo a mano si sabés que lo trabajan.</div>' +
+          '<div id="candidatos"></div>';
+
+      Swal.fire({
+        title: "Sumado al catálogo",
+        html:
+          '<div style="text-align:left;">' +
+            '<div class="mb-3">Código <strong>' + escapeHtml(codigo) + '</strong>. ' +
+            'Entró con stock en cero.</div>' +
+            bloqueSug +
+            '<div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">' +
+              'Buscar en otras listas</div>' +
+            '<div class="form-text mb-2">Escribí como lo llama el otro proveedor. ' +
+              'Los que marques se van a comparar con este repuesto. ' +
+              'Los importes son el COSTO, no el precio de venta.</div>' +
+            '<input type="text" id="swBuscarVinc" class="form-control mb-2" ' +
+              'placeholder="Ej: kit distribucion fox, KTB-341...">' +
+            '<div id="resVinc" style="max-height:230px;overflow-y:auto;"></div>' +
+          '</div>',
+        width: 600,
+        showCancelButton: true,
+        confirmButtonText: "Vincular seleccionados",
+        cancelButtonText: "Ahora no",
+        confirmButtonColor: "#1266d1",
+        didOpen: function () {
+          var campo = document.getElementById("swBuscarVinc");
+          var t = null;
+          campo.addEventListener("input", function () {
+            clearTimeout(t);
+            t = setTimeout(function () { buscarParaVincular(campo.value, idRepuesto); }, 320);
+          });
+        },
+        preConfirm: function () {
+          var ids = [];
+          document.querySelectorAll('#candidatos input:checked').forEach(function (c) {
+            ids.push(parseInt(c.value, 10));
+          });
+          document.querySelectorAll('#resVinc input:checked').forEach(function (c) {
+            var v = parseInt(c.value, 10);
+            if (ids.indexOf(v) === -1) ids.push(v);
+          });
+          return ids;
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value || res.value.length === 0) return;
+        vincular(res.value, idRepuesto);
+      });
+    }
+
+    function buscarParaVincular(texto, idRepuesto) {
+      var cont = document.getElementById("resVinc");
+      texto = (texto || "").trim();
+
+      if (texto.length < 3) {
+        cont.innerHTML = '<div class="form-text">Escribí al menos 3 letras.</div>';
+        return;
+      }
+
+      cont.innerHTML = '<div class="text-center p-2">' +
+        '<span class="spinner-border spinner-border-sm"></span></div>';
+
+      fetchAuth(api + "ProveedorRepuesto/Buscar?texto=" + encodeURIComponent(texto) +
+                "&soloSinEnlazar=true&tope=25")
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (lista) {
+          if (!lista || lista.length === 0) {
+            cont.innerHTML = '<div class="form-text">Sin resultados.</div>';
+            return;
+          }
+
+          var html = "";
+          lista.forEach(function (c) {
+            html +=
+              '<label style="display:flex;align-items:center;gap:9px;padding:8px 10px;' +
+                     'border:1px solid var(--border);border-radius:8px;margin-bottom:6px;' +
+                     'cursor:pointer;">' +
+                '<input type="checkbox" class="form-check-input mt-0" value="' + c.Id + '">' +
+                '<div style="flex:1;min-width:0;text-align:left;">' +
+                  '<div style="font-size:0.83rem;font-weight:600;">' +
+                    escapeHtml(c.Proveedor) + ' · ' + escapeHtml(c.CodigoProveedor) +
+                    (c.Articulo ? ' · fab ' + escapeHtml(c.Articulo) : '') + '</div>' +
+                  '<div style="font-size:0.74rem;color:#6c757d;">' +
+                    escapeHtml(String(c.Descripcion).substring(0, 62)) + '</div>' +
+                '</div>' +
+                '<div style="text-align:right;white-space:nowrap;">' +
+                  '<div style="font-size:0.65rem;color:#6c757d;text-transform:uppercase;' +
+                       'letter-spacing:0.3px;">costo</div>' +
+                  '<div style="font-weight:700;">' + formatearMoneda(c.PrecioCompra) + '</div>' +
+                  (c.FinalSugerido
+                    ? '<div style="font-size:0.7rem;color:#6c757d;">venta ' +
+                      formatearMoneda(c.FinalSugerido) + '</div>'
+                    : '') +
+                '</div>' +
+              '</label>';
+          });
+          cont.innerHTML = html;
+        })
+        .catch(function () {
+          cont.innerHTML = '<div class="form-text text-danger">No se pudo buscar.</div>';
+        });
+    }
+
+    function vincular(ids, idRepuesto) {
+      var pendientes = ids.map(function (id) {
+        return fetchAuth(api + "ProveedorRepuesto/" + id + "/Enlazar", {
+          method: "PUT",
+          body: JSON.stringify({ IdRepuesto: idRepuesto })
+        }).then(function (r) { return r.ok; });
+      });
+
+      Promise.all(pendientes).then(function (res) {
+        var ok = res.filter(Boolean).length;
+        Swal.fire({
+          icon: ok === ids.length ? "success" : "warning",
+          title: ok + " de " + ids.length + " vinculados",
+          html: ok > 0
+            ? "<small class='text-muted'>Ya se pueden comparar precios entre proveedores " +
+              "para este repuesto.</small>"
+            : "<small class='text-muted'>No se pudo vincular ninguno.</small>"
+        });
+        buscar();
+      });
+    }
+
+    /* ================= INICIO ================= */
+
+    window.onload = function () {
+      cargarProveedores();
+      cargarRubros();
+
+      document.getElementById("buscar").addEventListener("input", function () {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(buscar, 350);
+      });
+
+      document.getElementById("soloSinEnlazar").addEventListener("change", buscar);
+      document.getElementById("buscar").focus();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Rubros - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .repuesto-discontinuado {
+      opacity: 0.55;
+      background-color: #f5f5f5 !important;
+    }
+    .badge-discontinuado {
+      background: #6c757d;
+      color: white;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .sigla-pill {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      background: #001f3f;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 6px;
+      letter-spacing: 1px;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body data-page="rubros">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-folder2-open"></i> Rubros</h2>
+        <span class="subtitle">Categorías de repuestos. La sigla se usa para generar el código de cada repuesto.</span>
+      </div>
+      <a href="RubroForm.html" class="btn btn-danger admin-only">
+        <i class="bi bi-plus-lg"></i> Nuevo Rubro
+      </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="bi bi-folder2-open"></i></div>
+          <div>
+            <p class="stat-value" id="statTotal">0</p>
+            <p class="stat-label">Rubros activos</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="bi bi-x-circle"></i></div>
+          <div>
+            <p class="stat-value" id="statInactivos">0</p>
+            <p class="stat-label">Discontinuados</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros y búsqueda</div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Buscar por nombre o sigla</label>
+            <input type="text" id="busqueda" class="form-control" placeholder="Ej: SM, amortiguadores...">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Estado</label>
+            <select id="filtroEstado" class="form-select">
+              <option value="activos" selected>Solo activos</option>
+              <option value="discontinuados">Discontinuados</option>
+              <option value="todos">Todos</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button id="btnLimpiar" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" id="panelResultados"><i class="bi bi-list-ul"></i> Listado de rubros</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 100px;">Sigla</th>
+              <th>Nombre</th>
+              <th>ID</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaRubros">
+            <tr class="loading-row"><td colspan="4">Cargando rubros…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty-state d-none">
+        <div class="icon"><i class="bi bi-search"></i></div>
+        <h4>No se encontraron rubros</h4>
+        <p>Probá cambiar los filtros o limpiar la búsqueda.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiRubro = API_BASE + "Rubro";
+
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+    if (esAdmin) document.body.classList.add('is-admin');
+
+    let rubros = [];
+
+    function esActivo(r) {
+      return r.Activo === true || r.Activo === 1 || r.Activo === undefined;
+    }
+
+    function cargar() {
+      fetchAuth(apiRubro).then(r => r.json()).then(data => {
+        rubros = data;
+        actualizarStats();
+        aplicarFiltros();
+      }).catch(() => {
+        document.getElementById("tablaRubros").innerHTML =
+          "<tr><td colspan='4' class='text-center text-danger p-4'>No se pudieron cargar los rubros.</td></tr>";
+      });
+    }
+
+    function actualizarStats() {
+      const activos = rubros.filter(esActivo);
+      const inactivos = rubros.filter(r => !esActivo(r));
+      document.getElementById("statTotal").textContent = activos.length;
+      document.getElementById("statInactivos").textContent = inactivos.length;
+    }
+
+    function aplicarFiltros() {
+      const texto = document.getElementById("busqueda").value.trim().toLowerCase();
+      const estado = document.getElementById("filtroEstado").value;
+
+      let lista = rubros.slice();
+      if (estado === "activos") lista = lista.filter(esActivo);
+      else if (estado === "discontinuados") lista = lista.filter(r => !esActivo(r));
+      if (texto) lista = lista.filter(r =>
+        (r.Nombre || "").toLowerCase().includes(texto) ||
+        (r.Sigla || "").toLowerCase().includes(texto)
+      );
+
+      lista.sort((a, b) => (a.Sigla || "").localeCompare(b.Sigla || ""));
+      renderizar(lista);
+    }
+
+    function renderizar(lista) {
+      const tbody = document.getElementById("tablaRubros");
+      const empty = document.getElementById("emptyState");
+      const panel = document.getElementById("panelResultados");
+      panel.innerHTML = '<i class="bi bi-list-ul"></i> Listado de rubros (' + lista.length + ')';
+
+      if (lista.length === 0) {
+        tbody.innerHTML = "";
+        empty.classList.remove("d-none");
+        return;
+      }
+      empty.classList.add("d-none");
+
+      let html = "";
+      lista.forEach(r => {
+        const activo = esActivo(r);
+        const claseFila = activo ? "" : "repuesto-discontinuado";
+        const badge = activo ? "" : "<span class='badge-discontinuado'>Discontinuado</span>";
+
+        html += "<tr class='" + claseFila + "'>";
+        html += "<td><span class='sigla-pill'>" + escapeHtml(r.Sigla || "-") + "</span></td>";
+        html += "<td>" + escapeHtml(r.Nombre) + badge + "</td>";
+        html += "<td><span class='text-muted small'>#" + r.Id + "</span></td>";
+        if (esAdmin) {
+          html += "<td class='text-center'>";
+          html += "<a href='RubroForm.html?id=" + r.Id + "' class='btn btn-sm btn-outline-primary me-1' title='Editar'><i class='bi bi-pencil'></i></a>";
+          if (activo) {
+            html += "<button class='btn btn-sm btn-outline-danger' onclick='descontinuar(" + r.Id + ")' title='Descontinuar'><i class='bi bi-x-circle'></i></button>";
+          } else {
+            html += "<button class='btn btn-sm btn-outline-success' onclick='reactivar(" + r.Id + ")' title='Reactivar'><i class='bi bi-arrow-counterclockwise'></i></button>";
+          }
+          html += "</td>";
+        } else {
+          html += "<td class='text-center'><span class='text-muted small'>Solo lectura</span></td>";
+        }
+        html += "</tr>";
+      });
+      tbody.innerHTML = html;
+    }
+
+    function descontinuar(id) {
+      Swal.fire({
+        title: "¿Descontinuar rubro?",
+        text: "Dejará de aparecer en los formularios de carga de repuestos. Los repuestos existentes con este rubro siguen funcionando.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#ff3333",
+        confirmButtonText: "Sí, descontinuar",
+        cancelButtonText: "Cancelar"
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetchAuth(apiRubro + "/" + id, { method: "DELETE" }).then(r => {
+          if (r.ok) { Swal.fire("Listo", "El rubro fue descontinuado.", "success"); cargar(); }
+          else leerError(r).then(msg => Swal.fire("Error", msg, "error"));
+        });
+      });
+    }
+
+    function reactivar(id) {
+      fetchAuth(apiRubro + "/" + id + "/Activar", { method: "PUT" }).then(r => {
+        if (r.ok) { Swal.fire("Listo", "El rubro fue reactivado.", "success"); cargar(); }
+        else leerError(r).then(msg => Swal.fire("Error", msg, "error"));
+      });
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const data = JSON.parse(text); return data.Message || data.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+
+    window.onload = function () {
+      cargar();
+      document.getElementById("busqueda").addEventListener("input", aplicarFiltros);
+      document.getElementById("filtroEstado").addEventListener("change", aplicarFiltros);
+      document.getElementById("btnLimpiar").addEventListener("click", () => {
+        document.getElementById("busqueda").value = "";
+        document.getElementById("filtroEstado").value = "activos";
+        aplicarFiltros();
+      });
+    };
+  </script>
+</body>
+</html>

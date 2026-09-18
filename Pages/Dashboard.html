@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .kpi-card { border-radius:14px; padding:18px 20px; color:#fff; height:100%; box-shadow:0 3px 10px rgba(0,0,0,0.08); }
+    .kpi-ventas { background:linear-gradient(135deg,#1f7a1f,#27ae60); }
+    .kpi-caja { background:linear-gradient(135deg,#1F3864,#2E5496); }
+    .kpi-ticket { background:linear-gradient(135deg,#8e44ad,#9b59b6); }
+    .kpi-critico { background:linear-gradient(135deg,#c0392b,#e74c3c); }
+    .kpi-num { font-size:1.75rem; font-weight:700; line-height:1.1; }
+    .kpi-label { font-size:0.74rem; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px; }
+    .kpi-icon { font-size:1.6rem; opacity:0.35; float:right; }
+    .chart-card { background:#fff; border-radius:14px; padding:18px; box-shadow:0 3px 10px rgba(0,0,0,0.06); height:100%; }
+    .chart-title { font-size:0.95rem; font-weight:700; color:#1F3864; margin-bottom:14px; }
+    .chart-wrap { position:relative; height:260px; }
+    .heat-table { border-collapse:separate; border-spacing:3px; width:100%; }
+    .heat-table td, .heat-table th { text-align:center; font-size:0.72rem; padding:6px 4px; border-radius:4px; }
+    .heat-table th { color:#6c757d; font-weight:600; }
+    .heat-cell { color:#fff; font-weight:600; }
+    .rank-row { display:flex; align-items:center; padding:8px 0; border-bottom:1px solid #eee; }
+    .rank-pos { width:28px; height:28px; border-radius:50%; background:#1F3864; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; margin-right:12px; }
+    .rank-bar { height:8px; background:#e9ecef; border-radius:4px; margin-top:4px; overflow:hidden; }
+    .rank-fill { height:100%; background:linear-gradient(90deg,#2E5496,#4CAF50); }
+  </style>
+</head>
+
+<body data-page="dashboard">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+        <span class="subtitle">Visión general del negocio</span>
+      </div>
+      <div class="d-flex gap-2 align-items-end">
+        <div>
+          <label class="form-label mb-0" style="font-size:0.75rem;">Desde</label>
+          <input type="date" id="desde" class="form-control form-control-sm">
+        </div>
+        <div>
+          <label class="form-label mb-0" style="font-size:0.75rem;">Hasta</label>
+          <input type="date" id="hasta" class="form-control form-control-sm">
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnAplicar"><i class="bi bi-funnel"></i> Aplicar</button>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <button class="btn btn-sm btn-outline-secondary" onclick="rango('mes')">Este mes</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="rango('trim')">Trimestre</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="rango('anio')">Este año</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3"><div class="kpi-card kpi-ventas">
+        <i class="bi bi-cash-stack kpi-icon"></i>
+        <div class="kpi-num" id="kpiVentas">—</div>
+        <div class="kpi-label">Ventas del período</div>
+      </div></div>
+      <div class="col-md-3"><div class="kpi-card kpi-caja">
+        <i class="bi bi-wallet2 kpi-icon"></i>
+        <div class="kpi-num" id="kpiCaja">—</div>
+        <div class="kpi-label">Saldo de caja</div>
+      </div></div>
+      <div class="col-md-3"><div class="kpi-card kpi-ticket">
+        <i class="bi bi-receipt kpi-icon"></i>
+        <div class="kpi-num" id="kpiTicket">—</div>
+        <div class="kpi-label">Ticket promedio</div>
+      </div></div>
+      <div class="col-md-3"><div class="kpi-card kpi-critico">
+        <i class="bi bi-exclamation-triangle kpi-icon"></i>
+        <div class="kpi-num" id="kpiCritico">—</div>
+        <div class="kpi-label">Repuestos críticos</div>
+      </div></div>
+    </div>
+
+    <!-- Fila 1: tendencia + dona -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-7"><div class="chart-card">
+        <div class="chart-title"><i class="bi bi-graph-up"></i> Tendencia de ventas</div>
+        <div class="chart-wrap"><canvas id="chartTendencia"></canvas></div>
+      </div></div>
+      <div class="col-md-5"><div class="chart-card">
+        <div class="chart-title"><i class="bi bi-pie-chart"></i> Ventas por rubro</div>
+        <div class="chart-wrap"><canvas id="chartRubro"></canvas></div>
+      </div></div>
+    </div>
+
+    <!-- Fila 2: caja + ranking -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-7"><div class="chart-card">
+        <div class="chart-title"><i class="bi bi-bar-chart"></i> Ingresos vs Egresos por mes</div>
+        <div class="chart-wrap"><canvas id="chartCaja"></canvas></div>
+      </div></div>
+      <div class="col-md-5"><div class="chart-card">
+        <div class="chart-title"><i class="bi bi-trophy"></i> Top 5 productos vendidos</div>
+        <div id="ranking"></div>
+      </div></div>
+    </div>
+
+    <!-- Fila 3: mapa de calor -->
+    <div class="row g-3">
+      <div class="col-12"><div class="chart-card">
+        <div class="chart-title"><i class="bi bi-grid-3x3"></i> Mapa de calor — Ventas por día de la semana</div>
+        <div id="heatmap"></div>
+      </div></div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const API = API_BASE + "Reporte/Dashboard";
+    let charts = {};
+
+    function fmtCorto(n) {
+      n = Number(n) || 0;
+      if (n >= 1000000) return "$" + (n/1000000).toFixed(1) + "M";
+      if (n >= 1000) return "$" + (n/1000).toFixed(0) + "k";
+      return "$" + n.toFixed(0);
+    }
+    function fmt(n) { return "$" + Number(n||0).toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function esc(s){ return s==null?"":String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+    function rango(tipo) {
+      const hoy = new Date();
+      let d;
+      if (tipo === "mes") d = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      else if (tipo === "trim") d = new Date(hoy.getFullYear(), hoy.getMonth()-2, 1);
+      else d = new Date(hoy.getFullYear(), 0, 1);
+      document.getElementById("desde").value = d.toISOString().slice(0,10);
+      document.getElementById("hasta").value = hoy.toISOString().slice(0,10);
+      cargar();
+    }
+
+    function cargar() {
+      const desde = document.getElementById("desde").value;
+      const hasta = document.getElementById("hasta").value;
+      if (!desde || !hasta) return;
+
+      fetchAuth(API + "?desde=" + desde + "&hasta=" + hasta).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar el dashboard.");
+        return r.json();
+      }).then(data => {
+        // El DataSet serializa como objeto con las tablas por nombre
+        const kpis = (data.Kpis || [])[0] || {};
+        pintarKpis(kpis);
+        pintarTendencia(data.VentasPorDia || []);
+        pintarRubro(data.VentasPorRubro || []);
+        pintarCaja(data.CajaPorMes || []);
+        pintarRanking(data.TopProductos || []);
+        pintarHeatmap(data.MapaCalor || []);
+      }).catch(err => {
+        Swal.fire("Error", err.message || "No se pudo cargar el dashboard.", "error");
+      });
+    }
+
+    function pintarKpis(k) {
+      document.getElementById("kpiVentas").textContent = fmtCorto(k.VentasPeriodo);
+      document.getElementById("kpiCaja").textContent = fmtCorto(k.SaldoCaja);
+      document.getElementById("kpiTicket").textContent = fmtCorto(k.TicketPromedio);
+      document.getElementById("kpiCritico").textContent = k.RepuestosCriticos || 0;
+    }
+
+    function destruir(nombre) { if (charts[nombre]) charts[nombre].destroy(); }
+
+    function pintarTendencia(datos) {
+      destruir("tend");
+      const labels = datos.map(d => new Date(d.Dia).toLocaleDateString("es-AR", {day:'2-digit', month:'2-digit'}));
+      const valores = datos.map(d => d.Total);
+      charts.tend = new Chart(document.getElementById("chartTendencia"), {
+        type: "line",
+        data: { labels, datasets: [{ label: "Ventas", data: valores, borderColor: "#2E5496",
+          backgroundColor: "rgba(46,84,150,0.1)", fill: true, tension: 0.3, pointRadius: 3 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { ticks: { callback: v => fmtCorto(v) } } } }
+      });
+    }
+
+    function pintarRubro(datos) {
+      destruir("rubro");
+      const labels = datos.map(d => d.Rubro);
+      const valores = datos.map(d => d.Total);
+      const colores = ["#2E5496","#27ae60","#e67e22","#8e44ad","#c0392b","#16a085","#f39c12","#7f8c8d"];
+      charts.rubro = new Chart(document.getElementById("chartRubro"), {
+        type: "doughnut",
+        data: { labels, datasets: [{ data: valores, backgroundColor: colores }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 10 } } } } }
+      });
+    }
+
+    function pintarCaja(datos) {
+      destruir("caja");
+      const labels = datos.map(d => d.Mes);
+      charts.caja = new Chart(document.getElementById("chartCaja"), {
+        type: "bar",
+        data: { labels, datasets: [
+          { label: "Ingresos", data: datos.map(d => d.Ingresos), backgroundColor: "#27ae60" },
+          { label: "Egresos", data: datos.map(d => d.Egresos), backgroundColor: "#e74c3c" }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: "top" } },
+          scales: { y: { ticks: { callback: v => fmtCorto(v) } } } }
+      });
+    }
+
+    function pintarRanking(datos) {
+      const cont = document.getElementById("ranking");
+      if (datos.length === 0) { cont.innerHTML = '<p class="text-muted text-center p-3">Sin ventas en el período.</p>'; return; }
+      const max = Math.max(...datos.map(d => d.CantidadVendida));
+      let html = "";
+      datos.forEach((d, i) => {
+        const ancho = max > 0 ? (d.CantidadVendida / max * 100) : 0;
+        html += '<div class="rank-row">' +
+          '<div class="rank-pos">' + (i+1) + '</div>' +
+          '<div style="flex:1;">' +
+            '<div style="display:flex; justify-content:space-between;">' +
+              '<span style="font-size:0.85rem;">' + esc(d.Descripcion) + '</span>' +
+              '<strong style="font-size:0.85rem;">' + d.CantidadVendida + ' u.</strong>' +
+            '</div>' +
+            '<div class="rank-bar"><div class="rank-fill" style="width:' + ancho + '%"></div></div>' +
+          '</div></div>';
+      });
+      cont.innerHTML = html;
+    }
+
+    function pintarHeatmap(datos) {
+      const cont = document.getElementById("heatmap");
+      if (datos.length === 0) { cont.innerHTML = '<p class="text-muted text-center p-3">Sin datos para el mapa de calor.</p>'; return; }
+
+      // Agrupar por mes (columnas) y día de semana (filas)
+      const dias = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+      const diasNum = { "Lunes":2,"Martes":3,"Miércoles":4,"Jueves":5,"Viernes":6,"Sábado":7,"Domingo":1 };
+      const meses = [...new Set(datos.map(d => d.Mes))].sort();
+      const maxTotal = Math.max(...datos.map(d => d.Total));
+
+      // Mapa {mes-diaSemana: total}
+      const mapa = {};
+      datos.forEach(d => { mapa[d.Mes + "|" + d.DiaSemana.trim()] = d.Total; });
+
+      let html = '<table class="heat-table"><thead><tr><th></th>';
+      meses.forEach(m => html += '<th>' + m + '</th>');
+      html += '</tr></thead><tbody>';
+
+      dias.forEach(dia => {
+        html += '<tr><th style="text-align:right; padding-right:8px;">' + dia + '</th>';
+        meses.forEach(m => {
+          const total = mapa[m + "|" + dia] || 0;
+          const intensidad = maxTotal > 0 ? total / maxTotal : 0;
+          const bg = total > 0
+            ? 'rgba(46,84,150,' + (0.15 + intensidad * 0.85) + ')'
+            : '#f5f5f5';
+          const texto = total > 0 ? fmtCorto(total) : '';
+          html += '<td class="heat-cell" style="background:' + bg + '; color:' + (intensidad > 0.4 ? '#fff' : '#333') + '">' + texto + '</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      cont.innerHTML = html;
+    }
+
+    document.getElementById("btnAplicar").addEventListener("click", cargar);
+    window.onload = () => rango("anio");
+  </script>
+</body>
+</html>

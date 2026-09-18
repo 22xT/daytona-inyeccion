@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Rol - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-page="roles">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2 id="tituloPagina"><i class="bi bi-shield-plus"></i> Nuevo Rol
+          <span class="mode-badge">Alta</span>
+        </h2>
+        <span class="subtitle">Los campos marcados con * son obligatorios</span>
+      </div>
+      <a href="RolesListado.html" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Volver al listado
+      </a>
+    </div>
+
+    <form id="formRol" novalidate>
+      <div class="panel">
+        <div class="panel-header"><span class="num">1</span> Datos del rol</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Nombre <span class="required">*</span></label>
+              <input type="text" id="nombre" class="form-control" maxlength="50" required>
+              <div class="form-text">Hasta 50 caracteres.</div>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">Descripción</label>
+              <textarea id="descripcion" class="form-control" rows="3" maxlength="200"></textarea>
+              <div class="form-text">Hasta 200 caracteres.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="id">
+
+      <div class="actions">
+        <a href="RolesListado.html" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-save"></i> Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiRol = API_BASE + "Rol";
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+
+    if (!esAdmin) {
+      Swal.fire({ icon: "error", title: "Acceso denegado", text: "Solo administradores." })
+        .then(() => window.location.href = "RolesListado.html");
+    }
+
+    const f = {
+      id: document.getElementById("id"),
+      nombre: document.getElementById("nombre"),
+      descripcion: document.getElementById("descripcion")
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const idRol = params.get("id");
+
+    function mostrarError(err) {
+      if (err && (err.message === "401 Unauthorized" || err.message === "403 Forbidden")) return;
+      Swal.fire("Error", (err && err.message) || "Ocurrió un error.", "error");
+    }
+    function obtenerMensajeError(response, defecto) {
+      return response.json().then(err => err && err.Message ? err.Message : defecto).catch(() => defecto);
+    }
+
+    function validar(r) {
+      if (r.Nombre === "") return "Debe ingresar el nombre del rol.";
+      if (r.Nombre.length > 50) return "El nombre no puede superar los 50 caracteres.";
+      if (r.Descripcion && r.Descripcion.length > 200) return "La descripción no puede superar los 200 caracteres.";
+      return "";
+    }
+
+    function cargarRol(id) {
+      fetchAuth(apiRol + "/" + id).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar el rol.");
+        return r.json();
+      }).then(data => {
+        const r = data[0];
+        if (!r) {
+          return Swal.fire("Atención", "No se encontró.", "warning")
+            .then(() => window.location.href = "RolesListado.html");
+        }
+        f.id.value = r.Id || "";
+        f.nombre.value = r.Nombre || "";
+        f.descripcion.value = r.Descripcion || "";
+      }).catch(mostrarError);
+    }
+
+    function guardar(e) {
+      e.preventDefault();
+      const rol = {
+        Id: f.id.value.trim() === "" ? 0 : parseInt(f.id.value.trim()),
+        Nombre: f.nombre.value.trim(),
+        Descripcion: f.descripcion.value.trim()
+      };
+      const error = validar(rol);
+      if (error !== "") { Swal.fire("Atención", error, "warning"); return; }
+
+      const esEdicion = f.id.value.trim() !== "";
+      const metodo = esEdicion ? "PUT" : "POST";
+      const url = esEdicion ? apiRol + "/" + rol.Id : apiRol;
+
+      fetchAuth(url, { method: metodo, body: JSON.stringify(rol) }).then(r => {
+        if (!r.ok) return obtenerMensajeError(r, "No se pudo guardar.").then(m => { throw new Error(m); });
+        Swal.fire({ icon: "success", title: "Guardado", timer: 1200, showConfirmButton: false })
+          .then(() => window.location.href = "RolesListado.html");
+      }).catch(mostrarError);
+    }
+
+    window.onload = function () {
+      document.getElementById("formRol").addEventListener("submit", guardar);
+      if (idRol) {
+        document.getElementById("tituloPagina").innerHTML =
+          '<i class="bi bi-pencil-square"></i> Editar Rol <span class="mode-badge">Edición</span>';
+        cargarRol(idRol);
+      } else {
+        f.nombre.focus();
+      }
+    };
+  </script>
+</body>
+</html>

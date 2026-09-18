@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cuenta Corriente - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ---- Saldos: el color comunica antes que el número ---- */
+    .saldo-debe    { color: var(--red);   font-weight: 700; }
+    .saldo-favor   { color: var(--green); font-weight: 700; }
+    .saldo-cero    { color: var(--text-muted); font-weight: 600; }
+
+    .fila-cliente {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.12s;
+    }
+    .fila-cliente:last-child { border-bottom: none; }
+    .fila-cliente:hover { background: var(--bg-soft); }
+    .fila-cliente.activo { background: var(--nav-accent-soft); }
+
+    .avatar-cli {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--navy); color: #fff; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700;
+    }
+    .avatar-cli.mecanico { background: var(--nav-accent); }
+
+    .cli-info { flex: 1; min-width: 0; }
+    .cli-nombre { font-size: 0.92rem; font-weight: 600; color: var(--navy); }
+    .cli-meta { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; }
+    .cli-saldo { text-align: right; white-space: nowrap; }
+    .cli-saldo .monto { font-size: 1.05rem; }
+    .cli-saldo .etiqueta { font-size: 0.7rem; color: var(--text-muted); display: block; }
+
+    .badge-mecanico {
+      background: var(--nav-accent-soft); color: var(--nav-accent-dark);
+      border: 1px solid #b9d3f2; border-radius: 8px;
+      font-size: 0.68rem; padding: 1px 7px; font-weight: 600;
+    }
+    .badge-atrasado {
+      background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;
+      border-radius: 8px; font-size: 0.68rem; padding: 1px 7px; font-weight: 600;
+    }
+
+    .lista-clientes { max-height: 58vh; overflow-y: auto; }
+
+    /* ---- Panel de detalle ---- */
+    .panel-saldo {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 100%);
+      color: #fff; border-radius: 12px 12px 0 0; padding: 18px 22px;
+    }
+    .panel-saldo .nombre { font-size: 1.15rem; font-weight: 700; }
+    .panel-saldo .datos { font-size: 0.82rem; opacity: 0.85; margin-top: 3px; }
+    .panel-saldo .cifra { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+    .panel-saldo .cifra-lbl { font-size: 0.78rem; opacity: 0.85; letter-spacing: 0.5px; }
+
+    .mov-tabla { max-height: 44vh; overflow-y: auto; }
+    .mov-tabla table { margin: 0; }
+    .mov-tabla thead th { position: sticky; top: 0; z-index: 2; }
+    .mov-debe  { color: var(--red);   font-weight: 600; }
+    .mov-haber { color: var(--green); font-weight: 600; }
+    .mov-acum  { font-weight: 700; color: var(--navy); }
+
+    .badge-tipo {
+      font-size: 0.7rem; padding: 2px 8px; border-radius: 8px; font-weight: 600;
+    }
+    .tipo-venta       { background: #ffeded; color: #721c24; }
+    .tipo-pago        { background: var(--green-soft); color: #155724; }
+    .tipo-notacredito { background: #e8f1ff; color: #0b3f85; }
+    .tipo-ajuste      { background: #fff3cd; color: #856404; }
+
+    .sin-seleccion {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 70px 20px; color: var(--text-muted);
+      text-align: center;
+    }
+    .sin-seleccion i { font-size: 3rem; opacity: 0.35; color: var(--navy); margin-bottom: 12px; }
+
+    @media print {
+      body * { visibility: hidden !important; }
+      #hojaResumen, #hojaResumen * { visibility: visible !important; }
+      #hojaResumen {
+        display: block !important; position: absolute; left: 0; top: 0; width: 100%;
+        padding: 20px; font-family: Arial, sans-serif; color: #000;
+      }
+      #hojaResumen table { width: 100%; border-collapse: collapse; }
+      #hojaResumen th, #hojaResumen td { border: 1px solid #999; padding: 6px 8px; font-size: 12px; }
+      #hojaResumen th { background: #eee; }
+    }
+    #hojaResumen { display: none; }
+  </style>
+</head>
+
+<body data-page="cuentacorriente">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-journal-text"></i> Cuenta Corriente</h2>
+        <span class="subtitle">Saldos de clientes con cuenta</span>
+      </div>
+      <div class="header-actions">
+        <button type="button" id="btnStats" class="btn-stats">
+          <i class="bi bi-bar-chart-line"></i>
+          <span class="txt">Ver estadísticas</span>
+          <i class="bi chev bi-chevron-down"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3 stats-wrap" id="statsWrap">
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="bi bi-cash-stack"></i></div>
+          <div><p class="stat-value" id="kpiTotal">$0,00</p><p class="stat-label">Total a cobrar</p></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="bi bi-people"></i></div>
+          <div><p class="stat-value" id="kpiDeudores">0</p><p class="stat-label">Clientes con deuda</p></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="bi bi-clock-history"></i></div>
+          <div><p class="stat-value" id="kpiAtrasados">0</p><p class="stat-label">Sin pagar +30 días</p></div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="bi bi-arrow-down-circle"></i></div>
+          <div><p class="stat-value" id="kpiAFavor">$0,00</p><p class="stat-label">Saldos a favor</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+
+      <!-- Izquierda: clientes -->
+      <div class="col-lg-5">
+        <div class="filtros-bar">
+          <div class="row g-2 align-items-end">
+            <div class="col-8">
+              <label class="form-label">Buscar</label>
+              <input type="text" id="fTexto" class="form-control" placeholder="Nombre o teléfono...">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Mostrar</label>
+              <select id="fSaldo" class="form-select">
+                <option value="1" selected>Con saldo</option>
+                <option value="0">Todos</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <i class="bi bi-people-fill"></i> Clientes
+            <span class="ms-auto text-muted" style="font-size:0.8rem;" id="contadorClientes"></span>
+          </div>
+          <div class="lista-clientes" id="listaClientes">
+            <div class="p-4 text-center text-muted">Cargando…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Derecha: detalle -->
+      <div class="col-lg-7">
+        <div class="panel" id="panelDetalle">
+          <div class="sin-seleccion">
+            <i class="bi bi-arrow-left-circle"></i>
+            <h5>Elegí un cliente</h5>
+            <p class="mb-0">Vas a ver su saldo y todos los movimientos.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="hojaResumen"></div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    var api = API_BASE;
+    var clientes = [];
+    var clienteActual = null;
+    var movimientos = [];
+    var puedeAjustar = false;
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function fecha(v) {
+      if (!v) return "-";
+      var d = new Date(v);
+      return isNaN(d) ? "-" : d.toLocaleDateString("es-AR");
+    }
+
+    function fechaHora(v) {
+      if (!v) return "-";
+      var d = new Date(v);
+      return isNaN(d) ? "-" : d.toLocaleString("es-AR");
+    }
+
+    function iniciales(nombre) {
+      if (!nombre) return "?";
+      var p = String(nombre).replace(",", "").trim().split(/\s+/);
+      var i = p[0].charAt(0);
+      if (p.length > 1) i += p[p.length - 1].charAt(0);
+      return i.toUpperCase();
+    }
+
+    function leerError(r) {
+      return r.text().then(function (t) {
+        try { var d = JSON.parse(t); return d.Message || d.message || t; }
+        catch (e) { return t; }
+      }).catch(function () { return "No se pudo completar la operación."; });
+    }
+
+    // Un saldo positivo es deuda; negativo, crédito a favor del cliente
+    function claseSaldo(s) {
+      if (s > 0) return "saldo-debe";
+      if (s < 0) return "saldo-favor";
+      return "saldo-cero";
+    }
+
+    function textoSaldo(s) {
+      if (s > 0) return "Debe";
+      if (s < 0) return "A favor";
+      return "Al día";
+    }
+
+    /* ================= LISTADO ================= */
+
+    function cargarClientes() {
+      var texto = document.getElementById("fTexto").value.trim();
+      var soloConSaldo = document.getElementById("fSaldo").value === "1";
+
+      var url = api + "CuentaCorriente?soloConSaldo=" + soloConSaldo +
+                (texto ? "&texto=" + encodeURIComponent(texto) : "");
+
+      fetchAuth(url).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return r.json();
+      }).then(function (datos) {
+        clientes = datos || [];
+        pintarClientes();
+        pintarKpis();
+      }).catch(function (err) {
+        document.getElementById("listaClientes").innerHTML =
+          '<div class="p-4 text-center text-danger">' +
+          escapeHtml(err.message || "No se pudieron cargar los clientes.") + '</div>';
+      });
+    }
+
+    function pintarClientes() {
+      var cont = document.getElementById("listaClientes");
+      document.getElementById("contadorClientes").textContent =
+        clientes.length + (clientes.length === 1 ? " cliente" : " clientes");
+
+      if (clientes.length === 0) {
+        cont.innerHTML = '<div class="empty-state">' +
+          '<div class="icon"><i class="bi bi-check-circle"></i></div>' +
+          '<h4>Sin deudas</h4><p>Ningún cliente tiene saldo pendiente.</p></div>';
+        return;
+      }
+
+      var html = "";
+      clientes.forEach(function (c) {
+        var saldo = Number(c.Saldo);
+        // Solo se marca atrasado si además debe: un saldo en cero o a
+        // favor no es una deuda vieja aunque haga meses que no paga.
+        var atrasado = saldo > 0 && c.DiasSinPagar !== null && c.DiasSinPagar > 30;
+
+        html += '<div class="fila-cliente" onclick="verCliente(' + c.IdCliente + ')" ' +
+                'id="fila-' + c.IdCliente + '">' +
+          '<div class="avatar-cli' + (c.EsMecanico ? ' mecanico' : '') + '">' +
+            escapeHtml(iniciales(c.Cliente)) + '</div>' +
+          '<div class="cli-info">' +
+            '<div class="cli-nombre">' + escapeHtml(c.Cliente) + '</div>' +
+            '<div class="cli-meta">' +
+              (c.EsMecanico ? '<span class="badge-mecanico">Mecánico</span> ' : '') +
+              (c.Telefono ? '<i class="bi bi-telephone"></i> ' + escapeHtml(c.Telefono) + ' ' : '') +
+              (atrasado ? '<span class="badge-atrasado">' + c.DiasSinPagar + ' días</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="cli-saldo">' +
+            '<span class="monto ' + claseSaldo(saldo) + '">' +
+              formatearMoneda(Math.abs(saldo)) + '</span>' +
+            '<span class="etiqueta">' + textoSaldo(saldo) + '</span>' +
+          '</div>' +
+        '</div>';
+      });
+      cont.innerHTML = html;
+
+      if (clienteActual) {
+        var f = document.getElementById("fila-" + clienteActual);
+        if (f) f.classList.add("activo");
+      }
+    }
+
+    function pintarKpis() {
+      var deuda = 0, aFavor = 0, deudores = 0, atrasados = 0;
+
+      clientes.forEach(function (c) {
+        var s = Number(c.Saldo);
+        if (s > 0) {
+          deuda += s;
+          deudores++;
+          if (c.DiasSinPagar !== null && c.DiasSinPagar > 30) atrasados++;
+        } else if (s < 0) {
+          aFavor += -s;
+        }
+      });
+
+      document.getElementById("kpiTotal").textContent = formatearMoneda(deuda);
+      document.getElementById("kpiDeudores").textContent = deudores;
+      document.getElementById("kpiAtrasados").textContent = atrasados;
+      document.getElementById("kpiAFavor").textContent = formatearMoneda(aFavor);
+    }
+
+    /* ================= DETALLE ================= */
+
+    function verCliente(id) {
+      clienteActual = id;
+
+      document.querySelectorAll(".fila-cliente").forEach(function (f) {
+        f.classList.remove("activo");
+      });
+      var f = document.getElementById("fila-" + id);
+      if (f) f.classList.add("activo");
+
+      document.getElementById("panelDetalle").innerHTML =
+        '<div class="p-5 text-center text-muted">' +
+        '<span class="spinner-border spinner-border-sm"></span> Cargando movimientos…</div>';
+
+      Promise.all([
+        fetchAuth(api + "CuentaCorriente/" + id).then(function (r) { return r.json(); }),
+        fetchAuth(api + "CuentaCorriente/" + id + "/Movimientos").then(function (r) { return r.json(); })
+      ]).then(function (res) {
+        var saldo = (res[0] && res[0][0]) ? res[0][0] : null;
+        movimientos = res[1] || [];
+        if (!saldo) throw new Error("No se encontró el cliente.");
+        pintarDetalle(saldo);
+      }).catch(function (err) {
+        document.getElementById("panelDetalle").innerHTML =
+          '<div class="p-4 text-center text-danger">' +
+          escapeHtml(err.message || "No se pudo cargar el detalle.") + '</div>';
+      });
+    }
+
+    function pintarDetalle(c) {
+      var saldo = Number(c.Saldo);
+
+      var filas = "";
+      if (movimientos.length === 0) {
+        filas = '<tr><td colspan="6" class="text-center text-muted p-4">' +
+                'Sin movimientos registrados.</td></tr>';
+      } else {
+        // Del más nuevo al más viejo: lo último que pasó es lo que se
+        // consulta. El saldo acumulado ya viene calculado del SP en
+        // orden cronológico, así que solo se invierte la presentación.
+        movimientos.slice().reverse().forEach(function (m) {
+          var clase = "tipo-" + String(m.Tipo).toLowerCase();
+          filas += "<tr>" +
+            "<td style='white-space:nowrap;'>" + fechaHora(m.Fecha) + "</td>" +
+            "<td><span class='badge-tipo " + clase + "'>" + escapeHtml(m.Tipo) + "</span></td>" +
+            "<td>" + escapeHtml(m.Concepto) +
+              (m.Observaciones
+                ? "<div class='text-muted' style='font-size:0.75rem;'>" +
+                  escapeHtml(m.Observaciones) + "</div>"
+                : "") +
+            "</td>" +
+            "<td class='text-end mov-debe'>" +
+              (m.Debe !== null ? formatearMoneda(m.Debe) : "") + "</td>" +
+            "<td class='text-end mov-haber'>" +
+              (m.Haber !== null ? formatearMoneda(m.Haber) : "") + "</td>" +
+            "<td class='text-end mov-acum'>" + formatearMoneda(m.SaldoAcumulado) + "</td>" +
+          "</tr>";
+        });
+      }
+
+      document.getElementById("panelDetalle").innerHTML =
+        '<div class="panel-saldo">' +
+          '<div class="d-flex justify-content-between align-items-start flex-wrap gap-2">' +
+            '<div>' +
+              '<div class="nombre">' + escapeHtml(c.Cliente) + '</div>' +
+              '<div class="datos">' +
+                (c.EsMecanico ? 'Mecánico · ' : '') +
+                (c.Telefono ? escapeHtml(c.Telefono) + ' · ' : '') +
+                'Última compra: ' + fecha(c.UltimaCompra) + ' · ' +
+                'Último pago: ' + fecha(c.UltimoPago) +
+              '</div>' +
+            '</div>' +
+            '<div class="text-end">' +
+              '<div class="cifra-lbl">' + textoSaldo(saldo).toUpperCase() + '</div>' +
+              '<div class="cifra">' + formatearMoneda(Math.abs(saldo)) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="d-flex gap-2 mt-3 flex-wrap">' +
+            '<button class="btn btn-sm btn-light" onclick="abrirPago()">' +
+              '<i class="bi bi-cash-coin"></i> Registrar pago</button>' +
+            '<button class="btn btn-sm btn-outline-light" onclick="imprimirResumen()">' +
+              '<i class="bi bi-printer"></i> Resumen</button>' +
+            '<button class="btn btn-sm btn-outline-light" onclick="exportarExcel()">' +
+              '<i class="bi bi-file-earmark-excel"></i> Excel</button>' +
+            (puedeAjustar
+              ? '<button class="btn btn-sm btn-outline-light ms-auto" onclick="abrirAjuste()">' +
+                '<i class="bi bi-pencil"></i> Ajuste</button>'
+              : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="mov-tabla">' +
+          '<table class="table table-sm">' +
+            '<thead><tr>' +
+              '<th>Fecha</th><th>Tipo</th><th>Concepto</th>' +
+              '<th class="text-end">Debe</th><th class="text-end">Haber</th>' +
+              '<th class="text-end">Saldo</th>' +
+            '</tr></thead>' +
+            '<tbody>' + filas + '</tbody>' +
+          '</table>' +
+        '</div>';
+    }
+
+    /* ================= PAGO ================= */
+
+    function abrirPago() {
+      var c = clientes.find(function (x) { return x.IdCliente === clienteActual; });
+      var saldo = c ? Number(c.Saldo) : 0;
+
+      Swal.fire({
+        title: "Registrar pago",
+        html:
+          '<div style="text-align:left;">' +
+            (saldo > 0
+              ? '<div class="form-text mb-2">Saldo actual: <strong>' +
+                formatearMoneda(saldo) + '</strong></div>'
+              : '<div class="form-text mb-2">Este cliente no tiene deuda pendiente. ' +
+                'El pago va a quedar como saldo a favor.</div>') +
+            '<label class="form-label mb-1">Importe</label>' +
+            '<div class="input-group">' +
+              '<span class="input-group-text">$</span>' +
+              '<input type="text" inputmode="decimal" id="swMonto" class="form-control text-end" ' +
+                'value="' + (saldo > 0 ? numeroAPrecio(saldo) : "") + '">' +
+            '</div>' +
+            (saldo > 0
+              ? '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" ' +
+                'onclick="document.getElementById(\'swMonto\').value=\'' +
+                numeroAPrecio(saldo) + '\'">Cancelar todo</button>'
+              : '') +
+            '<label class="form-label mb-1 mt-3">Observaciones</label>' +
+            '<input type="text" id="swObs" class="form-control" placeholder="Opcional">' +
+          '</div>',
+        showCancelButton: true,
+        confirmButtonText: "Registrar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28a745",
+        didOpen: function () { activarInputPrecio("swMonto"); },
+        preConfirm: function () {
+          var m = precioANumero(document.getElementById("swMonto").value);
+          if (isNaN(m) || m <= 0) {
+            Swal.showValidationMessage("El importe debe ser mayor a cero.");
+            return false;
+          }
+          return { monto: m, obs: document.getElementById("swObs").value.trim() };
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value) return;
+
+        fetchAuth(api + "CuentaCorriente/" + clienteActual + "/Pago", {
+          method: "POST",
+          body: JSON.stringify({ Monto: res.value.monto, Observaciones: res.value.obs })
+        }).then(function (r) {
+          if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+          return r.json();
+        }).then(function (datos) {
+          var nuevo = (datos && datos[0]) ? Number(datos[0].Saldo) : null;
+          Swal.fire({
+            icon: "success",
+            title: "Pago registrado",
+            html: "Importe: <strong>" + formatearMoneda(res.value.monto) + "</strong>" +
+                  (nuevo !== null
+                    ? "<br>Saldo: <strong>" + formatearMoneda(Math.abs(nuevo)) + "</strong> " +
+                      textoSaldo(nuevo).toLowerCase()
+                    : "") +
+                  "<br><small class='text-muted'>El ingreso quedó registrado en caja.</small>"
+          });
+          cargarClientes();
+          verCliente(clienteActual);
+        }).catch(function (err) {
+          Swal.fire("No se pudo registrar", err.message || "Error de conexión.", "error");
+        });
+      });
+    }
+
+    /* ================= AJUSTE ================= */
+
+    function abrirAjuste() {
+      Swal.fire({
+        title: "Ajuste manual",
+        html:
+          '<div style="text-align:left;">' +
+            '<div class="form-text mb-2">Corrige el saldo sin mover dinero. ' +
+            'No genera movimiento de caja.</div>' +
+            '<label class="form-label mb-1">Tipo</label>' +
+            '<select id="swTipo" class="form-select">' +
+              '<option value="1">Aumentar la deuda</option>' +
+              '<option value="-1">Reducir la deuda</option>' +
+            '</select>' +
+            '<label class="form-label mb-1 mt-2">Importe</label>' +
+            '<div class="input-group">' +
+              '<span class="input-group-text">$</span>' +
+              '<input type="text" inputmode="decimal" id="swMontoAj" class="form-control text-end">' +
+            '</div>' +
+            '<label class="form-label mb-1 mt-2">Motivo</label>' +
+            '<input type="text" id="swConcepto" class="form-control" ' +
+              'placeholder="Ej: corrección de venta mal cargada">' +
+          '</div>',
+        showCancelButton: true,
+        confirmButtonText: "Aplicar ajuste",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#c47700",
+        didOpen: function () { activarInputPrecio("swMontoAj"); },
+        preConfirm: function () {
+          var signo = parseInt(document.getElementById("swTipo").value, 10);
+          var m = precioANumero(document.getElementById("swMontoAj").value);
+          var c = document.getElementById("swConcepto").value.trim();
+          if (isNaN(m) || m <= 0) {
+            Swal.showValidationMessage("El importe debe ser mayor a cero.");
+            return false;
+          }
+          if (c === "") {
+            Swal.showValidationMessage("Escribí el motivo del ajuste.");
+            return false;
+          }
+          return { monto: m * signo, concepto: c };
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value) return;
+
+        fetchAuth(api + "CuentaCorriente/" + clienteActual + "/Ajuste", {
+          method: "POST",
+          body: JSON.stringify({ Monto: res.value.monto, Concepto: res.value.concepto })
+        }).then(function (r) {
+          if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+          Swal.fire("Ajuste aplicado", "", "success");
+          cargarClientes();
+          verCliente(clienteActual);
+        }).catch(function (err) {
+          Swal.fire("No se pudo aplicar", err.message || "Error de conexión.", "error");
+        });
+      });
+    }
+
+    /* ================= SALIDAS ================= */
+
+    function imprimirResumen() {
+      var c = clientes.find(function (x) { return x.IdCliente === clienteActual; });
+      if (!c) return;
+      var saldo = Number(c.Saldo);
+
+      var filas = "";
+      movimientos.forEach(function (m) {
+        filas += "<tr>" +
+          "<td>" + fechaHora(m.Fecha) + "</td>" +
+          "<td>" + escapeHtml(m.Tipo) + "</td>" +
+          "<td>" + escapeHtml(m.Concepto) + "</td>" +
+          "<td style='text-align:right'>" + (m.Debe !== null ? formatearMoneda(m.Debe) : "") + "</td>" +
+          "<td style='text-align:right'>" + (m.Haber !== null ? formatearMoneda(m.Haber) : "") + "</td>" +
+          "<td style='text-align:right'>" + formatearMoneda(m.SaldoAcumulado) + "</td>" +
+        "</tr>";
+      });
+
+      document.getElementById("hojaResumen").innerHTML =
+        '<div style="border-bottom:3px solid #001f3f;padding-bottom:10px;margin-bottom:14px;">' +
+          '<div style="font-size:26px;font-weight:bold;color:#001f3f;">DAYTONA</div>' +
+          '<div style="font-size:11px;letter-spacing:2px;color:#555;">REPUESTOS AUTOMOTOR</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:13px;">' +
+          '<div><strong>Cliente:</strong> ' + escapeHtml(c.Cliente) + '<br>' +
+            (c.Telefono ? '<strong>Teléfono:</strong> ' + escapeHtml(c.Telefono) : '') + '</div>' +
+          '<div style="text-align:right;">' +
+            '<div><strong>RESUMEN DE CUENTA</strong></div>' +
+            '<div>Emitido: ' + new Date().toLocaleDateString("es-AR") + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<table><thead><tr>' +
+          '<th>Fecha</th><th>Tipo</th><th>Concepto</th>' +
+          '<th>Debe</th><th>Haber</th><th>Saldo</th>' +
+        '</tr></thead><tbody>' + filas + '</tbody></table>' +
+        '<div style="text-align:right;margin-top:14px;font-size:18px;font-weight:bold;color:#001f3f;">' +
+          textoSaldo(saldo).toUpperCase() + ': ' + formatearMoneda(Math.abs(saldo)) + '</div>' +
+        '<div style="margin-top:24px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:8px;">' +
+          'Resumen de cuenta corriente. Documento sin valor fiscal.</div>';
+
+      window.print();
+    }
+
+    function exportarExcel() {
+      var c = clientes.find(function (x) { return x.IdCliente === clienteActual; });
+      if (!c || movimientos.length === 0) {
+        Swal.fire("Nada para exportar", "Este cliente no tiene movimientos.", "info");
+        return;
+      }
+
+      // Los importes van como número, no como texto: en Excel tienen
+      // que poder sumarse y ordenarse.
+      var filas = movimientos.map(function (m) {
+        return {
+          "Fecha": fechaHora(m.Fecha),
+          "Tipo": m.Tipo,
+          "Concepto": m.Concepto,
+          "Debe": m.Debe !== null ? Number(m.Debe) : null,
+          "Haber": m.Haber !== null ? Number(m.Haber) : null,
+          "Saldo": Number(m.SaldoAcumulado),
+          "Usuario": m.Usuario || ""
+        };
+      });
+
+      var hoja = XLSX.utils.json_to_sheet(filas);
+      var rango = XLSX.utils.decode_range(hoja["!ref"]);
+      [3, 4, 5].forEach(function (col) {
+        for (var f = 1; f <= rango.e.r; f++) {
+          var celda = hoja[XLSX.utils.encode_cell({ r: f, c: col })];
+          if (celda) celda.z = '"$"#.##0,00';
+        }
+      });
+      hoja["!cols"] = [{ wch: 20 }, { wch: 13 }, { wch: 34 },
+                       { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 18 }];
+
+      var libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja, "Cuenta corriente");
+
+      var nombre = String(c.Cliente).replace(/[^\wáéíóúñÁÉÍÓÚÑ ]/g, "").trim();
+      XLSX.writeFile(libro, "CtaCte-" + nombre + "-" +
+                     new Date().toISOString().slice(0, 10) + ".xlsx");
+    }
+
+    /* ================= INICIO ================= */
+
+    window.onload = function () {
+      var usuario = Auth.getUsuario();
+      puedeAjustar = usuario && (usuario.Rol === "Dueño" || usuario.Rol === "Administrador");
+
+      document.getElementById("fSaldo").addEventListener("change", cargarClientes);
+
+      var t = null;
+      document.getElementById("fTexto").addEventListener("input", function () {
+        clearTimeout(t);
+        t = setTimeout(cargarClientes, 300);
+      });
+
+      cargarClientes();
+    };
+  </script>
+</body>
+</html>

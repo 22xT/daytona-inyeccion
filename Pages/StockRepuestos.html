@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Stock de Repuestos - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    /* Discontinuados */
+    .repuesto-discontinuado {
+      opacity: 0.55;
+      background-color: #f5f5f5 !important;
+    }
+    .badge-discontinuado {
+      background: #6c757d;
+      color: white;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    /* Resaltado de fila segun stock */
+    tr.fila-sin-stock {
+      background-color: #fde9e9 !important;
+    }
+    tr.fila-bajo-minimo {
+      background-color: #fff8e1 !important;
+    }
+    /* Badges de la columna Estado */
+    .badge-stock {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+    .badge-stock-ok {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .badge-stock-bajo {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+    .badge-stock-cero {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    /* Codigo del repuesto */
+    .codigo-repuesto {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: #2c3e50;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+
+<body data-page="repuestos-stock">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-tools"></i> Stock de Repuestos</h2>
+        <span class="subtitle">Visualización del inventario disponible</span>
+      </div>
+      <a href="CargarRepuesto.html" class="btn btn-danger admin-only">
+        <i class="bi bi-plus-lg"></i> Nuevo Repuesto
+      </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="bi bi-tools"></i></div>
+          <div>
+            <p class="stat-value" id="statTotal">0</p>
+            <p class="stat-label">Repuestos activos</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="bi bi-folder2-open"></i></div>
+          <div>
+            <p class="stat-value" id="statRubros">0</p>
+            <p class="stat-label">Rubros</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="bi bi-box-seam"></i></div>
+          <div>
+            <p class="stat-value" id="statUnidades">0</p>
+            <p class="stat-label">Unidades en stock</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="bi bi-exclamation-triangle"></i></div>
+          <div>
+            <p class="stat-value" id="statCritico">0</p>
+            <p class="stat-label">Stock crítico</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros y búsqueda</div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Buscar por código o descripción</label>
+            <input type="text" id="busqueda" class="form-control" placeholder="Ej: SM-0001 o filtro de aceite...">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Rubro</label>
+            <select id="filtroRubro" class="form-select">
+              <option value="">Todos los rubros</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Estado</label>
+            <select id="filtroEstado" class="form-select">
+              <option value="activos" selected>Solo activos</option>
+              <option value="discontinuados">Discontinuados</option>
+              <option value="todos">Todos</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Ordenar</label>
+            <select id="filtroOrden" class="form-select">
+              <option value="codigo">Por código</option>
+              <option value="id">Más recientes</option>
+              <option value="desc">A → Z</option>
+              <option value="precio-asc">Menor precio</option>
+              <option value="precio-desc">Mayor precio</option>
+              <option value="stock-asc">Menor stock</option>
+            </select>
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <button id="btnLimpiar" class="btn btn-outline-secondary w-100" title="Limpiar filtros">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" id="panelResultados"><i class="bi bi-list-ul"></i> Listado de repuestos</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>ID</th>
+              <th>Descripción</th>
+              <th>Rubro</th>
+              <th>Modelo</th>
+              <th class="text-center">Stock</th>
+              <th class="text-center">Estado</th>
+              <th class="text-end">Precio</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaRepuestos">
+            <tr class="loading-row"><td colspan="9">Cargando repuestos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty-state d-none">
+        <div class="icon"><i class="bi bi-search"></i></div>
+        <h4>No se encontraron repuestos</h4>
+        <p>Probá cambiar los filtros o limpiar la búsqueda.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiRepuesto = API_BASE + "Repuesto";
+    const apiRubro = API_BASE + "Rubro";
+
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+    if (esAdmin) document.body.classList.add('is-admin');
+
+    let repuestos = [];
+
+    function cargarRubros() {
+      fetchAuth(apiRubro).then(r => r.json()).then(datos => {
+        const sel = document.getElementById("filtroRubro");
+        datos.forEach(x => {
+          const opt = document.createElement("option");
+          opt.value = x.Nombre;
+          opt.textContent = x.Nombre;
+          sel.appendChild(opt);
+        });
+      }).catch(() => {});
+    }
+
+    function esActivo(r) {
+      return r.Activo === true || r.Activo === 1 || r.Activo === undefined;
+    }
+
+    function badgeEstado(stock, minimo) {
+      if (stock <= 0) {
+        return {
+          claseFila: "fila-sin-stock",
+          badge: '<span class="badge-stock badge-stock-cero"><i class="bi bi-exclamation-triangle-fill"></i> Sin stock</span>'
+        };
+      }
+      if (stock <= minimo) {
+        return {
+          claseFila: "fila-bajo-minimo",
+          badge: '<span class="badge-stock badge-stock-bajo"><i class="bi bi-arrow-down"></i> Bajo</span>'
+        };
+      }
+      return {
+        claseFila: "",
+        badge: '<span class="badge-stock badge-stock-ok"><i class="bi bi-check-circle-fill"></i> OK</span>'
+      };
+    }
+
+    function cargar() {
+      fetchAuth(apiRepuesto).then(r => r.json()).then(data => {
+        repuestos = data;
+        actualizarStats();
+        aplicarFiltros();
+      }).catch(() => {
+        document.getElementById("tablaRepuestos").innerHTML =
+          "<tr><td colspan='9' class='text-center text-danger p-4'>No se pudieron cargar los repuestos.</td></tr>";
+      });
+    }
+
+    function actualizarStats() {
+      const activos = repuestos.filter(esActivo);
+      document.getElementById("statTotal").textContent = activos.length;
+      const rubros = new Set(activos.map(r => r.Rubro));
+      document.getElementById("statRubros").textContent = rubros.size;
+      const unidades = activos.reduce((s, r) => s + Number(r.StockActual || 0), 0);
+      document.getElementById("statUnidades").textContent = unidades;
+      const critico = activos.filter(r => Number(r.StockActual || 0) <= Number(r.StockMinimo || 0)).length;
+      document.getElementById("statCritico").textContent = critico;
+    }
+
+    function aplicarFiltros() {
+      const texto = document.getElementById("busqueda").value.trim().toLowerCase();
+      const rubro = document.getElementById("filtroRubro").value;
+      const estado = document.getElementById("filtroEstado").value;
+      const orden = document.getElementById("filtroOrden").value;
+
+      let lista = repuestos.slice();
+
+      if (estado === "activos") lista = lista.filter(esActivo);
+      else if (estado === "discontinuados") lista = lista.filter(r => !esActivo(r));
+
+      // Busqueda por codigo O descripcion
+      if (texto) lista = lista.filter(r =>
+        (r.Descripcion || "").toLowerCase().includes(texto) ||
+        (r.Codigo || "").toLowerCase().includes(texto)
+      );
+
+      if (rubro) lista = lista.filter(r => r.Rubro === rubro);
+
+      if (orden === "codigo") lista.sort((a, b) => (a.Codigo || "").localeCompare(b.Codigo || ""));
+      else if (orden === "desc") lista.sort((a, b) => (a.Descripcion || "").localeCompare(b.Descripcion || ""));
+      else if (orden === "precio-asc") lista.sort((a, b) => Number(a.PrecioDeVenta) - Number(b.PrecioDeVenta));
+      else if (orden === "precio-desc") lista.sort((a, b) => Number(b.PrecioDeVenta) - Number(a.PrecioDeVenta));
+      else if (orden === "stock-asc") lista.sort((a, b) => Number(a.StockActual || 0) - Number(b.StockActual || 0));
+      else lista.sort((a, b) => Number(b.Id) - Number(a.Id));
+
+      renderizar(lista);
+    }
+
+    function renderizar(lista) {
+      const tbody = document.getElementById("tablaRepuestos");
+      const empty = document.getElementById("emptyState");
+      const panel = document.getElementById("panelResultados");
+      panel.innerHTML = '<i class="bi bi-list-ul"></i> Listado de repuestos (' + lista.length + ')';
+
+      if (lista.length === 0) {
+        tbody.innerHTML = "";
+        empty.classList.remove("d-none");
+        return;
+      }
+      empty.classList.add("d-none");
+
+      let html = "";
+      lista.forEach(x => {
+        const activo = esActivo(x);
+        const stock = Number(x.StockActual || 0);
+        const minimo = Number(x.StockMinimo || 0);
+
+        let badge = "";
+        let claseFila = "";
+        if (activo) {
+          const est = badgeEstado(stock, minimo);
+          badge = est.badge;
+          claseFila = est.claseFila;
+        } else {
+          badge = '<span class="text-muted small">—</span>';
+          claseFila = "repuesto-discontinuado";
+        }
+
+        const badgeDiscontinuado = activo ? "" : "<span class='badge-discontinuado'>Discontinuado</span>";
+
+        html += "<tr class='" + claseFila + "'>";
+        html += "<td><span class='codigo-repuesto'>" + escapeHtml(x.Codigo || '-') + "</span></td>";
+        html += "<td><span class='text-muted small'>#" + x.Id + "</span></td>";
+        html += "<td>" + escapeHtml(x.Descripcion) + badgeDiscontinuado + "</td>";
+        html += "<td><span class='badge-rubro'>" + escapeHtml(x.Rubro || "-") + "</span></td>";
+        html += "<td>" + escapeHtml(x.Modelo || "-") + "</td>";
+        html += "<td class='text-center'><strong>" + stock + "</strong></td>";
+        html += "<td class='text-center'>" + badge + "</td>";
+        html += "<td class='text-end precio'>$" + Number(x.PrecioDeVenta).toFixed(2) + "</td>";
+        if (esAdmin) {
+          html += "<td class='text-center'>";
+          html += "<a href='CargarRepuesto.html?id=" + x.Id + "' class='btn btn-sm btn-outline-primary me-1' title='Editar'><i class='bi bi-pencil'></i></a>";
+          if (activo) {
+            html += "<button class='btn btn-sm btn-outline-danger' onclick='descontinuar(" + x.Id + ")' title='Descontinuar'><i class='bi bi-x-circle'></i></button>";
+          } else {
+            html += "<button class='btn btn-sm btn-outline-success' onclick='reactivar(" + x.Id + ")' title='Reactivar'><i class='bi bi-arrow-counterclockwise'></i></button>";
+          }
+          html += "</td>";
+        } else {
+          html += "<td class='text-center'><span class='text-muted small'>Solo lectura</span></td>";
+        }
+        html += "</tr>";
+      });
+      tbody.innerHTML = html;
+    }
+
+    function descontinuar(id) {
+      Swal.fire({
+        title: "¿Descontinuar repuesto?",
+        text: "Dejará de aparecer en la pantalla de carga de ventas. Podés reactivarlo más tarde.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#ff3333",
+        confirmButtonText: "Sí, descontinuar",
+        cancelButtonText: "Cancelar"
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetchAuth(apiRepuesto + "/" + id, { method: "DELETE" }).then(r => {
+          if (r.ok) { Swal.fire("Listo", "El repuesto fue descontinuado.", "success"); cargar(); }
+          else leerError(r).then(msg => Swal.fire("Error", msg, "error"));
+        });
+      });
+    }
+
+    function reactivar(id) {
+      fetchAuth(apiRepuesto + "/" + id + "/Activar", { method: "PUT" }).then(r => {
+        if (r.ok) { Swal.fire("Listo", "El repuesto fue reactivado.", "success"); cargar(); }
+        else leerError(r).then(msg => Swal.fire("Error", msg, "error"));
+      });
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const data = JSON.parse(text); return data.Message || data.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+
+    window.onload = function () {
+      cargarRubros();
+      cargar();
+      document.getElementById("busqueda").addEventListener("input", aplicarFiltros);
+      document.getElementById("filtroRubro").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroEstado").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroOrden").addEventListener("change", aplicarFiltros);
+      document.getElementById("btnLimpiar").addEventListener("click", () => {
+        document.getElementById("busqueda").value = "";
+        document.getElementById("filtroRubro").value = "";
+        document.getElementById("filtroEstado").value = "activos";
+        document.getElementById("filtroOrden").value = "id";
+        aplicarFiltros();
+      });
+    };
+  </script>
+</body>
+</html>

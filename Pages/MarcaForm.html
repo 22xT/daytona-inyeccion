@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cargar Marca - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-page="marcas">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2 id="tituloPagina"><i class="bi bi-plus-square"></i> Nueva Marca
+          <span class="mode-badge" id="modoBadge">Alta</span>
+        </h2>
+        <span class="subtitle" id="subtituloPagina">Completá los datos para agregar una nueva marca</span>
+      </div>
+      <a href="MarcasListado.html" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Volver al listado
+      </a>
+    </div>
+
+    <form id="formMarca" novalidate>
+      <div class="panel">
+        <div class="panel-header"><span class="num">1</span> Datos de la marca</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Nombre <span class="required">*</span></label>
+              <input type="text" id="nombre" class="form-control" maxlength="100" required placeholder="Ej: Ford">
+              <div class="invalid-feedback" id="errNombre">El nombre es obligatorio.</div>
+              <div class="form-text">Hasta 100 caracteres.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="id">
+
+      <div class="actions">
+        <a href="MarcasListado.html" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary" id="btnGuardar">
+          <i class="bi bi-save"></i> <span id="btnGuardarTexto">Guardar marca</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiMarca = API_BASE + "Marca";
+
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+
+    if (!esAdmin) {
+      Swal.fire({
+        title: "Acceso restringido",
+        text: "Solo los administradores pueden cargar o editar marcas.",
+        icon: "info",
+        confirmButtonText: "Volver al listado"
+      }).then(() => window.location.href = "MarcasListado.html");
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("id");
+
+    function precargarEdicion(id) {
+      document.getElementById("tituloPagina").innerHTML =
+        '<i class="bi bi-pencil-square"></i> Editar Marca <span class="mode-badge">Edición</span>';
+      document.getElementById("subtituloPagina").textContent = "Modificá los datos y guardá los cambios";
+      document.getElementById("btnGuardarTexto").textContent = "Guardar cambios";
+
+      return fetchAuth(apiMarca + "/" + id).then(r => r.json()).then(data => {
+        const m = data[0];
+        if (!m) throw new Error("No se encontró la marca");
+        document.getElementById("id").value = m.Id;
+        document.getElementById("nombre").value = m.Nombre;
+      });
+    }
+
+    function validar() {
+      let ok = true;
+      const limpiar = id => document.getElementById(id).classList.remove("is-invalid");
+      const marcar = (id, msg) => {
+        const el = document.getElementById(id);
+        el.classList.add("is-invalid");
+        if (msg) {
+          const fb = el.parentElement.querySelector(".invalid-feedback");
+          if (fb) fb.textContent = msg;
+        }
+        ok = false;
+      };
+      ["nombre"].forEach(limpiar);
+
+      const nombre = document.getElementById("nombre").value.trim();
+      if (nombre === "") marcar("nombre", "El nombre es obligatorio.");
+      else if (nombre.length < 2) marcar("nombre", "El nombre es demasiado corto.");
+
+      return ok;
+    }
+
+    function setLoading(loading) {
+      document.getElementById("btnGuardar").disabled = loading;
+      document.getElementById("btnGuardarTexto").textContent =
+        loading ? "Guardando…" : (editId ? "Guardar cambios" : "Guardar marca");
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const data = JSON.parse(text); return data.Message || data.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function guardar(e) {
+      e.preventDefault();
+      if (!validar()) { const p = document.querySelector(".is-invalid"); if (p) p.focus(); return; }
+
+      const id = document.getElementById("id").value;
+      const marca = {
+        Id: id ? parseInt(id) : 0,
+        Nombre: document.getElementById("nombre").value.trim()
+      };
+
+      const metodo = id === "" ? "POST" : "PUT";
+      const url = id === "" ? apiMarca : apiMarca + "/" + id;
+
+      setLoading(true);
+      fetchAuth(url, { method: metodo, body: JSON.stringify(marca) })
+        .then(r => {
+          if (r.ok) {
+            Swal.fire({
+              title: "Guardado",
+              text: id === "" ? "La marca se cargó correctamente." : "Cambios guardados.",
+              icon: "success",
+              confirmButtonText: "Ir al listado",
+              showCancelButton: id === "",
+              cancelButtonText: "Cargar otra"
+            }).then(result => {
+              if (result.isConfirmed) window.location.href = "MarcasListado.html";
+              else {
+                document.getElementById("formMarca").reset();
+                document.getElementById("id").value = "";
+                setLoading(false);
+              }
+            });
+          } else {
+            leerError(r).then(msg => { Swal.fire("No se pudo guardar", msg, "error"); setLoading(false); });
+          }
+        })
+        .catch(() => { Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error"); setLoading(false); });
+    }
+
+    document.getElementById("formMarca").addEventListener("submit", guardar);
+    document.getElementById("nombre").addEventListener("input", () =>
+      document.getElementById("nombre").classList.remove("is-invalid"));
+
+    window.onload = function () {
+      if (!esAdmin) return;
+      if (editId) {
+        precargarEdicion(editId).catch(() => {
+          Swal.fire("Error", "No se pudo cargar la marca a editar.", "error")
+            .then(() => window.location.href = "MarcasListado.html");
+        });
+      }
+    };
+  </script>
+</body>
+</html>

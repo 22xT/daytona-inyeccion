@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pedidos - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-page="pedidos">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-clipboard-data"></i> Pedidos de compra</h2>
+        <span class="subtitle">Historial y seguimiento de pedidos a proveedores</span>
+      </div>
+      <a href="PedidoNuevo.html" class="btn btn-danger">
+        <i class="bi bi-plus-lg"></i> Nuevo pedido
+      </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="bi bi-hourglass-split"></i></div>
+          <div>
+            <p class="stat-value" id="statPendientes">0</p>
+            <p class="stat-label">Pendientes</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+          <div>
+            <p class="stat-value" id="statRecibidos">0</p>
+            <p class="stat-label">Recibidos</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
+          <div>
+            <p class="stat-value" id="statCancelados">0</p>
+            <p class="stat-label">Cancelados</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros</div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label">Proveedor</label>
+            <select id="filtroProveedor" class="form-select"><option value="">Todos</option></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha</label>
+            <input type="date" id="filtroFecha" class="form-control">
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button id="btnLimpiar" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-arrow-counterclockwise"></i> Limpiar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-list-ul"></i> Listado</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Fecha</th><th>Proveedor</th>
+              <th class="text-end">Total</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaPedidos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="detalleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-receipt"></i> Detalle del pedido</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="detalle-info" id="detalleInfo"></div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Repuesto</th><th class="text-center">Cantidad</th>
+                <th class="text-end">Precio Unit.</th><th class="text-end">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="detalleTabla"></tbody>
+          </table>
+          <div class="total-modal">
+            <span>Total:</span>
+            <span>$<span id="detalleTotal">0.00</span></span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-success" id="btnRecibir"><i class="bi bi-check-circle"></i> Recibir</button>
+          <button class="btn btn-danger" id="btnCancelar"><i class="bi bi-x-circle"></i> Cancelar</button>
+          <button class="btn btn-warning" id="btnPDF"><i class="bi bi-file-pdf"></i> PDF</button>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const api = API_BASE;
+    let pedidosGlobal = [];
+    let pedidoActual = null;  // null hasta que se cargue uno
+
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+
+    function cargarPedidos() {
+      fetchAuth(api + "Pedido").then(r => r.json()).then(datos => {
+        pedidosGlobal = datos;
+        cargarProveedoresFiltro(datos);
+        actualizarStats(datos);
+        renderPedidos(datos);
+      }).catch(() => Swal.fire("Error", "No se pudieron cargar los pedidos.", "error"));
+    }
+
+    function cargarProveedoresFiltro(datos) {
+      const proveedores = [];
+      datos.forEach(p => { if (!proveedores.includes(p.Proveedor)) proveedores.push(p.Proveedor); });
+      const sel = document.getElementById("filtroProveedor");
+      sel.innerHTML = '<option value="">Todos</option>';
+      proveedores.forEach(p => sel.innerHTML += `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`);
+    }
+
+    function actualizarStats(datos) {
+      document.getElementById("statPendientes").textContent = datos.filter(p => p.Estado === "Pendiente").length;
+      document.getElementById("statRecibidos").textContent = datos.filter(p => p.Estado === "Recibido").length;
+      document.getElementById("statCancelados").textContent = datos.filter(p => p.Estado === "Cancelado").length;
+    }
+
+    function aplicarFiltros() {
+      const prov = document.getElementById("filtroProveedor").value;
+      const fecha = document.getElementById("filtroFecha").value;
+      let lista = pedidosGlobal;
+      if (prov) lista = lista.filter(p => p.Proveedor === prov);
+      if (fecha) lista = lista.filter(p => (p.Fecha || "").split('T')[0] === fecha);
+      renderPedidos(lista);
+    }
+
+    function renderPedidos(datos) {
+      const tbody = document.getElementById("tablaPedidos");
+      if (!datos || datos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted p-4">Sin pedidos.</td></tr>';
+        return;
+      }
+
+      let html = "";
+      datos.forEach(p => {
+        const badge = p.Estado === "Pendiente" ? "badge-pendiente"
+                    : p.Estado === "Recibido" ? "badge-recibido"
+                    : "badge-cancelado";
+        const icon = p.Estado === "Pendiente" ? "bi-hourglass-split"
+                   : p.Estado === "Recibido" ? "bi-check-circle"
+                   : "bi-x-circle";
+
+        let acciones = `<button class="btn btn-sm btn-outline-primary" onclick="verDetalle(${p.Id})" title="Ver detalle"><i class="bi bi-eye"></i></button>`;
+        if (esAdmin && p.Estado === "Pendiente") {
+          acciones += ` <button class="btn btn-sm btn-outline-success" onclick="actualizarEstado(${p.Id}, 2, ${p.Total})" title="Marcar como recibido"><i class="bi bi-check-lg"></i></button>`;
+          acciones += ` <button class="btn btn-sm btn-outline-danger" onclick="actualizarEstado(${p.Id}, 3, ${p.Total})" title="Cancelar pedido"><i class="bi bi-x-lg"></i></button>`;
+        }
+
+        html += `<tr>
+          <td><strong>#${p.Id}</strong></td>
+          <td>${new Date(p.Fecha).toLocaleString('es-AR')}</td>
+          <td>${escapeHtml(p.Proveedor)}</td>
+          <td class="text-end precio">$${Number(p.Total).toFixed(2)}</td>
+          <td class="text-center"><span class="badge-estado ${badge}"><i class="bi ${icon}"></i> ${p.Estado}</span></td>
+          <td class="text-center">${acciones}</td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function actualizarEstado(id, nuevoEstado, total) {
+      const texto = nuevoEstado === 2 ? "recibir" : "cancelar";
+      const explicacion = nuevoEstado === 2
+        ? "Al marcar como recibido, el sistema sumará automáticamente las cantidades del detalle al stock."
+        : "El pedido quedará cancelado. El stock no se modifica.";
+
+      Swal.fire({
+        title: "¿Confirmar " + texto + " pedido?",
+        text: explicacion,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, " + texto,
+        cancelButtonText: "Cancelar"
+      }).then(res => {
+        if (!res.isConfirmed) return;
+        fetchAuth(api + "Pedido/" + id, {
+          method: "PUT",
+          body: JSON.stringify({ Id: id, IdEstado: nuevoEstado, Total: total })
+        }).then(r => {
+          if (r.ok) {
+            const msg = nuevoEstado === 2
+              ? "Pedido recibido. Stock actualizado automáticamente."
+              : "Pedido cancelado.";
+            Swal.fire("Éxito", msg, "success");
+            // Cerrar el modal si estaba abierto
+            const modalEl = document.getElementById("detalleModal");
+            const modalInst = bootstrap.Modal.getInstance(modalEl);
+            if (modalInst) modalInst.hide();
+            cargarPedidos();
+          } else {
+            r.text().then(txt => Swal.fire("Error", txt || "No se pudo actualizar el estado.", "error"));
+          }
+        }).catch(() => Swal.fire("Error", "No se pudo conectar con el servidor.", "error"));
+      });
+    }
+
+    function verDetalle(id) {
+  fetchAuth(api + "Pedido/" + id).then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).then(data => {
+    if (!data || !data.Table || data.Table.length === 0) {
+      Swal.fire("Error", "El pedido no devolvió datos.", "error");
+      return;
+    }
+
+    const pedido = data.Table[0];
+    const detalle = data.Table1 || [];
+    pedidoActual = { pedido: pedido, detalle: detalle };
+
+    document.getElementById("detalleInfo").innerHTML = `
+      <div class="row g-2">
+        <div class="col-md-6"><strong>Pedido:</strong> #${pedido.Id}</div>
+        <div class="col-md-6"><strong>Fecha:</strong> ${new Date(pedido.Fecha).toLocaleString('es-AR')}</div>
+        <div class="col-md-6"><strong>Proveedor:</strong> ${escapeHtml(pedido.Proveedor)}</div>
+        <div class="col-md-6"><strong>Estado:</strong> ${escapeHtml(pedido.Estado)}</div>
+      </div>`;
+
+    const tbody = document.getElementById("detalleTabla");
+    tbody.innerHTML = "";
+    let total = 0;
+
+    if (detalle.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted p-3">Sin detalle.</td></tr>';
+    } else {
+      detalle.forEach(d => {
+        const subtotal = Number(d.Subtotal || 0);
+        const precio = Number(d.PrecioUnitario || 0);
+        tbody.innerHTML += `<tr>
+          <td>${escapeHtml(d.Repuesto)}</td>
+          <td class="text-center">${d.Cantidad}</td>
+          <td class="text-end precio">$${precio.toFixed(2)}</td>
+          <td class="text-end precio">$${subtotal.toFixed(2)}</td>
+        </tr>`;
+        total += subtotal;
+      });
+    }
+    document.getElementById("detalleTotal").textContent = total.toFixed(2);
+
+    document.getElementById("btnRecibir").style.display = (esAdmin && pedido.Estado === "Pendiente") ? "inline-flex" : "none";
+    document.getElementById("btnCancelar").style.display = (esAdmin && pedido.Estado === "Pendiente") ? "inline-flex" : "none";
+    document.getElementById("btnPDF").style.display = pedido.Estado === "Recibido" ? "inline-flex" : "none";
+
+    new bootstrap.Modal(document.getElementById("detalleModal")).show();
+  }).catch(err => {
+    console.error("Error en verDetalle:", err);
+    Swal.fire("Error", "No se pudo cargar el detalle del pedido.", "error");
+  });
+}
+    function exportarPDF() {
+      if (!pedidoActual || !pedidoActual.pedido) return;
+      const { pedido, detalle } = pedidoActual;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16); doc.text("Daytona Inyección", 14, 15);
+      doc.setFontSize(12); doc.text("Detalle de Pedido", 14, 25);
+      doc.text("N°: " + pedido.Id, 14, 35);
+      doc.text("Proveedor: " + pedido.Proveedor, 14, 42);
+      doc.text("Fecha: " + new Date(pedido.Fecha).toLocaleString('es-AR'), 14, 49);
+      doc.text("Estado: " + pedido.Estado, 14, 56);
+      const filas = detalle.map(d => [d.Repuesto, d.Cantidad, "$" + Number(d.PrecioUnitario).toFixed(2), "$" + Number(d.Subtotal).toFixed(2)]);
+      doc.autoTable({ head: [["Repuesto", "Cantidad", "Precio Unit.", "Subtotal"]], body: filas, startY: 65 });
+      const total = detalle.reduce((s, i) => s + Number(i.Subtotal || 0), 0);
+      doc.text("Total: $" + total.toFixed(2), 14, doc.lastAutoTable.finalY + 10);
+      doc.save("Pedido_" + pedido.Id + ".pdf");
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+
+    window.onload = function () {
+      cargarPedidos();
+      document.getElementById("filtroProveedor").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroFecha").addEventListener("change", aplicarFiltros);
+      document.getElementById("btnLimpiar").addEventListener("click", () => {
+        document.getElementById("filtroProveedor").value = "";
+        document.getElementById("filtroFecha").value = "";
+        aplicarFiltros();
+      });
+
+      // Listeners del modal (van DENTRO de onload, no antes - asi no rompen al cargar)
+      document.getElementById("btnRecibir").onclick = () => {
+        if (pedidoActual && pedidoActual.pedido)
+          actualizarEstado(pedidoActual.pedido.Id, 2, pedidoActual.pedido.Total);
+      };
+      document.getElementById("btnCancelar").onclick = () => {
+        if (pedidoActual && pedidoActual.pedido)
+          actualizarEstado(pedidoActual.pedido.Id, 3, pedidoActual.pedido.Total);
+      };
+      document.getElementById("btnPDF").onclick = exportarPDF;
+    };
+  </script>
+</body>
+</html>

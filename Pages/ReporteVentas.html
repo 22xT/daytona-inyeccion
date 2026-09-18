@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de Ventas - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .stat-card { border-radius:12px; padding:18px 22px; color:#fff; }
+    .stat-total { background:linear-gradient(135deg,#1f7a1f,#27ae60); }
+    .stat-cant { background:linear-gradient(135deg,#1F3864,#2E5496); }
+    .stat-ticket { background:linear-gradient(135deg,#8e44ad,#9b59b6); }
+    .stat-anul { background:linear-gradient(135deg,#c0392b,#e74c3c); }
+    .stat-num { font-size:1.9rem; font-weight:700; line-height:1.1; }
+    .stat-label { font-size:0.76rem; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px; }
+    .barra-dia { background:#2E5496; height:22px; border-radius:4px; min-width:2px; }
+  </style>
+</head>
+
+<body data-page="reportes">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-graph-up"></i> Reporte de Ventas por Período</h2>
+        <span class="subtitle">Desempeño comercial en el rango de fechas seleccionado</span>
+      </div>
+      <button class="btn btn-success" id="btnExcel">
+        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-calendar-range"></i> Período</div>
+      <div class="panel-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label">Desde</label>
+            <input type="date" id="desde" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Hasta</label>
+            <input type="date" id="hasta" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-primary w-100" id="btnConsultar">
+              <i class="bi bi-search"></i> Consultar
+            </button>
+          </div>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-sm btn-outline-secondary" onclick="rango('mes')">Este mes</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="rango('anio')">Este año</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-3"><div class="stat-card stat-total">
+        <div class="stat-num" id="numTotal">—</div><div class="stat-label">Total facturado</div></div></div>
+      <div class="col-md-3"><div class="stat-card stat-cant">
+        <div class="stat-num" id="numCant">—</div><div class="stat-label">Ventas confirmadas</div></div></div>
+      <div class="col-md-3"><div class="stat-card stat-ticket">
+        <div class="stat-num" id="numTicket">—</div><div class="stat-label">Ticket promedio</div></div></div>
+      <div class="col-md-3"><div class="stat-card stat-anul">
+        <div class="stat-num" id="numAnul">—</div><div class="stat-label">Ventas anuladas</div></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" id="panelHeader"><i class="bi bi-list-ul"></i> Detalle por día</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Fecha</th><th class="text-center">Ventas</th><th class="text-end">Total del día</th><th style="width:35%">Distribución</th></tr>
+          </thead>
+          <tbody id="tabla">
+            <tr><td colspan="4" class="text-center text-muted p-4">Elegí un período y consultá.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const API = API_BASE + "Reporte/";
+    let datosDia = [];
+    let resumen = {};
+
+    function fmt(n) { return "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function esc(s) { return s == null ? "" : String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+
+    function rango(tipo) {
+      const hoy = new Date();
+      let d;
+      if (tipo === "mes") d = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      else d = new Date(hoy.getFullYear(), 0, 1);
+      document.getElementById("desde").value = d.toISOString().slice(0,10);
+      document.getElementById("hasta").value = hoy.toISOString().slice(0,10);
+      consultar();
+    }
+
+    function consultar() {
+      const desde = document.getElementById("desde").value;
+      const hasta = document.getElementById("hasta").value;
+      if (!desde || !hasta) { Swal.fire("Faltan fechas", "Elegí la fecha desde y hasta.", "warning"); return; }
+      if (desde > hasta) { Swal.fire("Rango inválido", "La fecha 'desde' no puede ser posterior a 'hasta'.", "warning"); return; }
+
+      const tbody = document.getElementById("tabla");
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4"><span class="spinner-border spinner-border-sm text-primary"></span> Consultando…</td></tr>';
+
+      const qs = "?desde=" + desde + "&hasta=" + hasta;
+      Promise.all([
+        fetchAuth(API + "VentasResumen" + qs).then(r => r.json()),
+        fetchAuth(API + "VentasPorDia" + qs).then(r => r.json())
+      ]).then(([res, dias]) => {
+        resumen = res[0] || { TotalFacturado:0, CantidadVentas:0, TicketPromedio:0, VentasAnuladas:0 };
+        datosDia = dias;
+        render();
+      }).catch(() => {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger p-4">Error al consultar el reporte.</td></tr>';
+      });
+    }
+
+    function render() {
+      document.getElementById("numTotal").textContent = fmt(resumen.TotalFacturado);
+      document.getElementById("numCant").textContent = resumen.CantidadVentas;
+      document.getElementById("numTicket").textContent = fmt(resumen.TicketPromedio);
+      document.getElementById("numAnul").textContent = resumen.VentasAnuladas;
+      document.getElementById("panelHeader").innerHTML = '<i class="bi bi-list-ul"></i> Detalle por día (' + datosDia.length + ')';
+
+      const tbody = document.getElementById("tabla");
+      if (datosDia.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted p-4">No hubo ventas confirmadas en este período.</td></tr>';
+        return;
+      }
+      const maxDia = Math.max(...datosDia.map(d => d.TotalDia));
+      let html = "";
+      datosDia.forEach(d => {
+        const ancho = maxDia > 0 ? (d.TotalDia / maxDia * 100) : 0;
+        const fecha = new Date(d.Dia).toLocaleDateString("es-AR");
+        html += '<tr>' +
+          '<td>' + fecha + '</td>' +
+          '<td class="text-center">' + d.CantidadVentas + '</td>' +
+          '<td class="text-end precio"><strong>' + fmt(d.TotalDia) + '</strong></td>' +
+          '<td><div class="barra-dia" style="width:' + ancho + '%"></div></td>' +
+        '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function exportarExcel() {
+      if (datosDia.length === 0) { Swal.fire("Sin datos", "Consultá un período con ventas antes de exportar.", "info"); return; }
+
+      const resHoja = [{
+        "Total facturado": Number(resumen.TotalFacturado),
+        "Ventas confirmadas": resumen.CantidadVentas,
+        "Ticket promedio": Number(resumen.TicketPromedio),
+        "Ventas anuladas": resumen.VentasAnuladas
+      }];
+      const diaHoja = datosDia.map(d => ({
+        "Fecha": new Date(d.Dia).toLocaleDateString("es-AR"),
+        "Cantidad de ventas": d.CantidadVentas,
+        "Total del día": Number(d.TotalDia)
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.json_to_sheet(resHoja); ws1["!cols"]=[{wch:18},{wch:18},{wch:16},{wch:16}];
+      const ws2 = XLSX.utils.json_to_sheet(diaHoja); ws2["!cols"]=[{wch:14},{wch:18},{wch:16}];
+      XLSX.utils.book_append_sheet(wb, ws1, "Resumen");
+      XLSX.utils.book_append_sheet(wb, ws2, "Por día");
+      XLSX.writeFile(wb, "Ventas_Daytona_" + new Date().toISOString().slice(0,10) + ".xlsx");
+    }
+
+    document.getElementById("btnConsultar").addEventListener("click", consultar);
+    document.getElementById("btnExcel").addEventListener("click", exportarExcel);
+    window.onload = () => rango("anio");
+  </script>
+</body>
+</html>

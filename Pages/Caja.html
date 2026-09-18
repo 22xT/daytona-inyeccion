@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Caja - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .saldo-card { background:linear-gradient(135deg,#1F3864 0%,#2E5496 100%); color:#fff; border-radius:14px; padding:22px 26px; }
+    .saldo-num { font-size:2.6rem; font-weight:700; line-height:1; }
+    .saldo-label { font-size:0.8rem; opacity:0.85; text-transform:uppercase; letter-spacing:0.6px; }
+    .mini-card { border-radius:12px; padding:16px 20px; border:1px solid #e3e7ec; background:#fff; }
+    .mini-num { font-size:1.5rem; font-weight:700; }
+    .mini-ingreso { color:#1f7a1f; }
+    .mini-egreso { color:#c0392b; }
+    .tipo-toggle { display:flex; gap:10px; }
+    .tipo-btn { flex:1; padding:12px; border:2px solid #e3e7ec; border-radius:10px; background:#fff; cursor:pointer; text-align:center; font-weight:600; transition:all 0.15s; }
+    .tipo-btn.activo-ingreso { border-color:#1f7a1f; background:#e6f7eb; color:#1f7a1f; }
+    .tipo-btn.activo-egreso { border-color:#c0392b; background:#fdeaea; color:#c0392b; }
+    .badge-ingreso { background:#e6f7eb; color:#1f7a1f; padding:3px 10px; border-radius:10px; font-size:0.78rem; font-weight:600; }
+    .badge-egreso { background:#fdeaea; color:#c0392b; padding:3px 10px; border-radius:10px; font-size:0.78rem; font-weight:600; }
+    .badge-auto { background:#e7f1ff; color:#0d6efd; padding:2px 7px; border-radius:8px; font-size:0.68rem; margin-left:6px; }
+    .monto-ingreso { color:#1f7a1f; font-weight:600; }
+    .monto-egreso { color:#c0392b; font-weight:600; }
+  </style>
+</head>
+
+<body data-page="caja">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-cash-stack"></i> Caja</h2>
+        <span class="subtitle">Registro de ingresos y egresos con saldo acumulado.</span>
+      </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <div class="saldo-card">
+          <div class="saldo-label">Saldo actual en caja</div>
+          <div class="saldo-num" id="saldoActual">$ —</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="mini-card">
+          <div class="saldo-label text-muted">Ingresos de hoy</div>
+          <div class="mini-num mini-ingreso" id="ingresosHoy">$ —</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="mini-card">
+          <div class="saldo-label text-muted">Egresos de hoy</div>
+          <div class="mini-num mini-egreso" id="egresosHoy">$ —</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Formulario de movimiento (solo Admin y Vendedor) -->
+    <div class="panel" id="panelForm">
+      <div class="panel-header"><span class="num">+</span> Registrar movimiento</div>
+      <div class="panel-body">
+        <form id="formMov" novalidate>
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Tipo <span class="required">*</span></label>
+              <div class="tipo-toggle">
+                <div class="tipo-btn" id="btnIngreso" onclick="seleccionarTipo('Ingreso')">
+                  <i class="bi bi-arrow-down-circle"></i> Ingreso
+                </div>
+                <div class="tipo-btn" id="btnEgreso" onclick="seleccionarTipo('Egreso')">
+                  <i class="bi bi-arrow-up-circle"></i> Egreso
+                </div>
+              </div>
+              <input type="hidden" id="tipo" value="">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">Concepto <span class="required">*</span></label>
+              <select id="concepto" class="form-select" required>
+                <option value="">Seleccioná…</option>
+                <optgroup label="Ingresos" id="grpIngresos">
+                  <option value="Venta mostrador">Venta mostrador</option>
+                  <option value="Cobro de cuenta">Cobro de cuenta</option>
+                  <option value="Aporte de socio">Aporte de socio</option>
+                  <option value="Otro ingreso">Otro ingreso</option>
+                </optgroup>
+                <optgroup label="Egresos" id="grpEgresos">
+                  <option value="Pago a proveedor">Pago a proveedor</option>
+                  <option value="Gastos varios">Gastos varios</option>
+                  <option value="Servicios">Servicios (luz, agua, etc.)</option>
+                  <option value="Retiro de socio">Retiro de socio</option>
+                  <option value="Otro egreso">Otro egreso</option>
+                </optgroup>
+              </select>
+              <div class="invalid-feedback">Elegí un concepto.</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Monto <span class="required">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" id="monto" class="form-control" min="0" step="0.01" required placeholder="0.00">
+              </div>
+              <div class="invalid-feedback" id="errMonto">Ingresá un monto válido.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Descripción (opcional)</label>
+              <input type="text" id="descripcion" class="form-control" maxlength="250" placeholder="Detalle del movimiento">
+            </div>
+          </div>
+          <div class="actions mt-3">
+            <button type="submit" class="btn btn-primary" id="btnGuardar">
+              <i class="bi bi-check2-circle"></i> <span id="btnTexto">Registrar movimiento</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="panel">
+      <div class="panel-header" id="panelHist"><i class="bi bi-clock-history"></i> Movimientos</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Concepto</th>
+              <th>Descripción</th>
+              <th class="text-end">Monto</th>
+              <th class="text-end">Saldo</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody id="tablaHist">
+            <tr class="loading-row"><td colspan="7">Cargando movimientos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const API = APP_BASE.replace(/\/$/, "");
+    const apiCaja = API + "/api/MovimientoCaja";
+
+    const usuario = Auth.getUsuario();
+    const rolesOperar = ["Administrador", "Vendedor"];
+    const puedeOperar = usuario && rolesOperar.indexOf(usuario.Rol) !== -1;
+
+    // Si no puede operar (ej: Dueño), ocultamos el formulario
+    if (!puedeOperar) {
+      const pf = document.getElementById("panelForm");
+      if (pf) pf.style.display = "none";
+    }
+
+    function fmtMoneda(n) {
+      return "$ " + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ---- Seleccionar tipo (toggle visual) ----
+    function seleccionarTipo(tipo) {
+      document.getElementById("tipo").value = tipo;
+      const bI = document.getElementById("btnIngreso");
+      const bE = document.getElementById("btnEgreso");
+      bI.classList.remove("activo-ingreso");
+      bE.classList.remove("activo-egreso");
+      if (tipo === "Ingreso") bI.classList.add("activo-ingreso");
+      else bE.classList.add("activo-egreso");
+
+      // Filtrar conceptos segun tipo
+      document.getElementById("grpIngresos").style.display = tipo === "Ingreso" ? "" : "none";
+      document.getElementById("grpEgresos").style.display = tipo === "Egreso" ? "" : "none";
+      document.getElementById("concepto").value = "";
+    }
+
+    // ---- Cargar saldo ----
+    function cargarSaldo() {
+      fetchAuth(apiCaja + "/Saldo").then(r => r.json()).then(data => {
+        const s = data[0] || { SaldoActual: 0, IngresosHoy: 0, EgresosHoy: 0 };
+        document.getElementById("saldoActual").textContent = fmtMoneda(s.SaldoActual);
+        document.getElementById("ingresosHoy").textContent = fmtMoneda(s.IngresosHoy);
+        document.getElementById("egresosHoy").textContent = fmtMoneda(s.EgresosHoy);
+      }).catch(() => {});
+    }
+
+    // ---- Cargar historial ----
+    function cargarHistorial() {
+      fetchAuth(apiCaja).then(r => r.json()).then(data => {
+        const tbody = document.getElementById("tablaHist");
+        document.getElementById("panelHist").innerHTML =
+          '<i class="bi bi-clock-history"></i> Movimientos (' + data.length + ')';
+
+        if (data.length === 0) {
+          tbody.innerHTML = "<tr><td colspan='7' class='text-center text-muted p-4'>Todavía no hay movimientos registrados.</td></tr>";
+          return;
+        }
+        let html = "";
+        data.forEach(m => {
+          const esIngreso = m.Tipo === "Ingreso";
+          const badge = esIngreso
+            ? "<span class='badge-ingreso'><i class='bi bi-arrow-down'></i> Ingreso</span>"
+            : "<span class='badge-egreso'><i class='bi bi-arrow-up'></i> Egreso</span>";
+          const auto = (m.Automatico === true || m.Automatico === 1)
+            ? "<span class='badge-auto'>Auto</span>" : "";
+          const montoClase = esIngreso ? "monto-ingreso" : "monto-egreso";
+          const signo = esIngreso ? "+" : "-";
+
+          html += "<tr>";
+          html += "<td class='small'>" + fmtFecha(m.Fecha) + "</td>";
+          html += "<td>" + badge + auto + "</td>";
+          html += "<td>" + escapeHtml(m.Concepto) + "</td>";
+          html += "<td class='small text-muted'>" + escapeHtml(m.Descripcion || "—") + "</td>";
+          html += "<td class='text-end " + montoClase + "'>" + signo + " " + fmtMoneda(m.Monto).replace('$ ','$') + "</td>";
+          html += "<td class='text-end'><strong>" + fmtMoneda(m.SaldoResultante).replace('$ ','$') + "</strong></td>";
+          html += "<td class='small'>" + escapeHtml(m.Usuario) + "</td>";
+          html += "</tr>";
+        });
+        tbody.innerHTML = html;
+      }).catch(() => {
+        document.getElementById("tablaHist").innerHTML =
+          "<tr><td colspan='7' class='text-center text-danger p-4'>No se pudo cargar el historial.</td></tr>";
+      });
+    }
+
+    // ---- Validar ----
+    function validar() {
+      let ok = true;
+      const tipo = document.getElementById("tipo").value;
+      const concepto = document.getElementById("concepto");
+      const monto = document.getElementById("monto");
+
+      concepto.classList.remove("is-invalid");
+      monto.classList.remove("is-invalid");
+
+      if (!tipo) {
+        Swal.fire("Falta el tipo", "Elegí si es Ingreso o Egreso.", "warning");
+        return false;
+      }
+      if (!concepto.value) { concepto.classList.add("is-invalid"); ok = false; }
+      const m = parseFloat(monto.value);
+      if (isNaN(m) || m <= 0) {
+        monto.classList.add("is-invalid");
+        document.getElementById("errMonto").textContent = "Ingresá un monto mayor a cero.";
+        ok = false;
+      }
+      return ok;
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const d = JSON.parse(text); return d.Message || d.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function setLoading(loading) {
+      document.getElementById("btnGuardar").disabled = loading;
+      document.getElementById("btnTexto").textContent = loading ? "Registrando…" : "Registrar movimiento";
+    }
+
+    // ---- Guardar ----
+    document.getElementById("formMov").addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!validar()) return;
+
+      const mov = {
+        Tipo: document.getElementById("tipo").value,
+        Concepto: document.getElementById("concepto").value,
+        Monto: parseFloat(document.getElementById("monto").value),
+        Descripcion: document.getElementById("descripcion").value.trim() || null
+      };
+
+      setLoading(true);
+      fetchAuth(apiCaja, { method: "POST", body: JSON.stringify(mov) })
+        .then(r => {
+          if (r.ok) {
+            Swal.fire({ title: "Movimiento registrado", icon: "success", timer: 1500, showConfirmButton: false });
+            document.getElementById("formMov").reset();
+            document.getElementById("tipo").value = "";
+            document.getElementById("btnIngreso").classList.remove("activo-ingreso");
+            document.getElementById("btnEgreso").classList.remove("activo-egreso");
+            cargarSaldo();
+            cargarHistorial();
+          } else {
+            leerError(r).then(msg => Swal.fire("No se pudo registrar", msg, "error"));
+          }
+        })
+        .catch(() => Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error"))
+        .then(() => setLoading(false));
+    });
+
+    function fmtFecha(f) {
+      if (!f) return "—";
+      const d = new Date(f);
+      return d.toLocaleDateString("es-AR") + " " + d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+
+    window.onload = function () {
+      cargarSaldo();
+      cargarHistorial();
+    };
+  </script>
+</body>
+</html>

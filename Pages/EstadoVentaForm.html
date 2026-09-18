@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cargar Estado de Venta - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-page="estados-venta">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2 id="tituloPagina"><i class="bi bi-plus-square"></i> Nuevo Estado de Venta
+          <span class="mode-badge" id="modoBadge">Alta</span>
+        </h2>
+        <span class="subtitle" id="subtituloPagina">Estados extra que el negocio quiera registrar</span>
+      </div>
+      <a href="EstadosVentaListado.html" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Volver al listado
+      </a>
+    </div>
+
+    <form id="formEstado" novalidate>
+      <div class="panel">
+        <div class="panel-header"><span class="num">1</span> Datos del estado</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">Nombre <span class="required">*</span></label>
+              <input type="text" id="nombre" class="form-control" maxlength="50" required placeholder="Ej: En revisión">
+              <div class="invalid-feedback" id="errNombre">El nombre es obligatorio.</div>
+              <div class="form-text">Hasta 50 caracteres.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="id">
+
+      <div class="actions">
+        <a href="EstadosVentaListado.html" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary" id="btnGuardar">
+          <i class="bi bi-save"></i> <span id="btnGuardarTexto">Guardar estado</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiEstado = API_BASE + "EstadoVenta";
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+
+    if (!esAdmin) {
+      Swal.fire({
+        title: "Acceso restringido",
+        text: "Solo administradores pueden gestionar estados.",
+        icon: "info",
+        confirmButtonText: "Volver al listado"
+      }).then(() => window.location.href = "EstadosVentaListado.html");
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("id");
+
+    function precargarEdicion(id) {
+      if (id == 1 || id == 2) {
+        Swal.fire("Acceso denegado", "Los estados Confirmada y Anulada son del sistema y no se pueden modificar.", "warning")
+          .then(() => window.location.href = "EstadosVentaListado.html");
+        return Promise.reject();
+      }
+
+      document.getElementById("tituloPagina").innerHTML =
+        '<i class="bi bi-pencil-square"></i> Editar Estado <span class="mode-badge">Edición</span>';
+      document.getElementById("subtituloPagina").textContent = "Modificá el nombre del estado";
+      document.getElementById("btnGuardarTexto").textContent = "Guardar cambios";
+
+      return fetchAuth(apiEstado + "/" + id).then(r => r.json()).then(data => {
+        const e = data[0];
+        if (!e) throw new Error("No se encontró el estado");
+        document.getElementById("id").value = e.Id;
+        document.getElementById("nombre").value = e.Nombre;
+      });
+    }
+
+    function validar() {
+      let ok = true;
+      const el = document.getElementById("nombre");
+      el.classList.remove("is-invalid");
+      const nombre = el.value.trim();
+      if (nombre === "") { el.classList.add("is-invalid"); ok = false; }
+      else if (nombre.length < 2) {
+        el.classList.add("is-invalid");
+        el.parentElement.querySelector(".invalid-feedback").textContent = "El nombre es demasiado corto.";
+        ok = false;
+      }
+      return ok;
+    }
+
+    function setLoading(loading) {
+      document.getElementById("btnGuardar").disabled = loading;
+      document.getElementById("btnGuardarTexto").textContent =
+        loading ? "Guardando…" : (editId ? "Guardar cambios" : "Guardar estado");
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const data = JSON.parse(text); return data.Message || data.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function guardar(e) {
+      e.preventDefault();
+      if (!validar()) { document.getElementById("nombre").focus(); return; }
+
+      const id = document.getElementById("id").value;
+      const estado = {
+        Id: id ? parseInt(id) : 0,
+        Nombre: document.getElementById("nombre").value.trim()
+      };
+
+      const metodo = id === "" ? "POST" : "PUT";
+      const url = id === "" ? apiEstado : apiEstado + "/" + id;
+
+      setLoading(true);
+      fetchAuth(url, { method: metodo, body: JSON.stringify(estado) })
+        .then(r => {
+          if (r.ok) {
+            Swal.fire({
+              title: "Guardado",
+              text: id === "" ? "El estado se cargó correctamente." : "Cambios guardados.",
+              icon: "success",
+              confirmButtonText: "Ir al listado"
+            }).then(() => window.location.href = "EstadosVentaListado.html");
+          } else {
+            leerError(r).then(msg => { Swal.fire("No se pudo guardar", msg, "error"); setLoading(false); });
+          }
+        })
+        .catch(() => { Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error"); setLoading(false); });
+    }
+
+    document.getElementById("formEstado").addEventListener("submit", guardar);
+    document.getElementById("nombre").addEventListener("input", () =>
+      document.getElementById("nombre").classList.remove("is-invalid"));
+
+    window.onload = function () {
+      if (!esAdmin) return;
+      if (editId) {
+        precargarEdicion(editId).catch(() => {});
+      }
+    };
+  </script>
+</body>
+</html>

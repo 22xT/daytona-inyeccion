@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de Caja - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .stat-card { border-radius:12px; padding:18px 22px; color:#fff; }
+    .stat-ing { background:linear-gradient(135deg,#1f7a1f,#27ae60); }
+    .stat-egr { background:linear-gradient(135deg,#c0392b,#e74c3c); }
+    .stat-saldo { background:linear-gradient(135deg,#1F3864,#2E5496); }
+    .stat-mov { background:linear-gradient(135deg,#8e44ad,#9b59b6); }
+    .stat-num { font-size:1.8rem; font-weight:700; line-height:1.1; }
+    .stat-label { font-size:0.76rem; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px; }
+    .badge-ing { background:#e6f7eb; color:#1f7a1f; padding:3px 10px; border-radius:10px; font-size:0.75rem; font-weight:600; }
+    .badge-egr { background:#fdeaea; color:#c0392b; padding:3px 10px; border-radius:10px; font-size:0.75rem; font-weight:600; }
+    .col-total-ing { color:#1f7a1f; font-weight:600; }
+    .col-total-egr { color:#c0392b; font-weight:600; }
+  </style>
+</head>
+
+<body data-page="reportes">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-cash-coin"></i> Reporte de Resumen de Caja</h2>
+        <span class="subtitle">Ingresos, egresos y saldo del período seleccionado</span>
+      </div>
+      <button class="btn btn-success" id="btnExcel">
+        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-calendar-range"></i> Período</div>
+      <div class="panel-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label">Desde</label>
+            <input type="date" id="desde" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Hasta</label>
+            <input type="date" id="hasta" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-primary w-100" id="btnConsultar"><i class="bi bi-search"></i> Consultar</button>
+          </div>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-sm btn-outline-secondary" onclick="rango('mes')">Este mes</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="rango('anio')">Este año</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-3"><div class="stat-card stat-ing">
+        <div class="stat-num" id="numIng">—</div><div class="stat-label">Ingresos</div></div></div>
+      <div class="col-md-3"><div class="stat-card stat-egr">
+        <div class="stat-num" id="numEgr">—</div><div class="stat-label">Egresos</div></div></div>
+      <div class="col-md-3"><div class="stat-card stat-saldo">
+        <div class="stat-num" id="numSaldo">—</div><div class="stat-label">Saldo neto</div></div></div>
+      <div class="col-md-3"><div class="stat-card stat-mov">
+        <div class="stat-num" id="numMov">—</div><div class="stat-label" id="lblMov">Movimientos</div></div></div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="panel">
+          <div class="panel-header" style="background:#e6f7eb; color:#1f7a1f;"><i class="bi bi-arrow-down-circle"></i> Ingresos por concepto</div>
+          <div class="table-responsive">
+            <table class="table mb-0">
+              <thead><tr><th>Concepto</th><th class="text-center">Cant.</th><th class="text-end">Total</th></tr></thead>
+              <tbody id="tablaIng"><tr><td colspan="3" class="text-center text-muted p-3">—</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="panel">
+          <div class="panel-header" style="background:#fdeaea; color:#c0392b;"><i class="bi bi-arrow-up-circle"></i> Egresos por concepto</div>
+          <div class="table-responsive">
+            <table class="table mb-0">
+              <thead><tr><th>Concepto</th><th class="text-center">Cant.</th><th class="text-end">Total</th></tr></thead>
+              <tbody id="tablaEgr"><tr><td colspan="3" class="text-center text-muted p-3">—</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const API = API_BASE + "Reporte/";
+    let resumen = {}, conceptos = [];
+
+    function fmt(n) { return "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function esc(s) { return s == null ? "" : String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+
+    function rango(tipo) {
+      const hoy = new Date();
+      const d = tipo === "mes" ? new Date(hoy.getFullYear(), hoy.getMonth(), 1) : new Date(hoy.getFullYear(), 0, 1);
+      document.getElementById("desde").value = d.toISOString().slice(0,10);
+      document.getElementById("hasta").value = hoy.toISOString().slice(0,10);
+      consultar();
+    }
+
+    function consultar() {
+      const desde = document.getElementById("desde").value;
+      const hasta = document.getElementById("hasta").value;
+      if (!desde || !hasta) { Swal.fire("Faltan fechas", "Elegí desde y hasta.", "warning"); return; }
+      if (desde > hasta) { Swal.fire("Rango inválido", "El 'desde' no puede ser posterior al 'hasta'.", "warning"); return; }
+
+      const qs = "?desde=" + desde + "&hasta=" + hasta;
+      Promise.all([
+        fetchAuth(API + "CajaResumen" + qs).then(r => r.json()),
+        fetchAuth(API + "CajaPorConcepto" + qs).then(r => r.json())
+      ]).then(([res, con]) => {
+        resumen = res[0] || { TotalIngresos:0, TotalEgresos:0, SaldoNeto:0, CantidadMovimientos:0, Automaticos:0, Manuales:0 };
+        conceptos = con;
+        render();
+      }).catch(() => {
+        Swal.fire("Error", "No se pudo consultar el reporte de caja.", "error");
+      });
+    }
+
+    function render() {
+      document.getElementById("numIng").textContent = fmt(resumen.TotalIngresos);
+      document.getElementById("numEgr").textContent = fmt(resumen.TotalEgresos);
+      document.getElementById("numSaldo").textContent = fmt(resumen.SaldoNeto);
+      document.getElementById("numMov").textContent = resumen.CantidadMovimientos;
+      document.getElementById("lblMov").textContent = resumen.Manuales + " manual(es) / " + resumen.Automaticos + " auto";
+
+      const ing = conceptos.filter(c => c.Tipo === "Ingreso");
+      const egr = conceptos.filter(c => c.Tipo === "Egreso");
+      pintar("tablaIng", ing, "col-total-ing");
+      pintar("tablaEgr", egr, "col-total-egr");
+    }
+
+    function pintar(id, lista, clase) {
+      const tbody = document.getElementById(id);
+      if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted p-3">Sin movimientos en el período.</td></tr>';
+        return;
+      }
+      let html = "";
+      lista.forEach(c => {
+        html += '<tr>' +
+          '<td>' + esc(c.Concepto) + '</td>' +
+          '<td class="text-center">' + c.Cantidad + '</td>' +
+          '<td class="text-end ' + clase + '">' + fmt(c.Total) + '</td>' +
+        '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function exportarExcel() {
+      if (!resumen.CantidadMovimientos) { Swal.fire("Sin datos", "Consultá un período con movimientos antes de exportar.", "info"); return; }
+
+      const resHoja = [{
+        "Total ingresos": Number(resumen.TotalIngresos),
+        "Total egresos": Number(resumen.TotalEgresos),
+        "Saldo neto": Number(resumen.SaldoNeto),
+        "Movimientos": resumen.CantidadMovimientos,
+        "Manuales": resumen.Manuales,
+        "Automáticos": resumen.Automaticos
+      }];
+      const conHoja = conceptos.map(c => ({
+        "Tipo": c.Tipo,
+        "Concepto": c.Concepto,
+        "Cantidad": c.Cantidad,
+        "Total": Number(c.Total)
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.json_to_sheet(resHoja); ws1["!cols"]=[{wch:16},{wch:16},{wch:14},{wch:12},{wch:12},{wch:12}];
+      const ws2 = XLSX.utils.json_to_sheet(conHoja); ws2["!cols"]=[{wch:12},{wch:26},{wch:12},{wch:16}];
+      XLSX.utils.book_append_sheet(wb, ws1, "Resumen");
+      XLSX.utils.book_append_sheet(wb, ws2, "Por concepto");
+      XLSX.writeFile(wb, "Caja_Daytona_" + new Date().toISOString().slice(0,10) + ".xlsx");
+    }
+
+    document.getElementById("btnConsultar").addEventListener("click", consultar);
+    document.getElementById("btnExcel").addEventListener("click", exportarExcel);
+    window.onload = () => rango("anio");
+  </script>
+</body>
+</html>

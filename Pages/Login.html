@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ingreso al Sistema - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    .login-box {
+      animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .input-group .toggle-clave {
+      cursor: pointer;
+      background: #fff;
+      border-left: none;
+    }
+    .input-group .toggle-clave:hover { background: #f8f9fa; }
+    .input-group .toggle-clave i { color: var(--text-muted); }
+
+    .caps-lock-alert {
+      display: none;
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: #fff3cd;
+      color: #856404;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      align-items: center;
+      gap: 6px;
+    }
+    .caps-lock-alert.activo { display: flex; }
+
+    .forgot-link {
+      display: block;
+      text-align: right;
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: var(--navy);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .forgot-link:hover { color: var(--red); text-decoration: underline; }
+
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 18px;
+      cursor: pointer;
+    }
+    .remember-me input { cursor: pointer; }
+
+    .spinner-mini {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .bloqueo-msg {
+      display: none;
+      margin-bottom: 15px;
+      padding: 12px;
+      background: #f8d7da;
+      color: #721c24;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .bloqueo-msg.activo { display: block; }
+    .bloqueo-msg .contador { font-weight: 700; font-size: 1.1rem; }
+    .login-page .footer-text small { opacity: 0.8; }
+  </style>
+</head>
+
+<body class="login-page">
+  <div class="login-box">
+    <div class="brand">
+      <i class="bi bi-speedometer2"></i> Daytona Inyección
+    </div>
+
+    <div id="bloqueoMsg" class="bloqueo-msg">
+      <i class="bi bi-lock-fill"></i> Demasiados intentos fallidos.<br>
+      Esperá <span class="contador" id="contadorBloqueo">60</span> segundos antes de volver a intentar.
+    </div>
+
+    <form id="loginForm" novalidate>
+      <div class="mb-3">
+        <label class="form-label">Correo electrónico</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+          <input type="email" id="correo" class="form-control" required autocomplete="email" placeholder="ejemplo@daytona.com">
+        </div>
+        <div class="invalid-feedback" id="errCorreo">Ingresá un correo válido.</div>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Contraseña</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input type="password" id="clave" class="form-control" required autocomplete="current-password">
+          <span class="input-group-text toggle-clave" id="toggleClave" title="Mostrar/ocultar contraseña">
+            <i class="bi bi-eye" id="iconoOjo"></i>
+          </span>
+        </div>
+        <div id="capsLockAlert" class="caps-lock-alert">
+          <i class="bi bi-exclamation-triangle-fill"></i> Tenés Bloq Mayús (Caps Lock) activado.
+        </div>
+        <a class="forgot-link" id="linkOlvido">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <label class="remember-me">
+        <input type="checkbox" id="recordar"> Recordar mi correo
+      </label>
+
+      <button type="submit" class="btn btn-primary w-100 py-2 justify-content-center" id="btnLogin">
+        <span id="btnLoginContenido">
+          <i class="bi bi-box-arrow-in-right"></i> Iniciar sesión
+        </span>
+      </button>
+    </form>
+  </div>
+
+  <div class="footer-text">
+    <small>© 2026 Daytona Inyección — Sistema de gestión integral · v1.0</small>
+  </div>
+
+  <!-- Modal Olvidé mi contraseña -->
+  <div class="modal fade" id="modalOlvido" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-key"></i> Solicitar reseteo de contraseña
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">
+            Dejá una solicitud para que el administrador resetee tu contraseña.
+            Te van a contactar a la brevedad.
+          </p>
+          <form id="formOlvido" novalidate>
+            <div class="mb-3">
+              <label class="form-label">Correo electrónico <span class="required">*</span></label>
+              <input type="email" id="olvidoCorreo" class="form-control" required placeholder="ejemplo@daytona.com">
+              <div class="invalid-feedback">Ingresá un correo válido.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Mensaje al administrador <small class="text-muted">(opcional)</small></label>
+              <textarea id="olvidoMensaje" class="form-control" rows="3" maxlength="500"
+                        placeholder="Ej: olvidé mi clave, no la pude recuperar..."></textarea>
+              <div class="form-text"><span id="contMensaje">0</span> / 500 caracteres</div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btnEnviarSolicitud">
+            <i class="bi bi-send"></i> Enviar solicitud
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    const apiLogin = API_BASE + "Usuario/Login";
+    const apiSolicitudReset = API_BASE + "SolicitudReset";
+
+    // ============================================================
+    // Si ya hay sesion, redirigir
+    // ============================================================
+    window.onload = function () {
+      if (localStorage.getItem("token") && localStorage.getItem("usuario")) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const correoGuardado = localStorage.getItem("recordarCorreo");
+      if (correoGuardado) {
+        document.getElementById("correo").value = correoGuardado;
+        document.getElementById("recordar").checked = true;
+        document.getElementById("clave").focus();
+      } else {
+        document.getElementById("correo").focus();
+      }
+
+      verificarBloqueo();
+    };
+
+    // ============================================================
+    // Toggle ver/ocultar contraseña
+    // ============================================================
+    document.getElementById("toggleClave").addEventListener("click", function () {
+      const input = document.getElementById("clave");
+      const icono = document.getElementById("iconoOjo");
+      if (input.type === "password") {
+        input.type = "text";
+        icono.classList.remove("bi-eye");
+        icono.classList.add("bi-eye-slash");
+      } else {
+        input.type = "password";
+        icono.classList.remove("bi-eye-slash");
+        icono.classList.add("bi-eye");
+      }
+    });
+
+    // ============================================================
+    // Caps Lock detector
+    // ============================================================
+    function chequearCapsLock(e) {
+      const alerta = document.getElementById("capsLockAlert");
+      if (e.getModifierState && e.getModifierState("CapsLock")) {
+        alerta.classList.add("activo");
+      } else {
+        alerta.classList.remove("activo");
+      }
+    }
+    document.getElementById("clave").addEventListener("keydown", chequearCapsLock);
+    document.getElementById("clave").addEventListener("keyup", chequearCapsLock);
+    document.getElementById("clave").addEventListener("focus", chequearCapsLock);
+
+    // ============================================================
+    // Validacion visual en vivo
+    // ============================================================
+    document.getElementById("correo").addEventListener("input", function () {
+      this.classList.remove("is-invalid");
+    });
+    document.getElementById("clave").addEventListener("input", function () {
+      this.classList.remove("is-invalid");
+    });
+
+    // ============================================================
+    // Bloqueo por intentos fallidos (5 intentos = 60 segundos)
+    // ============================================================
+    const MAX_INTENTOS = 5;
+    const TIEMPO_BLOQUEO_SEG = 60;
+    let intervaloBloqueo = null;
+
+    function verificarBloqueo() {
+      const bloqueadoHasta = parseInt(localStorage.getItem("bloqueadoHasta") || "0");
+      const ahora = Date.now();
+      if (bloqueadoHasta > ahora) {
+        activarBloqueoUI(Math.ceil((bloqueadoHasta - ahora) / 1000));
+      } else if (bloqueadoHasta > 0) {
+        localStorage.removeItem("bloqueadoHasta");
+        localStorage.removeItem("intentosFallidos");
+      }
+    }
+
+    function activarBloqueoUI(segundosRestantes) {
+      document.getElementById("bloqueoMsg").classList.add("activo");
+      document.getElementById("btnLogin").disabled = true;
+      document.getElementById("correo").disabled = true;
+      document.getElementById("clave").disabled = true;
+
+      const contador = document.getElementById("contadorBloqueo");
+      contador.textContent = segundosRestantes;
+
+      if (intervaloBloqueo) clearInterval(intervaloBloqueo);
+      intervaloBloqueo = setInterval(function () {
+        segundosRestantes--;
+        contador.textContent = segundosRestantes;
+        if (segundosRestantes <= 0) {
+          clearInterval(intervaloBloqueo);
+          desactivarBloqueoUI();
+        }
+      }, 1000);
+    }
+
+    function desactivarBloqueoUI() {
+      document.getElementById("bloqueoMsg").classList.remove("activo");
+      document.getElementById("btnLogin").disabled = false;
+      document.getElementById("correo").disabled = false;
+      document.getElementById("clave").disabled = false;
+      localStorage.removeItem("bloqueadoHasta");
+      localStorage.removeItem("intentosFallidos");
+    }
+
+    function registrarIntentoFallido() {
+      let intentos = parseInt(localStorage.getItem("intentosFallidos") || "0");
+      intentos++;
+      localStorage.setItem("intentosFallidos", intentos);
+
+      if (intentos >= MAX_INTENTOS) {
+        const bloqueadoHasta = Date.now() + (TIEMPO_BLOQUEO_SEG * 1000);
+        localStorage.setItem("bloqueadoHasta", bloqueadoHasta);
+        activarBloqueoUI(TIEMPO_BLOQUEO_SEG);
+        return true;
+      }
+      return false;
+    }
+
+    function limpiarIntentos() {
+      localStorage.removeItem("intentosFallidos");
+      localStorage.removeItem("bloqueadoHasta");
+    }
+
+    // ============================================================
+    // Submit del login (CORREGIDO)
+    // ============================================================
+    document.getElementById("loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const bloqueadoHasta = parseInt(localStorage.getItem("bloqueadoHasta") || "0");
+      if (bloqueadoHasta > Date.now()) return;
+
+      const correo = document.getElementById("correo").value.trim();
+      const clave = document.getElementById("clave").value;
+
+      // Validacion frontend simple
+      let ok = true;
+      if (!correo || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) {
+        document.getElementById("correo").classList.add("is-invalid");
+        ok = false;
+      }
+      if (!clave) {
+        document.getElementById("clave").classList.add("is-invalid");
+        ok = false;
+      }
+      if (!ok) return;
+
+      // Loading state
+      const btn = document.getElementById("btnLogin");
+      const contenido = document.getElementById("btnLoginContenido");
+      btn.disabled = true;
+      contenido.innerHTML = '<span class="spinner-mini"></span> Verificando...';
+
+      // Guardar correo si checkbox marcado
+      if (document.getElementById("recordar").checked) {
+        localStorage.setItem("recordarCorreo", correo);
+      } else {
+        localStorage.removeItem("recordarCorreo");
+      }
+
+      fetch(apiLogin, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Correo: correo, Clave: clave })
+      })
+        .then(r => r.json().then(data => ({ ok: r.ok, data: data })))
+        .then(result => {
+          const respOk = result.ok;
+          const data = result.data;
+          if (respOk && data.Ok && data.Token) {
+            limpiarIntentos();
+            localStorage.setItem("token", data.Token);
+            localStorage.setItem("usuario", JSON.stringify({
+              Id: data.Id, Nombre: data.Nombre, Correo: data.Correo, Rol: data.Rol
+            }));
+
+            Swal.fire({
+              icon: "success",
+              title: "Bienvenido " + data.Nombre,
+              text: "Accediendo al sistema...",
+              timer: 1200,
+              showConfirmButton: false
+            });
+
+            setTimeout(function () { window.location.href = "index.html"; }, 1200);
+          } else {
+            restaurarBoton();
+            const seBloqueo = registrarIntentoFallido();
+            if (!seBloqueo) {
+              const intentos = parseInt(localStorage.getItem("intentosFallidos") || "0");
+              const restantes = MAX_INTENTOS - intentos;
+              Swal.fire({
+                icon: "error",
+                title: "Acceso denegado",
+                text: (data.Mensaje || "Correo o contraseña incorrectos") +
+                      ". Te quedan " + restantes + " intento(s).",
+              });
+            }
+          }
+        })
+        .catch(function () {
+          restaurarBoton();
+          Swal.fire("Error de conexión", "No se pudo conectar con el servidor.", "error");
+        });
+    });
+
+    function restaurarBoton() {
+      const btn = document.getElementById("btnLogin");
+      const contenido = document.getElementById("btnLoginContenido");
+      btn.disabled = false;
+      contenido.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Iniciar sesión';
+    }
+
+    // ============================================================
+    // Modal "Olvide mi contraseña"
+    // ============================================================
+    document.getElementById("linkOlvido").addEventListener("click", function () {
+      const correo = document.getElementById("correo").value.trim();
+      document.getElementById("olvidoCorreo").value = correo;
+      document.getElementById("olvidoMensaje").value = "";
+      document.getElementById("contMensaje").textContent = "0";
+      new bootstrap.Modal(document.getElementById("modalOlvido")).show();
+    });
+
+    document.getElementById("olvidoMensaje").addEventListener("input", function () {
+      document.getElementById("contMensaje").textContent = this.value.length;
+    });
+
+    document.getElementById("olvidoCorreo").addEventListener("input", function () {
+      this.classList.remove("is-invalid");
+    });
+
+    document.getElementById("btnEnviarSolicitud").addEventListener("click", function () {
+      const correo = document.getElementById("olvidoCorreo").value.trim();
+      const mensaje = document.getElementById("olvidoMensaje").value.trim();
+
+      if (!correo || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) {
+        document.getElementById("olvidoCorreo").classList.add("is-invalid");
+        return;
+      }
+
+      const btn = this;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-mini"></span> Enviando...';
+
+      fetch(apiSolicitudReset, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Correo: correo, Mensaje: mensaje })
+      })
+        .then(r => r.text().then(text => ({ ok: r.ok, text: text })))
+        .then(result => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-send"></i> Enviar solicitud';
+          if (result.ok) {
+            bootstrap.Modal.getInstance(document.getElementById("modalOlvido")).hide();
+            Swal.fire({
+              icon: "success",
+              title: "Solicitud enviada",
+              html: "Tu pedido fue registrado correctamente.<br>" +
+                    "El administrador se va a comunicar con vos a la brevedad.",
+              confirmButtonColor: "#001f3f"
+            });
+          } else {
+            let msg = "No se pudo registrar la solicitud.";
+            try {
+              const data = JSON.parse(result.text);
+              msg = data.Message || data.message || result.text;
+            } catch (e) { msg = result.text || msg; }
+            Swal.fire("Error", msg, "error");
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-send"></i> Enviar solicitud';
+          Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error");
+        });
+    });
+
+    // Tecla Enter: del correo pasa a clave
+    document.getElementById("correo").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        document.getElementById("clave").focus();
+      }
+    });
+  </script>
+</body>
+</html>

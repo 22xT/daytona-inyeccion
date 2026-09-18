@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Beneficios y parámetros - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    .pill-margen {
+      background: var(--green); color: #fff; border: none;
+      border-radius: 20px; padding: 6px 18px;
+      font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: 0.15s;
+      min-width: 78px;
+    }
+    .pill-margen:hover { background: #1e7e34; transform: scale(1.04); }
+    .pill-general { background: var(--nav-accent); }
+    .pill-general:hover { background: var(--nav-accent-dark); }
+
+    .fila-rubro {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+    }
+    .fila-rubro:last-child { border-bottom: none; }
+    .fila-rubro:hover { background: var(--bg-soft); }
+    .fila-rubro .nom { flex: 1; min-width: 0; font-size: 0.9rem; }
+    .fila-rubro .nom small { display: block; color: var(--text-muted); font-size: 0.75rem; }
+    .btn-quitar-margen {
+      background: none; border: none; color: #c0392b;
+      cursor: pointer; padding: 4px 7px; border-radius: 5px;
+    }
+    .btn-quitar-margen:hover { background: #ffeded; }
+
+    .lista-rubros { max-height: 44vh; overflow-y: auto; }
+
+    .caja-general {
+      background: var(--nav-accent-soft); border: 1px solid #b9d3f2;
+      border-radius: 10px; padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .caja-general .txt { flex: 1; min-width: 200px; }
+    .caja-general .txt strong { color: var(--nav-accent-dark); }
+    .caja-general .txt small { display: block; color: var(--text-muted); margin-top: 3px; }
+
+    .ejemplo {
+      background: var(--bg-soft); border: 1px solid var(--border);
+      border-radius: 9px; padding: 12px 15px; font-size: 0.85rem;
+    }
+    .ejemplo .linea { display: flex; justify-content: space-between; padding: 3px 0; }
+    .ejemplo .total {
+      border-top: 1px solid var(--border); margin-top: 6px; padding-top: 6px;
+      font-weight: 700; color: var(--navy);
+    }
+  </style>
+</head>
+
+<body data-page="configuracion">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-percent"></i> Beneficios y parámetros</h2>
+        <span class="subtitle">Margen de ganancia y valores generales del sistema</span>
+      </div>
+    </div>
+
+    <div class="row g-3">
+
+      <!-- Izquierda: márgenes -->
+      <div class="col-lg-7">
+        <div class="panel">
+          <div class="panel-header"><i class="bi bi-graph-up-arrow"></i> Margen de ganancia</div>
+          <div class="panel-body">
+
+            <div class="caja-general mb-3">
+              <div class="txt">
+                <strong>General / por defecto</strong>
+                <small>Se aplica a todos los rubros que no tengan uno propio.</small>
+              </div>
+              <button class="pill-margen pill-general" id="btnMargenGeneral"
+                      onclick="editarGeneral()">—</button>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong style="font-size:0.9rem;">Excepciones por rubro</strong>
+              <button class="btn btn-sm btn-primary" onclick="agregarRubro()">
+                <i class="bi bi-plus-lg"></i> Rubro
+              </button>
+            </div>
+
+            <div class="lista-rubros" id="listaRubros">
+              <div class="p-3 text-center text-muted">Cargando…</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Derecha: parámetros y ejemplo -->
+      <div class="col-lg-5">
+        <div class="panel">
+          <div class="panel-header"><i class="bi bi-sliders"></i> Otros parámetros</div>
+          <div class="panel-body">
+            <div id="listaParametros">
+              <div class="text-center text-muted">Cargando…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><i class="bi bi-calculator"></i> Cómo queda el precio</div>
+          <div class="panel-body">
+            <div class="ejemplo" id="ejemplo"></div>
+            <div class="form-text mt-2">
+              El margen se aplica sobre el costo neto. El IVA se suma al final:
+              no forma parte de la ganancia.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    var api = API_BASE;
+    var parametros = [];
+    var margenes = [];
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function leerError(r) {
+      return r.text().then(function (t) {
+        try { var d = JSON.parse(t); return d.Message || d.message || t; }
+        catch (e) { return t; }
+      }).catch(function () { return "No se pudo completar la operación."; });
+    }
+
+    function valorParametro(clave) {
+      var p = parametros.find(function (x) { return x.Clave === clave; });
+      return p ? p.Valor : null;
+    }
+
+    /* ================= CARGA ================= */
+
+    function cargar() {
+      Promise.all([
+        fetchAuth(api + "Configuracion/Parametros").then(function (r) { return r.json(); }),
+        fetchAuth(api + "Configuracion/Margenes?soloConMargen=true").then(function (r) { return r.json(); })
+      ]).then(function (res) {
+        parametros = res[0] || [];
+        margenes = res[1] || [];
+        pintarGeneral();
+        pintarRubros();
+        pintarParametros();
+        pintarEjemplo();
+      }).catch(function () {
+        Swal.fire("Error", "No se pudo cargar la configuración.", "error");
+      });
+    }
+
+    function pintarGeneral() {
+      var v = valorParametro("MargenGeneral");
+      document.getElementById("btnMargenGeneral").textContent = (v || "—") + "%";
+    }
+
+    function pintarRubros() {
+      var cont = document.getElementById("listaRubros");
+
+      if (margenes.length === 0) {
+        cont.innerHTML = '<div class="p-4 text-center text-muted">' +
+          'Ningún rubro tiene margen propio.<br>' +
+          '<small>Todos usan el general.</small></div>';
+        return;
+      }
+
+      var html = "";
+      margenes.forEach(function (m) {
+        html += '<div class="fila-rubro">' +
+          '<i class="bi bi-folder text-muted"></i>' +
+          '<div class="nom">' + escapeHtml(m.Nombre) +
+            '<small>' + m.Repuestos + ' repuesto' + (m.Repuestos === 1 ? '' : 's') + '</small>' +
+          '</div>' +
+          '<button class="pill-margen" onclick="editarRubro(' + m.Id + ')">' +
+            m.MargenPorcentaje + '%</button>' +
+          '<button class="btn-quitar-margen" onclick="quitarRubro(' + m.Id + ')" ' +
+            'title="Volver al margen general"><i class="bi bi-trash"></i></button>' +
+        '</div>';
+      });
+      cont.innerHTML = html;
+    }
+
+    function pintarParametros() {
+      var cont = document.getElementById("listaParametros");
+      var otros = parametros.filter(function (p) { return p.Clave !== "MargenGeneral"; });
+
+      var html = "";
+      otros.forEach(function (p) {
+        var sufijo = p.Tipo === "porcentaje" ? "%" : "";
+        html += '<div class="d-flex align-items-center gap-2 mb-3">' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:0.88rem;font-weight:600;">' + escapeHtml(p.Clave) + '</div>' +
+            '<small class="text-muted">' + escapeHtml(p.Descripcion || "") + '</small>' +
+          '</div>' +
+          '<button class="pill-margen" onclick="editarParametro(\'' + p.Clave + '\')">' +
+            escapeHtml(p.Valor) + sufijo + '</button>' +
+        '</div>';
+      });
+      cont.innerHTML = html || '<div class="text-muted">Sin parámetros.</div>';
+    }
+
+    // Muestra la cadena completa con la abrazadera real de Autocor
+    function pintarEjemplo() {
+      var margen = parseFloat(valorParametro("MargenGeneral") || "50");
+      var lista = 743.40, dtoRubro = 0, dtoGral = 19;
+      var costo = lista * (1 - dtoRubro / 100) * (1 - dtoGral / 100);
+      var neto = costo * (1 + margen / 100);
+      var final = neto * 1.21;
+
+      document.getElementById("ejemplo").innerHTML =
+        '<div class="linea"><span>Precio de lista</span><span>' + formatearMoneda(lista) + '</span></div>' +
+        '<div class="linea"><span>Descuento proveedor ' + dtoGral + '%</span><span>−' +
+          formatearMoneda(lista - costo) + '</span></div>' +
+        '<div class="linea"><span><strong>Costo</strong></span><span><strong>' +
+          formatearMoneda(costo) + '</strong></span></div>' +
+        '<div class="linea"><span>Margen ' + margen + '%</span><span>+' +
+          formatearMoneda(neto - costo) + '</span></div>' +
+        '<div class="linea"><span>Neto de venta</span><span>' + formatearMoneda(neto) + '</span></div>' +
+        '<div class="linea"><span>IVA 21%</span><span>+' + formatearMoneda(final - neto) + '</span></div>' +
+        '<div class="linea total"><span>Precio al público</span><span>' +
+          formatearMoneda(final) + '</span></div>';
+    }
+
+    /* ================= EDICIÓN ================= */
+
+    function guardarParametro(clave, valor) {
+      return fetchAuth(api + "Configuracion/Parametro", {
+        method: "PUT",
+        body: JSON.stringify({ Clave: clave, Valor: String(valor) })
+      }).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return true;
+      });
+    }
+
+    function editarGeneral() {
+      Swal.fire({
+        title: "Margen general",
+        input: "number",
+        inputValue: valorParametro("MargenGeneral") || "50",
+        inputAttributes: { min: 0, max: 500, step: 1 },
+        text: "Se aplica a todos los rubros que no tengan uno propio.",
+        showCancelButton: true,
+        confirmButtonText: "Guardar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#1266d1"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        guardarParametro("MargenGeneral", res.value)
+          .then(function () {
+            Swal.fire("Guardado", "Margen general actualizado.", "success");
+            cargar();
+          })
+          .catch(function (e) { Swal.fire("No se pudo guardar", e.message, "error"); });
+      });
+    }
+
+    function editarParametro(clave) {
+      var p = parametros.find(function (x) { return x.Clave === clave; });
+      if (!p) return;
+
+      Swal.fire({
+        title: p.Clave,
+        input: p.Tipo === "lista" ? "text" : "number",
+        inputValue: p.Valor,
+        text: p.Descripcion || "",
+        showCancelButton: true,
+        confirmButtonText: "Guardar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#1266d1"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        guardarParametro(clave, res.value)
+          .then(function () { Swal.fire("Guardado", "", "success"); cargar(); })
+          .catch(function (e) { Swal.fire("No se pudo guardar", e.message, "error"); });
+      });
+    }
+
+    function guardarMargen(idRubro, margen) {
+      return fetchAuth(api + "Configuracion/Margen", {
+        method: "PUT",
+        body: JSON.stringify({ IdRubro: idRubro, Margen: margen })
+      }).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return true;
+      });
+    }
+
+    function editarRubro(id) {
+      var m = margenes.find(function (x) { return x.Id === id; });
+      if (!m) return;
+
+      Swal.fire({
+        title: m.Nombre,
+        input: "number",
+        inputValue: m.MargenPorcentaje,
+        inputAttributes: { min: 0, max: 500, step: 1 },
+        text: "Margen propio de este rubro.",
+        showCancelButton: true,
+        confirmButtonText: "Guardar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#1266d1"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        guardarMargen(id, parseFloat(res.value))
+          .then(function () { Swal.fire("Guardado", "", "success"); cargar(); })
+          .catch(function (e) { Swal.fire("No se pudo guardar", e.message, "error"); });
+      });
+    }
+
+    function quitarRubro(id) {
+      var m = margenes.find(function (x) { return x.Id === id; });
+      if (!m) return;
+
+      Swal.fire({
+        title: "¿Quitar el margen propio?",
+        html: escapeHtml(m.Nombre) + " va a pasar a usar el margen general de <strong>" +
+              (valorParametro("MargenGeneral") || "50") + "%</strong>.",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Quitar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#c0392b"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        guardarMargen(id, null)
+          .then(function () { Swal.fire("Listo", "", "success"); cargar(); })
+          .catch(function (e) { Swal.fire("No se pudo quitar", e.message, "error"); });
+      });
+    }
+
+    function agregarRubro() {
+      Swal.fire({
+        title: "Agregar excepción",
+        html: '<input id="swBuscar" class="swal2-input" placeholder="Buscar rubro…" style="margin-bottom:8px;">' +
+              '<select id="swRubro" class="swal2-select" size="8" style="width:100%;"></select>' +
+              '<input id="swMargen" type="number" class="swal2-input" placeholder="Margen %" min="0" max="500">',
+        showCancelButton: true,
+        confirmButtonText: "Agregar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#1266d1",
+        width: 520,
+        didOpen: function () {
+          var buscar = document.getElementById("swBuscar");
+          var sel = document.getElementById("swRubro");
+
+          function cargarLista(texto) {
+            fetchAuth(api + "Configuracion/Margenes?soloConMargen=false&texto=" +
+                      encodeURIComponent(texto || ""))
+              .then(function (r) { return r.json(); })
+              .then(function (datos) {
+                sel.innerHTML = "";
+                // Los que ya tienen margen no se ofrecen: se editan desde la lista
+                datos.filter(function (d) { return d.MargenPorcentaje === null; })
+                     .slice(0, 200)
+                     .forEach(function (d) {
+                        var o = document.createElement("option");
+                        o.value = d.Id;
+                        o.textContent = d.Nombre;
+                        sel.appendChild(o);
+                     });
+              });
+          }
+
+          cargarLista("");
+          buscar.focus();
+
+          var t = null;
+          buscar.addEventListener("input", function () {
+            clearTimeout(t);
+            t = setTimeout(function () { cargarLista(buscar.value); }, 250);
+          });
+        },
+        preConfirm: function () {
+          var id = parseInt(document.getElementById("swRubro").value, 10);
+          var m = parseFloat(document.getElementById("swMargen").value);
+          if (!id) { Swal.showValidationMessage("Elegí un rubro."); return false; }
+          if (isNaN(m) || m < 0 || m > 500) {
+            Swal.showValidationMessage("El margen tiene que estar entre 0 y 500.");
+            return false;
+          }
+          return { id: id, margen: m };
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value) return;
+        guardarMargen(res.value.id, res.value.margen)
+          .then(function () { Swal.fire("Agregado", "", "success"); cargar(); })
+          .catch(function (e) { Swal.fire("No se pudo agregar", e.message, "error"); });
+      });
+    }
+
+    window.onload = cargar;
+  </script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Roles - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-page="roles">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-shield-lock-fill"></i> Roles</h2>
+        <span class="subtitle">Roles de acceso del sistema</span>
+      </div>
+      <a href="RolForm.html" class="btn btn-danger admin-only">
+        <i class="bi bi-plus-lg"></i> Nuevo rol
+      </a>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros y búsqueda</div>
+      <div class="panel-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="btn-group">
+            <button type="button" class="btn btn-outline-primary active" data-filtro="todos">Todos</button>
+            <button type="button" class="btn btn-outline-primary" data-filtro="activos">Activos</button>
+            <button type="button" class="btn btn-outline-primary" data-filtro="inactivos">Inactivos</button>
+          </div>
+          <input type="text" id="buscador" class="form-control" style="max-width: 320px;" placeholder="Buscar por nombre o descripción...">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-list-ul"></i> Listado</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Nombre</th><th>Descripción</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaRoles"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-2">
+      <span id="infoPagina" class="text-muted small"></span>
+      <div>
+        <button type="button" id="btnAnterior" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-chevron-left"></i> Anterior
+        </button>
+        <button type="button" id="btnSiguiente" class="btn btn-outline-secondary btn-sm">
+          Siguiente <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiRol = API_BASE + "Rol";
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+    if (esAdmin) document.body.classList.add('is-admin');
+
+    if (!esAdmin) {
+      Swal.fire({ icon: "error", title: "Acceso denegado", text: "Solo administradores." })
+        .then(() => window.location.href = "index.html");
+    }
+
+    const buscador = document.getElementById("buscador");
+    const infoPagina = document.getElementById("infoPagina");
+    const btnAnterior = document.getElementById("btnAnterior");
+    const btnSiguiente = document.getElementById("btnSiguiente");
+
+    let roles = [];
+    let filtroActual = "todos";
+    const POR_PAGINA = 10;
+    let paginaActual = 1;
+
+    function mostrarError(err) {
+      if (err && (err.message === "401 Unauthorized" || err.message === "403 Forbidden")) return;
+      Swal.fire("Error", (err && err.message) || "Ocurrió un error.", "error");
+    }
+    function obtenerMensajeError(response, defecto) {
+      return response.json().then(err => err && err.Message ? err.Message : defecto).catch(() => defecto);
+    }
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function filtrados() {
+      const texto = buscador.value.trim().toLowerCase();
+      return roles.filter(r => {
+        if (filtroActual === "activos" && !r.Activo) return false;
+        if (filtroActual === "inactivos" && r.Activo) return false;
+        if (texto !== "") {
+          const matchea =
+            String(r.Nombre || '').toLowerCase().includes(texto) ||
+            String(r.Descripcion || '').toLowerCase().includes(texto);
+          if (!matchea) return false;
+        }
+        return true;
+      });
+    }
+
+    function listar() {
+      fetchAuth(apiRol).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar la lista.");
+        return r.json();
+      }).then(data => { roles = data; render(); }).catch(mostrarError);
+    }
+
+    function render() {
+      const lista = filtrados();
+      const totalPaginas = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+      if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+      const pagina = lista.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
+
+      let filas = "";
+      pagina.forEach(r => {
+        const estado = r.Activo
+          ? '<span class="badge-estado badge-activo"><i class="bi bi-check-circle"></i> Activo</span>'
+          : '<span class="badge-estado badge-inactivo"><i class="bi bi-x-circle"></i> Inactivo</span>';
+
+        let acciones = "";
+        acciones += `<a class="btn btn-sm btn-outline-primary me-1" href="RolForm.html?id=${r.Id}" title="Editar"><i class="bi bi-pencil"></i></a>`;
+        if (r.Activo) {
+          acciones += `<button class="btn btn-sm btn-outline-danger" onclick="darDeBaja(${r.Id})" title="Dar de baja"><i class="bi bi-arrow-down-circle"></i></button>`;
+        } else {
+          acciones += `<button class="btn btn-sm btn-outline-success" onclick="activar(${r.Id})" title="Activar"><i class="bi bi-arrow-up-circle"></i></button>`;
+        }
+
+        filas += `<tr>
+          <td><strong>#${r.Id}</strong></td>
+          <td>${escapeHtml(r.Nombre)}</td>
+          <td>${escapeHtml(r.Descripcion || '-')}</td>
+          <td class="text-center">${estado}</td>
+          <td class="text-center">${acciones}</td>
+        </tr>`;
+      });
+
+      document.getElementById("tablaRoles").innerHTML =
+        filas !== "" ? filas : '<tr><td colspan="5" class="text-center text-muted p-4">Sin resultados.</td></tr>';
+
+      infoPagina.textContent = lista.length === 0
+        ? "Sin resultados."
+        : "Página " + paginaActual + " de " + totalPaginas + " (" + lista.length + " registros)";
+      btnAnterior.disabled = (paginaActual <= 1);
+      btnSiguiente.disabled = (paginaActual >= totalPaginas);
+    }
+
+    function darDeBaja(id) {
+      Swal.fire({
+        title: "¿Dar de baja el rol?",
+        text: "Los usuarios con este rol seguirán teniéndolo. Reasigná otro rol antes si es necesario.",
+        icon: "question", showCancelButton: true,
+        confirmButtonColor: "#ff3333", confirmButtonText: "Sí, dar de baja"
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetchAuth(apiRol + "/" + id, { method: "DELETE" }).then(r => {
+          if (!r.ok) return obtenerMensajeError(r, "No se pudo dar de baja.").then(m => { throw new Error(m); });
+          Swal.fire("Listo", "Rol dado de baja.", "success"); listar();
+        }).catch(mostrarError);
+      });
+    }
+
+    function activar(id) {
+      fetchAuth(apiRol + "/" + id + "/Activar", { method: "PUT" }).then(r => {
+        if (!r.ok) return obtenerMensajeError(r, "No se pudo activar.").then(m => { throw new Error(m); });
+        Swal.fire("Listo", "Rol activado.", "success"); listar();
+      }).catch(mostrarError);
+    }
+
+    document.querySelectorAll("[data-filtro]").forEach(btn => {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll("[data-filtro]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        filtroActual = btn.getAttribute("data-filtro");
+        paginaActual = 1; render();
+      });
+    });
+
+    buscador.addEventListener("input", () => { paginaActual = 1; render(); });
+    btnAnterior.addEventListener("click", () => { if (paginaActual > 1) { paginaActual--; render(); } });
+    btnSiguiente.addEventListener("click", () => { paginaActual++; render(); });
+
+    window.onload = listar;
+  </script>
+</body>
+</html>

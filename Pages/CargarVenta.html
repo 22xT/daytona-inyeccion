@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Nueva Venta - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    /* ============================================================
+       Pantalla de mostrador: alto fijo, sin scroll de pagina.
+       Solo scrollean el listado de resultados y el carrito.
+       ============================================================ */
+    body[data-page="venta-nueva"] { overflow: hidden; }
+
+    .venta-main {
+      height: calc(100vh - 70px);   /* 70px = alto de la barra superior */
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px 14px !important;
+      gap: 10px;
+    }
+
+    .codigo-repuesto {
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      color: #2c3e50;
+      letter-spacing: 0.5px;
+    }
+
+    /* ---------- Fila 1: tipo de cliente ---------- */
+    .tipo-cliente { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+    .tipo-btn {
+      background: #fff;
+      border: 2px solid var(--border);
+      border-radius: 9px;
+      padding: 8px 22px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: 0.15s;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+    .tipo-btn i { font-size: 1.05rem; }
+    .tipo-btn:hover { border-color: #b9d3f2; background: var(--nav-accent-soft); }
+    .tipo-btn.activo {
+      border-color: var(--nav-accent);
+      background: var(--nav-accent-soft);
+      color: var(--nav-accent-dark);
+    }
+    .chip-cliente {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--nav-accent-soft); border: 1px solid #b9d3f2;
+      color: var(--nav-accent-dark); border-radius: 20px;
+      padding: 5px 8px 5px 13px; font-size: 0.82rem; font-weight: 600;
+    }
+    .chip-cliente button {
+      background: none; border: none; color: var(--nav-accent-dark);
+      cursor: pointer; line-height: 1; padding: 2px 4px; border-radius: 50%;
+    }
+    .chip-cliente button:hover { background: rgba(0,0,0,0.08); }
+    .btn-cliente-reg {
+      background: #fff; border: 1px solid var(--border); border-radius: 9px;
+      padding: 8px 14px; font-size: 0.82rem; color: var(--text-muted); cursor: pointer;
+      margin-left: auto;
+    }
+    .btn-cliente-reg:hover { border-color: var(--nav-accent); color: var(--nav-accent-dark); }
+
+    .banner-presup {
+      display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+      background: var(--nav-accent-soft); border: 1px solid #b9d3f2;
+      color: var(--nav-accent-dark); border-radius: 9px;
+      padding: 8px 12px; font-size: 0.85rem; font-weight: 600;
+    }
+    .banner-presup i { font-size: 1rem; }
+    .banner-presup button {
+      margin-left: auto; background: none; border: none;
+      color: var(--nav-accent-dark); cursor: pointer; padding: 3px 6px; border-radius: 5px;
+    }
+    .banner-presup button:hover { background: rgba(0,0,0,0.08); }
+
+    /* ---------- Descuento y forma de pago ---------- */
+    .zona-pago {
+      padding: 10px 13px; border-top: 1px solid var(--border);
+      flex-shrink: 0; background: var(--bg-soft);
+    }
+    .pago-linea { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+    .pago-linea:last-child { margin-bottom: 0; }
+    .pago-lbl {
+      font-size: 0.75rem; color: var(--text-muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.4px; flex: 0 0 62px;
+    }
+    .btn-desc {
+      background: #fff; border: 1px solid var(--border); border-radius: 7px;
+      padding: 4px 11px; font-size: 0.82rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; transition: 0.12s;
+    }
+    .btn-desc:hover { border-color: var(--nav-accent); color: var(--nav-accent-dark); }
+    .btn-desc.activo {
+      background: var(--nav-accent); border-color: var(--nav-accent); color: #fff;
+    }
+    .btn-desc:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-fp {
+      flex: 1; background: #fff; border: 1px solid var(--border); border-radius: 7px;
+      padding: 6px 8px; font-size: 0.8rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; transition: 0.12s;
+    }
+    .btn-fp.activo {
+      background: var(--navy); border-color: var(--navy); color: #fff;
+    }
+    .btn-fp:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .fila-desc {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 18px; font-size: 0.85rem; color: #fff;
+      background: rgba(0,0,0,0.16);
+    }
+    .fila-desc .val { font-weight: 700; }
+
+    .chip-saldo {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #ffeded; border: 1px solid #f5c2c7; color: #842029;
+      border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; font-weight: 600;
+    }
+    .chip-saldo.favor { background: var(--green-soft); border-color: #badbcc; color: #0f5132; }
+
+    #entregaWrap { display: none; }
+    #entregaWrap.visible { display: flex; }
+
+    /* ---------- Fila 2: dos columnas ---------- */
+    .venta-body { display: flex; gap: 12px; flex: 1; min-height: 0; }
+    .col-izq { flex: 0 0 55%; display: flex; flex-direction: column; min-height: 0; }
+    .col-der { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+    .caja {
+      background: #fff; border: 1px solid var(--border); border-radius: 12px;
+      display: flex; flex-direction: column; min-height: 0; flex: 1;
+    }
+
+    /* ---------- Buscador y filtros ---------- */
+    .zona-busqueda { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .buscador-grande { position: relative; }
+    .buscador-grande i.lupa {
+      position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 1.15rem; pointer-events: none;
+    }
+    .buscador-grande input {
+      height: 48px; font-size: 1rem; padding-left: 44px;
+      border: 2px solid var(--border); border-radius: 10px;
+    }
+    .buscador-grande input:focus {
+      border-color: var(--nav-accent);
+      box-shadow: 0 0 0 0.2rem rgba(18,102,209,0.12);
+    }
+    .filtros-linea { display: flex; gap: 7px; margin-top: 8px; }
+    .filtros-linea select {
+      flex: 1; min-width: 0;
+      background-color: var(--nav-accent-soft);
+      border: 1px solid #b9d3f2;
+      color: var(--nav-accent-dark);
+      font-size: 0.82rem; font-weight: 500;
+      padding: 6px 8px; border-radius: 7px;
+    }
+    .filtros-linea select:focus {
+      background: #fff; border-color: var(--nav-accent); outline: none;
+      box-shadow: 0 0 0 0.15rem rgba(18,102,209,0.15);
+    }
+    .btn-limpiar-f {
+      background: var(--nav-accent-soft); border: 1px solid #b9d3f2;
+      color: var(--nav-accent-dark); border-radius: 7px;
+      padding: 6px 11px; cursor: pointer; flex-shrink: 0;
+    }
+    .btn-limpiar-f:hover { background: var(--nav-accent); border-color: var(--nav-accent); color: #fff; }
+
+    /* ---------- Resultados ---------- */
+    .resultados { overflow-y: auto; flex: 1; min-height: 0; }
+    .res-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 12px; border-bottom: 1px solid var(--border);
+    }
+    .res-item:last-child { border-bottom: none; }
+    .res-item:hover { background: var(--bg-soft); }
+    .res-item.sin-stock { opacity: 0.5; }
+
+    .res-foto {
+      width: 44px; height: 44px; flex-shrink: 0;
+      border-radius: 7px; border: 1px solid var(--border);
+      object-fit: cover; background: var(--bg);
+    }
+    .res-foto-ph {
+      width: 44px; height: 44px; flex-shrink: 0;
+      border-radius: 7px; border: 1px solid var(--border);
+      background: var(--bg); color: #b6c0cc;
+      display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+    }
+
+    .res-info { flex: 1; min-width: 0; }
+    .res-desc {
+      font-size: 0.87rem; color: var(--text); line-height: 1.25;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .res-meta {
+      font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .res-precio { font-weight: 700; color: var(--navy); white-space: nowrap; font-size: 0.93rem; }
+    .btn-add {
+      width: 34px; height: 34px; flex-shrink: 0;
+      border-radius: 8px; border: none;
+      background: var(--green); color: #fff;
+      font-size: 1.05rem; cursor: pointer; transition: 0.15s;
+    }
+    .btn-add:hover { background: #1e7e34; transform: scale(1.07); }
+    .btn-add:disabled { background: #ced4da; cursor: not-allowed; transform: none; }
+
+    /* ---------- Carrito ---------- */
+    .carrito-head {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 600; color: var(--navy); font-size: 0.92rem; flex-shrink: 0;
+    }
+    .carrito-lista { overflow-y: auto; flex: 1; min-height: 0; }
+    .carrito-item { padding: 9px 13px; border-bottom: 1px solid var(--border); }
+    .carrito-item:last-child { border-bottom: none; }
+    .carrito-l1 { display: flex; justify-content: space-between; gap: 8px; align-items: start; }
+    .carrito-desc { font-size: 0.84rem; line-height: 1.25; flex: 1; }
+    .carrito-l2 { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 8px; }
+    .qty-group { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+    .qty-group button {
+      width: 27px; height: 27px; border: none; background: #fff;
+      color: var(--navy); font-size: 0.95rem; cursor: pointer; line-height: 1;
+    }
+    .qty-group button:hover { background: var(--bg); }
+    .qty-group input {
+      width: 40px; height: 27px; border: none; text-align: center;
+      font-size: 0.84rem; font-weight: 600; color: var(--navy);
+      border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+    }
+    .carrito-sub { font-weight: 700; color: var(--navy); font-size: 0.9rem; }
+    .btn-quitar {
+      background: none; border: none; color: #c0392b;
+      cursor: pointer; padding: 2px 5px; border-radius: 5px; font-size: 0.85rem;
+    }
+    .btn-quitar:hover { background: #ffeded; }
+    .badge-critico-carrito {
+      background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;
+      font-size: 0.66rem; padding: 1px 6px; border-radius: 8px;
+      display: inline-block; margin-top: 3px;
+    }
+
+    .total-venta {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 100%);
+      color: #fff; padding: 13px 18px; border-radius: 0 0 12px 12px;
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .total-venta .lbl { font-size: 0.85rem; opacity: 0.85; letter-spacing: 0.6px; }
+    .total-venta .monto { font-size: 1.6rem; font-weight: 700; }
+
+    .acciones-carrito { display: flex; gap: 8px; margin-top: 9px; flex-shrink: 0; }
+    .btn-presupuesto {
+      flex: 0 0 38%; background: #fff; border: 2px solid var(--navy);
+      color: var(--navy); border-radius: 10px; padding: 13px 6px;
+      font-size: 0.92rem; font-weight: 700; cursor: pointer; transition: 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .btn-presupuesto:hover:not(:disabled) { background: var(--navy); color: #fff; }
+    .btn-confirmar {
+      flex: 1; background: var(--green); border: 2px solid var(--green); color: #fff;
+      border-radius: 10px; padding: 13px 6px;
+      font-size: 0.98rem; font-weight: 700; letter-spacing: 0.4px;
+      cursor: pointer; transition: 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-confirmar:hover:not(:disabled) { background: #1e7e34; border-color: #1e7e34; }
+    .btn-presupuesto:disabled, .btn-confirmar:disabled {
+      opacity: 0.45; cursor: not-allowed; background: #e9ecef;
+      border-color: #dee2e6; color: #8b96a3;
+    }
+
+    /* ---------- Botones del modal de presupuesto ---------- */
+    .btn-guardar-presup {
+      width: 100%; margin-top: 14px; padding: 11px 6px;
+      background: var(--navy); border: 2px solid var(--navy); color: #fff;
+      border-radius: 9px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 7px; transition: 0.15s;
+    }
+    .btn-guardar-presup:hover { background: var(--navy-soft); border-color: var(--navy-soft); }
+    .presup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .presup-grid button {
+      background: #fff; border: 1px solid var(--border); border-radius: 9px;
+      padding: 11px 6px; font-size: 0.85rem; font-weight: 600; color: var(--text);
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: 0.15s;
+    }
+    .presup-grid button:hover { border-color: var(--nav-accent); background: var(--nav-accent-soft); color: var(--nav-accent-dark); }
+    .presup-grid button i { font-size: 1.05rem; }
+
+    /* ---------- Hoja de presupuesto: solo al imprimir ---------- */
+    #hojaPresupuesto { display: none; }
+    @media print {
+      body { overflow: visible !important; }
+      body * { visibility: hidden !important; }
+      #hojaPresupuesto, #hojaPresupuesto * { visibility: visible !important; }
+      #hojaPresupuesto {
+        display: block !important;
+        position: absolute; left: 0; top: 0; width: 100%;
+        padding: 20px; font-family: Arial, sans-serif; color: #000;
+      }
+      #hojaPresupuesto table { width: 100%; border-collapse: collapse; }
+      #hojaPresupuesto th, #hojaPresupuesto td { border: 1px solid #999; padding: 6px 8px; font-size: 12px; }
+      #hojaPresupuesto th { background: #eee; }
+    }
+
+    /* ---------- Pantallas chicas: vuelve el scroll normal ---------- */
+    @media (max-width: 991px) {
+      body[data-page="venta-nueva"] { overflow: auto; }
+      .venta-main { height: auto; }
+      .venta-body { flex-direction: column; }
+      .col-izq, .col-der { flex: 1 1 auto; }
+      .resultados { max-height: 50vh; }
+      .carrito-lista { max-height: 40vh; }
+    }
+  </style>
+</head>
+
+<body data-page="venta-nueva">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content venta-main">
+
+    <!-- 1. Tipo de cliente -->
+    <div class="tipo-cliente">
+      <button type="button" class="tipo-btn activo" id="tipoPublico">
+        <i class="bi bi-person"></i> Público general
+      </button>
+      <button type="button" class="tipo-btn" id="tipoMecanico">
+        <i class="bi bi-wrench-adjustable"></i> Mecánico
+      </button>
+      <span id="chipCliente"></span>
+      <button type="button" class="btn-cliente-reg" id="btnBuscarCliente">
+        <i class="bi bi-search"></i> Cliente registrado
+      </button>
+    </div>
+
+    <!-- Solo visible cuando se llega desde un presupuesto -->
+    <div class="banner-presup" id="bannerPresup" style="display:none;">
+      <i class="bi bi-file-earmark-text"></i>
+      <span id="bannerPresupTexto"></span>
+      <button type="button" onclick="cancelarConversion()" title="Cancelar la conversión">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <!-- 2. Cuerpo -->
+    <div class="venta-body">
+
+      <!-- Izquierda: buscador + productos -->
+      <div class="col-izq">
+        <div class="caja">
+          <div class="zona-busqueda">
+            <div class="buscador-grande">
+              <i class="bi bi-search lupa"></i>
+              <input type="text" id="buscarRepuesto" class="form-control"
+                     placeholder="Buscar por código, descripción o marca..." autocomplete="off">
+            </div>
+            <div class="filtros-linea">
+              <select id="filtroRubro"><option value="">Rubro</option></select>
+              <select id="filtroMarca"><option value="">Marca</option></select>
+              <select id="filtroModelo"><option value="">Modelo</option></select>
+              <button class="btn-limpiar-f" id="btnLimpiarFiltros" title="Limpiar filtros">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+            </div>
+          </div>
+          <div class="resultados" id="resultados"></div>
+        </div>
+      </div>
+
+      <!-- Derecha: carrito -->
+      <div class="col-der">
+        <div class="caja">
+          <div class="carrito-head">
+            <span><i class="bi bi-cart-fill"></i> Carrito <span id="contadorItems"></span></span>
+            <button id="btnVaciar" class="btn-quitar" style="display:none;" title="Vaciar carrito">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+          <div class="carrito-lista" id="listaCarrito"></div>
+          <div id="carritoVacio" class="cart-empty" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div class="icon"><i class="bi bi-cart"></i></div>
+            <p class="mb-0">Buscá un repuesto y tocá <strong>+</strong>.</p>
+          </div>
+          <div class="zona-pago">
+            <div class="pago-linea">
+              <span class="pago-lbl">Desc.</span>
+              <div id="botonesDescuento" class="d-flex gap-1 flex-wrap"></div>
+            </div>
+            <div class="pago-linea">
+              <span class="pago-lbl">Pago</span>
+              <button type="button" class="btn-fp activo" id="fpContado">Contado</button>
+              <button type="button" class="btn-fp" id="fpCredito" disabled
+                      title="Requiere un cliente con cuenta corriente">Cuenta corriente</button>
+            </div>
+            <div class="pago-linea" id="entregaWrap">
+              <span class="pago-lbl">Entrega</span>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">$</span>
+                <input type="text" inputmode="decimal" id="entrega"
+                       class="form-control text-end" value="0">
+              </div>
+            </div>
+          </div>
+
+          <div class="fila-desc" id="filaDescuento" style="display:none;">
+            <span>Descuento <span id="descPorc"></span></span>
+            <span class="val" id="descMonto">$0,00</span>
+          </div>
+
+          <div class="total-venta">
+            <span class="lbl">TOTAL</span>
+            <span class="monto" id="total">$0,00</span>
+          </div>
+        </div>
+
+        <div class="acciones-carrito">
+          <button type="button" class="btn-presupuesto" id="btnPresupuesto" disabled>
+            <i class="bi bi-file-earmark-text"></i> Presupuesto
+          </button>
+          <button type="button" class="btn-confirmar" id="btnConfirmar" disabled>
+            <i class="bi bi-check2-circle"></i> CONFIRMAR VENTA
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="hojaPresupuesto"></div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    var apiVenta = API_BASE + "Venta";
+    var apiCliente = API_BASE + "Cliente";
+    var apiRepuesto = API_BASE + "Repuesto";
+    var apiRubro = API_BASE + "Rubro";
+    var apiMarca = API_BASE + "Marca";
+    var apiModelo = API_BASE + "Modelo";
+    var apiPresupuesto = API_BASE + "Presupuesto";
+    var apiDetallePresupuesto = API_BASE + "DetallePresupuesto";
+    var apiConfiguracion = API_BASE + "Configuracion";
+    var apiCuentaCorriente = API_BASE + "CuentaCorriente";
+
+    // Clientes internos: permiten vender sin cliente registrado
+    // sin tocar la estructura de Venta.IdCliente (sigue siendo NOT NULL).
+    var DNI_CONSUMIDOR_FINAL = "00000000";
+    var DNI_MECANICO_MOSTRADOR = "00000001";
+
+    var todosRepuestos = [];
+    var todosClientes = [];
+    var todosModelos = [];
+    var carrito = [];
+    var tipoCliente = "publico";
+    var clienteElegido = null;
+    var presupActual = null;
+    var presupuestoOrigen = null;   // {Id, Numero} si la venta viene de un presupuesto
+    var descuentosPublico = [5, 7, 10];
+    var descuentoMecanico = 10;
+    var descuentoActual = 0;
+    var formaPago = "Contado";
+    var saldoCliente = null;        // saldo actual del cliente elegido
+
+    function esActivo(r) {
+      return r.Activo === true || r.Activo === 1 || r.Activo === undefined;
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    /* ================= CARGA ================= */
+
+    function cargarClientes() {
+      return fetchAuth(apiCliente).then(function (r) { return r.json(); }).then(function (data) {
+        todosClientes = data.filter(function (c) { return c.Activo !== false; });
+      }).catch(function () {});
+    }
+
+    function llenarSelect(id, datos) {
+      var sel = document.getElementById(id);
+      datos.forEach(function (x) {
+        var o = document.createElement("option");
+        o.value = x.Id;
+        o.textContent = x.Nombre;
+        sel.appendChild(o);
+      });
+    }
+
+    function cargarCombos() {
+      fetchAuth(apiRubro).then(function (r) { return r.json(); })
+        .then(function (d) { llenarSelect("filtroRubro", d); }).catch(function () {});
+
+      fetchAuth(apiMarca).then(function (r) { return r.json(); })
+        .then(function (d) { llenarSelect("filtroMarca", d); }).catch(function () {});
+
+      fetchAuth(apiModelo).then(function (r) { return r.json(); }).then(function (d) {
+        todosModelos = d;
+        llenarSelect("filtroModelo", d);
+      }).catch(function () {});
+    }
+
+    // Al elegir marca, el combo de modelo muestra solo los de esa marca
+    function filtrarModelosPorMarca() {
+      var idMarca = document.getElementById("filtroMarca").value;
+      var sel = document.getElementById("filtroModelo");
+      var actual = sel.value;
+      var lista = idMarca
+        ? todosModelos.filter(function (m) { return String(m.IdMarca) === idMarca; })
+        : todosModelos;
+
+      sel.innerHTML = '<option value="">Modelo</option>';
+      lista.forEach(function (m) {
+        var o = document.createElement("option");
+        o.value = m.Id; o.textContent = m.Nombre;
+        sel.appendChild(o);
+      });
+      if (actual && lista.some(function (m) { return String(m.Id) === actual; })) sel.value = actual;
+    }
+
+    function cargarRepuestos() {
+      return fetchAuth(apiRepuesto).then(function (r) { return r.json(); }).then(function (data) {
+        todosRepuestos = data.filter(esActivo);
+        buscar();
+      }).catch(function () {
+        document.getElementById("resultados").innerHTML =
+          '<div class="p-4 text-center text-danger">No se pudieron cargar los repuestos.</div>';
+      });
+    }
+
+    /* ================= TIPO DE CLIENTE ================= */
+
+    function setTipo(t) {
+      tipoCliente = t;
+      document.getElementById("tipoPublico").classList.toggle("activo", t === "publico");
+      document.getElementById("tipoMecanico").classList.toggle("activo", t === "mecanico");
+
+      // Al mecanico le corresponde su descuento fijo; al publico, ninguno
+      // salvo que lo pida.
+      descuentoActual = (t === "mecanico") ? descuentoMecanico : 0;
+      pintarBotonesDescuento();
+      renderCarrito();
+    }
+
+    function pintarChipCliente() {
+      var cont = document.getElementById("chipCliente");
+      if (!clienteElegido) { cont.innerHTML = ""; return; }
+
+      var html = '<span class="chip-cliente">' +
+        '<i class="bi bi-person-check-fill"></i> ' +
+        escapeHtml(clienteElegido.Apellido + ", " + clienteElegido.Nombre) +
+        ' <button type="button" onclick="quitarCliente()" title="Quitar">' +
+        '<i class="bi bi-x-lg"></i></button></span>';
+
+      // Saber cuanto debe ANTES de seguir fiando es el dato que hoy no
+      // esta en el mostrador.
+      if (saldoCliente !== null && saldoCliente !== 0) {
+        var favor = saldoCliente < 0;
+        html += ' <span class="chip-saldo' + (favor ? ' favor' : '') + '">' +
+          '<i class="bi bi-' + (favor ? 'arrow-down-circle' : 'exclamation-circle') + '"></i> ' +
+          (favor ? 'A favor ' : 'Debe ') + formatearMoneda(Math.abs(saldoCliente)) + '</span>';
+      }
+
+      cont.innerHTML = html;
+    }
+
+    function quitarCliente() {
+      clienteElegido = null;
+      saldoCliente = null;
+      pintarChipCliente();
+      actualizarOpcionCredito();
+    }
+
+    function abrirBuscarCliente() {
+      if (todosClientes.length === 0) {
+        Swal.fire("Sin clientes", "Todavía no hay clientes registrados.", "info");
+        return;
+      }
+      Swal.fire({
+        title: "Cliente registrado",
+        html: '<input id="swFiltro" class="swal2-input" placeholder="Filtrar por nombre o DNI…" style="margin-bottom:8px;">' +
+              '<select id="swCliente" class="swal2-select" size="7" style="width:100%;"></select>' +
+              '<div class="form-text mt-2">Opcional. Podés cerrar y vender igual.</div>',
+        showCancelButton: true,
+        confirmButtonText: "Usar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#001f3f",
+        didOpen: function () {
+          var filtro = document.getElementById("swFiltro");
+          var sel = document.getElementById("swCliente");
+          function pintar(lista) {
+            sel.innerHTML = "";
+            lista.forEach(function (c) {
+              var o = document.createElement("option");
+              o.value = c.Id;
+              o.textContent = c.Apellido + ", " + c.Nombre + " (DNI " + c.Dni + ")";
+              sel.appendChild(o);
+            });
+          }
+          pintar(todosClientes);
+          filtro.focus();
+          filtro.addEventListener("input", function () {
+            var t = filtro.value.toLowerCase();
+            pintar(todosClientes.filter(function (c) {
+              return (c.Apellido + " " + c.Nombre + " " + c.Dni).toLowerCase().indexOf(t) !== -1;
+            }));
+          });
+        },
+        preConfirm: function () {
+          var id = parseInt(document.getElementById("swCliente").value, 10);
+          if (!id) { Swal.showValidationMessage("Elegí un cliente de la lista."); return false; }
+          return id;
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        clienteElegido = todosClientes.find(function (c) { return c.Id === res.value; }) || null;
+        pintarChipCliente();
+        actualizarOpcionCredito();
+        cargarSaldoCliente();
+      });
+    }
+
+    /* ================= BUSCADOR ================= */
+
+    function buscar() {
+      var texto = document.getElementById("buscarRepuesto").value.trim().toLowerCase();
+      var idRubro = document.getElementById("filtroRubro").value;
+      var idMarca = document.getElementById("filtroMarca").value;
+      var idModelo = document.getElementById("filtroModelo").value;
+
+      var lista = todosRepuestos.slice();
+      if (idRubro !== "") lista = lista.filter(function (r) { return String(r.IdRubro) === idRubro; });
+      if (idMarca !== "") lista = lista.filter(function (r) { return String(r.IdMarca) === idMarca; });
+      if (idModelo !== "") lista = lista.filter(function (r) { return String(r.IdModelo) === idModelo; });
+      if (texto !== "") {
+        lista = lista.filter(function (r) {
+          return (r.Descripcion || "").toLowerCase().indexOf(texto) !== -1 ||
+                 (r.Codigo || "").toLowerCase().indexOf(texto) !== -1 ||
+                 (r.Marca || "").toLowerCase().indexOf(texto) !== -1;
+        });
+      }
+      pintarResultados(lista.slice(0, 60), lista.length);
+    }
+
+    // Miniatura: usa el campo de imagen si algun dia existe en Repuesto.
+    // Mientras tanto muestra un recuadro con icono.
+    function miniatura(r) {
+      var url = r.Imagen || r.UrlImagen || r.Foto || "";
+      if (url) {
+        return '<img class="res-foto" src="' + escapeHtml(url) + '" alt="" ' +
+               'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+               '<div class="res-foto-ph" style="display:none;"><i class="bi bi-nut"></i></div>';
+      }
+      return '<div class="res-foto-ph"><i class="bi bi-nut"></i></div>';
+    }
+
+    function pintarResultados(lista, totalReal) {
+      var cont = document.getElementById("resultados");
+
+      if (lista.length === 0) {
+        cont.innerHTML = '<div class="p-4 text-center text-muted">' +
+          '<i class="bi bi-search" style="font-size:1.8rem;opacity:0.4;"></i>' +
+          '<div class="mt-2">No se encontraron repuestos.</div></div>';
+        return;
+      }
+
+      var html = "";
+      lista.forEach(function (r) {
+        var stock = r.StockActual !== undefined ? r.StockActual : 0;
+        var minimo = r.StockMinimo || 5;
+        var sinStock = stock <= 0;
+        var stockTxt = sinStock
+          ? '<span class="stock-zero">Sin stock</span>'
+          : (stock <= minimo ? '<span class="stock-low">Stock ' + stock + '</span>' : 'Stock ' + stock);
+
+        html += '<div class="res-item' + (sinStock ? ' sin-stock' : '') + '">' +
+          miniatura(r) +
+          '<div class="res-info">' +
+            '<div class="res-desc"><span class="codigo-repuesto">' + escapeHtml(r.Codigo || "-") + '</span> ' +
+              escapeHtml(r.Descripcion) + '</div>' +
+            '<div class="res-meta">' + escapeHtml(r.Rubro || "-") + ' · ' +
+              escapeHtml(r.Marca || "Universal") + ' · ' +
+              escapeHtml(r.Modelo || "Universal") + ' · ' + stockTxt + '</div>' +
+          '</div>' +
+          '<div class="res-precio">' + formatearMoneda(r.PrecioDeVenta) + '</div>' +
+          '<button class="btn-add" onclick="agregar(' + r.Id + ')"' + (sinStock ? ' disabled' : '') +
+            ' title="Agregar"><i class="bi bi-plus-lg"></i></button>' +
+        '</div>';
+      });
+
+      if (totalReal > lista.length) {
+        html += '<div class="p-2 text-center text-muted" style="font-size:0.78rem;">' +
+          'Mostrando ' + lista.length + ' de ' + totalReal + '. Afiná la búsqueda.</div>';
+      }
+      cont.innerHTML = html;
+    }
+
+    /* ================= CARRITO ================= */
+
+    function agregar(idRepuesto) {
+      var r = todosRepuestos.find(function (x) { return x.Id === idRepuesto; });
+      if (!r) return;
+
+      var stock = r.StockActual !== undefined ? r.StockActual : 0;
+      var existente = carrito.find(function (c) { return c.IdRepuesto === idRepuesto; });
+      var nueva = (existente ? existente.Cantidad : 0) + 1;
+
+      if (nueva > stock) {
+        Swal.fire("Stock insuficiente", "Solo hay " + stock + " unidades de " + r.Descripcion + ".", "warning");
+        return;
+      }
+
+      if (existente) {
+        existente.Cantidad = nueva;
+      } else {
+        carrito.push({
+          IdRepuesto: r.Id,
+          Codigo: r.Codigo || "",
+          Descripcion: r.Descripcion,
+          PrecioUnitario: Number(r.PrecioDeVenta),
+          Cantidad: 1,
+          StockActual: stock,
+          StockMinimo: r.StockMinimo || 5
+        });
+      }
+      renderCarrito();
+    }
+
+    function cambiarCantidad(idRepuesto, valor) {
+      var item = carrito.find(function (c) { return c.IdRepuesto === idRepuesto; });
+      if (!item) return;
+      var cant = parseInt(valor, 10);
+      if (!cant || cant <= 0) { quitar(idRepuesto); return; }
+      if (cant > item.StockActual) {
+        Swal.fire("Stock insuficiente", "Solo hay " + item.StockActual + " unidades.", "warning");
+        renderCarrito();
+        return;
+      }
+      item.Cantidad = cant;
+      renderCarrito();
+    }
+
+    function sumar(idRepuesto, delta) {
+      var item = carrito.find(function (c) { return c.IdRepuesto === idRepuesto; });
+      if (!item) return;
+      cambiarCantidad(idRepuesto, item.Cantidad + delta);
+    }
+
+    function quitar(idRepuesto) {
+      carrito = carrito.filter(function (c) { return c.IdRepuesto !== idRepuesto; });
+      renderCarrito();
+    }
+
+    function vaciar() {
+      if (carrito.length === 0) return;
+      Swal.fire({
+        title: "¿Vaciar el carrito?",
+        text: "Vas a perder los " + carrito.length + " ítems que agregaste.",
+        icon: "warning", showCancelButton: true,
+        confirmButtonColor: "#c0392b",
+        confirmButtonText: "Sí, vaciar", cancelButtonText: "Cancelar"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        carrito = [];
+        renderCarrito();
+      });
+    }
+
+    function subtotalCarrito() {
+      return carrito.reduce(function (s, c) { return s + c.Cantidad * c.PrecioUnitario; }, 0);
+    }
+
+    function montoDescuento() {
+      return Math.round(subtotalCarrito() * descuentoActual) / 100;
+    }
+
+    function totalCarrito() {
+      return subtotalCarrito() - montoDescuento();
+    }
+
+    function renderCarrito() {
+      var cont = document.getElementById("listaCarrito");
+      var vacio = document.getElementById("carritoVacio");
+      var contador = document.getElementById("contadorItems");
+      var btnVaciar = document.getElementById("btnVaciar");
+      var hay = carrito.length > 0;
+
+      document.getElementById("btnConfirmar").disabled = !hay;
+      document.getElementById("btnPresupuesto").disabled = !hay;
+      btnVaciar.style.display = hay ? "inline-block" : "none";
+
+      if (!hay) {
+        cont.innerHTML = "";
+        vacio.style.display = "flex";
+        contador.textContent = "";
+        document.getElementById("total").textContent = "$0,00";
+        document.getElementById("filaDescuento").style.display = "none";
+        return;
+      }
+      vacio.style.display = "none";
+
+      var unidades = carrito.reduce(function (s, c) { return s + c.Cantidad; }, 0);
+      contador.textContent = "(" + unidades + ")";
+
+      var html = "";
+      carrito.forEach(function (c) {
+        var subtotal = c.Cantidad * c.PrecioUnitario;
+        var restante = c.StockActual - c.Cantidad;
+        var aviso = "";
+        if (restante === 0) {
+          aviso = '<div class="badge-critico-carrito"><i class="bi bi-exclamation-triangle-fill"></i> Queda sin stock</div>';
+        } else if (restante <= c.StockMinimo) {
+          aviso = '<div class="badge-critico-carrito"><i class="bi bi-arrow-down"></i> Queda bajo mínimo (' + restante + ')</div>';
+        }
+
+        html += '<div class="carrito-item">' +
+          '<div class="carrito-l1">' +
+            '<div class="carrito-desc"><span class="codigo-repuesto">' + escapeHtml(c.Codigo) + '</span> ' +
+              escapeHtml(c.Descripcion) + aviso + '</div>' +
+            '<button class="btn-quitar" onclick="quitar(' + c.IdRepuesto + ')" title="Quitar">' +
+              '<i class="bi bi-x-lg"></i></button>' +
+          '</div>' +
+          '<div class="carrito-l2">' +
+            '<div class="qty-group">' +
+              '<button type="button" onclick="sumar(' + c.IdRepuesto + ', -1)">−</button>' +
+              '<input type="number" min="1" max="' + c.StockActual + '" value="' + c.Cantidad + '" ' +
+                'onchange="cambiarCantidad(' + c.IdRepuesto + ', this.value)">' +
+              '<button type="button" onclick="sumar(' + c.IdRepuesto + ', 1)">+</button>' +
+            '</div>' +
+            '<div class="text-muted" style="font-size:0.75rem;">' + formatearMoneda(c.PrecioUnitario) + ' c/u</div>' +
+            '<div class="carrito-sub">' + formatearMoneda(subtotal) + '</div>' +
+          '</div>' +
+        '</div>';
+      });
+
+      cont.innerHTML = html;
+
+      var fila = document.getElementById("filaDescuento");
+      if (descuentoActual > 0 && carrito.length > 0) {
+        fila.style.display = "flex";
+        document.getElementById("descPorc").textContent = descuentoActual + "%";
+        document.getElementById("descMonto").textContent = "-" + formatearMoneda(montoDescuento());
+      } else {
+        fila.style.display = "none";
+      }
+
+      document.getElementById("total").textContent = formatearMoneda(totalCarrito());
+    }
+
+    /* ================= PRESUPUESTO ================= */
+
+    function abrirPresupuesto() {
+      if (carrito.length === 0) return;
+
+      // El numero real lo asigna el backend al guardar (SP_Presupuesto_I).
+      // Hasta entonces el presupuesto es PROVISORIO.
+      presupActual = {
+        Id: null,
+        numero: null,
+        guardado: false,
+        fecha: new Date().toLocaleDateString("es-AR"),
+        tipo: tipoCliente === "mecanico" ? "Mecánico" : "Público general",
+        nombre: clienteElegido ? (clienteElegido.Nombre + " " + clienteElegido.Apellido) : "",
+        telefono: clienteElegido ? (clienteElegido.Telefono || "") : "",
+        items: carrito.slice(),
+        total: totalCarrito()
+      };
+
+      Swal.fire({
+        title: "Datos para presupuesto",
+        html:
+          '<div style="text-align:left;">' +
+            '<div class="form-text mb-2">Ambos campos son opcionales.</div>' +
+            '<label class="form-label mb-1">Nombre</label>' +
+            '<input id="pNombre" class="form-control" placeholder="Juan" value="' +
+              escapeHtml(presupActual.nombre) + '">' +
+            '<label class="form-label mb-1 mt-2">WhatsApp</label>' +
+            '<input id="pTel" class="form-control" placeholder="3511234567" value="' +
+              escapeHtml(presupActual.telefono) + '">' +
+            '<button type="button" class="btn-guardar-presup" onclick="presupGuardar()">' +
+              '<i class="bi bi-save"></i> Guardar presupuesto</button>' +
+            '<div class="presup-grid">' +
+              '<button type="button" onclick="presupPdf()"><i class="bi bi-filetype-pdf"></i> Generar PDF</button>' +
+              '<button type="button" onclick="presupImagen()"><i class="bi bi-image"></i> Generar imagen</button>' +
+              '<button type="button" onclick="presupImprimir()"><i class="bi bi-printer"></i> Imprimir</button>' +
+              '<button type="button" onclick="presupWhatsapp()"><i class="bi bi-whatsapp"></i> WhatsApp</button>' +
+            '</div>' +
+            '<div class="form-text mt-2 text-center" id="presupEstado">' +
+              'Sin guardar. Al generar cualquier documento se guarda y toma número.</div>' +
+          '</div>',
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: "Cerrar",
+        width: 460
+      });
+    }
+
+    function leerDatosModal() {
+      var n = document.getElementById("pNombre");
+      var t = document.getElementById("pTel");
+      if (n) presupActual.nombre = n.value.trim();
+      if (t) presupActual.telefono = t.value.trim();
+      return presupActual;
+    }
+
+    function presupPintarEstado(txt, clase) {
+      var el = document.getElementById("presupEstado");
+      if (!el) return;
+      el.textContent = txt;
+      el.className = "form-text mt-2 text-center " + (clase || "");
+    }
+
+    // Guarda cabecera + renglones. Devuelve una promesa que resuelve
+    // en true si quedo guardado (o ya lo estaba).
+    function presupGuardar() {
+      var d = leerDatosModal();
+
+      if (d.guardado) {
+        presupPintarEstado("Ya está guardado como N° " + d.numero + ".", "text-success");
+        return Promise.resolve(true);
+      }
+
+      presupPintarEstado("Guardando…", "");
+
+      var cabecera = {
+        IdCliente: clienteElegido ? clienteElegido.Id : null,
+        NombreOcasional: d.nombre || null,
+        TelefonoOcasional: d.telefono || null,
+        // Sin acento: la tabla tiene CHECK (TipoCliente IN ('Publico','Mecanico'))
+        TipoCliente: tipoCliente === "mecanico" ? "Mecanico" : "Publico",
+        DiasValidez: 7
+      };
+
+      return fetchAuth(apiPresupuesto, { method: "POST", body: JSON.stringify(cabecera) })
+        .then(function (r) {
+          if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+          return r.json();
+        })
+        .then(function (res) {
+          d.Id = res.Id;
+          d.numero = res.Numero;
+
+          // Los renglones se mandan de a uno, igual que DetallePedido
+          var promesas = d.items.map(function (c) {
+            return fetchAuth(apiDetallePresupuesto, {
+              method: "POST",
+              body: JSON.stringify({
+                IdPresupuesto: res.Id,
+                IdRepuesto: c.IdRepuesto,
+                Cantidad: c.Cantidad,
+                PrecioUnitario: c.PrecioUnitario
+              })
+            }).then(function (rd) {
+              if (!rd.ok) throw new Error('No se pudo guardar "' + c.Descripcion + '".');
+              return true;
+            });
+          });
+          return Promise.all(promesas);
+        })
+        .then(function () {
+          d.guardado = true;
+          presupPintarEstado("Guardado como N° " + d.numero + ".", "text-success");
+          return true;
+        })
+        .catch(function (err) {
+          presupPintarEstado("No se pudo guardar: " + (err.message || "error de conexión") +
+                             ". Los documentos van a salir como PROVISORIO.", "text-danger");
+          return false;
+        });
+    }
+
+    // Todo documento se guarda antes de salir: asi no circula un presupuesto
+    // con un numero que no existe en la base.
+    function presupAsegurarGuardado() {
+      if (presupActual.guardado) return Promise.resolve(true);
+      return presupGuardar();
+    }
+
+    function presupEtiquetaNumero(d) {
+      return d.numero ? ("N° " + d.numero) : "PROVISORIO";
+    }
+
+    function armarHoja(d) {
+      var filas = "";
+      d.items.forEach(function (c) {
+        filas += "<tr>" +
+          "<td>" + escapeHtml(c.Codigo) + "</td>" +
+          "<td>" + escapeHtml(c.Descripcion) + "</td>" +
+          "<td style='text-align:center'>" + c.Cantidad + "</td>" +
+          "<td style='text-align:right'>" + formatearMoneda(c.PrecioUnitario) + "</td>" +
+          "<td style='text-align:right'>" + formatearMoneda(c.Cantidad * c.PrecioUnitario) + "</td>" +
+        "</tr>";
+      });
+
+      var datosCli = "";
+      if (d.nombre) datosCli += "<div><strong>Cliente:</strong> " + escapeHtml(d.nombre) + "</div>";
+      if (d.telefono) datosCli += "<div><strong>Teléfono:</strong> " + escapeHtml(d.telefono) + "</div>";
+      datosCli += "<div><strong>Tipo:</strong> " + d.tipo + "</div>";
+
+      document.getElementById("hojaPresupuesto").innerHTML =
+        '<div style="border-bottom:3px solid #001f3f;padding-bottom:10px;margin-bottom:14px;">' +
+          '<div style="font-size:26px;font-weight:bold;color:#001f3f;">DAYTONA</div>' +
+          '<div style="font-size:11px;letter-spacing:2px;color:#555;">REPUESTOS AUTOMOTOR</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:13px;">' +
+          '<div>' + datosCli + '</div>' +
+          '<div style="text-align:right;">' +
+            '<div><strong>PRESUPUESTO ' + presupEtiquetaNumero(d) + '</strong></div>' +
+            '<div>Fecha: ' + d.fecha + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<table><thead><tr>' +
+          '<th>Código</th><th>Descripción</th><th>Cant.</th><th>P. Unit.</th><th>Subtotal</th>' +
+        '</tr></thead><tbody>' + filas + '</tbody></table>' +
+        '<div style="text-align:right;margin-top:14px;font-size:18px;font-weight:bold;color:#001f3f;">' +
+          'TOTAL: ' + formatearMoneda(d.total) + '</div>' +
+        '<div style="margin-top:24px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:8px;">' +
+          'Presupuesto sin valor fiscal. Precios sujetos a modificación sin previo aviso.</div>';
+    }
+
+    // PDF e Imprimir abren el mismo dialogo del navegador:
+    // en "Destino" se elige la impresora o "Guardar como PDF".
+    function presupImprimir() {
+      presupAsegurarGuardado().then(function () {
+        armarHoja(leerDatosModal());
+        window.print();
+      });
+    }
+    function presupPdf() { presupImprimir(); }
+
+    function presupImagen() {
+      presupAsegurarGuardado().then(presupImagenDibujar);
+    }
+
+    function presupImagenDibujar() {
+      var d = leerDatosModal();
+      var ancho = 720;
+      var alto = 250 + d.items.length * 34;
+
+      var cv = document.createElement("canvas");
+      cv.width = ancho; cv.height = alto;
+      var ctx = cv.getContext("2d");
+
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, ancho, alto);
+      ctx.fillStyle = "#001f3f"; ctx.fillRect(0, 0, ancho, 78);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 30px Arial"; ctx.fillText("DAYTONA", 26, 40);
+      ctx.font = "12px Arial"; ctx.fillText("REPUESTOS AUTOMOTOR", 26, 60);
+      ctx.textAlign = "right";
+      ctx.font = "bold 17px Arial"; ctx.fillText("PRESUPUESTO " + presupEtiquetaNumero(d), ancho - 26, 38);
+      ctx.font = "13px Arial"; ctx.fillText(d.fecha, ancho - 26, 58);
+      ctx.textAlign = "left";
+
+      var y = 102;
+      ctx.fillStyle = "#333333"; ctx.font = "13px Arial";
+      if (d.nombre) { ctx.fillText("Cliente: " + d.nombre, 26, y); y += 19; }
+      if (d.telefono) { ctx.fillText("Teléfono: " + d.telefono, 26, y); y += 19; }
+      ctx.fillText("Tipo: " + d.tipo, 26, y); y += 26;
+
+      ctx.fillStyle = "#eef1f5"; ctx.fillRect(20, y - 15, ancho - 40, 26);
+      ctx.fillStyle = "#001f3f"; ctx.font = "bold 12px Arial";
+      ctx.fillText("DESCRIPCIÓN", 26, y + 3);
+      ctx.textAlign = "center"; ctx.fillText("CANT", 448, y + 3);
+      ctx.textAlign = "right";
+      ctx.fillText("P. UNIT.", 580, y + 3);
+      ctx.fillText("SUBTOTAL", ancho - 26, y + 3);
+      ctx.textAlign = "left";
+      y += 30;
+
+      d.items.forEach(function (c) {
+        ctx.fillStyle = "#2c3e50"; ctx.font = "13px Arial";
+        var desc = (c.Codigo ? c.Codigo + "  " : "") + c.Descripcion;
+        if (desc.length > 46) desc = desc.substring(0, 44) + "…";
+        ctx.fillText(desc, 26, y);
+        ctx.textAlign = "center"; ctx.fillText(String(c.Cantidad), 448, y);
+        ctx.textAlign = "right";
+        ctx.fillText(formatearMoneda(c.PrecioUnitario), 580, y);
+        ctx.font = "bold 13px Arial";
+        ctx.fillText(formatearMoneda(c.Cantidad * c.PrecioUnitario), ancho - 26, y);
+        ctx.textAlign = "left";
+        ctx.strokeStyle = "#e6e9ee"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(20, y + 11); ctx.lineTo(ancho - 20, y + 11); ctx.stroke();
+        y += 34;
+      });
+
+      y += 12;
+      ctx.fillStyle = "#001f3f"; ctx.fillRect(20, y - 22, ancho - 40, 44);
+      ctx.fillStyle = "#ffffff"; ctx.font = "bold 21px Arial";
+      ctx.textAlign = "right";
+      ctx.fillText("TOTAL: " + formatearMoneda(d.total), ancho - 30, y + 7);
+      ctx.textAlign = "left";
+
+      ctx.fillStyle = "#8a8a8a"; ctx.font = "10px Arial";
+      ctx.fillText("Presupuesto sin valor fiscal. Precios sujetos a modificación.", 26, alto - 12);
+
+      var a = document.createElement("a");
+      a.download = "Presupuesto-" + (d.numero || "provisorio") + ".png";
+      a.href = cv.toDataURL("image/png");
+      a.click();
+    }
+
+    function presupWhatsapp() {
+      presupAsegurarGuardado().then(presupWhatsappEnviar);
+    }
+
+    function presupWhatsappEnviar() {
+      var d = leerDatosModal();
+      var txt = "*DAYTONA REPUESTOS AUTOMOTOR*\n";
+      txt += "Presupuesto " + presupEtiquetaNumero(d) + " — " + d.fecha + "\n";
+      if (d.nombre) txt += "Cliente: " + d.nombre + "\n";
+      txt += "\n";
+      d.items.forEach(function (c) {
+        txt += "• " + c.Descripcion + "\n";
+        txt += "   " + c.Cantidad + " x " + formatearMoneda(c.PrecioUnitario) +
+               " = " + formatearMoneda(c.Cantidad * c.PrecioUnitario) + "\n";
+      });
+      txt += "\n*TOTAL: " + formatearMoneda(d.total) + "*\n";
+      txt += "\n_Precios sujetos a modificación._";
+
+      var tel = (d.telefono || "").replace(/\D/g, "");
+      var url = tel
+        ? "https://wa.me/54" + tel + "?text=" + encodeURIComponent(txt)
+        : "https://wa.me/?text=" + encodeURIComponent(txt);
+      window.open(url, "_blank");
+    }
+
+    /* ================= DESCUENTO Y FORMA DE PAGO ================= */
+
+    // Los escalones salen de la configuracion. Si no se pueden leer,
+    // se usan los valores por defecto: la venta no se puede frenar
+    // porque falle una consulta de parametros.
+    function cargarParametrosVenta() {
+      return fetchAuth(apiConfiguracion + "/Venta")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (p) {
+          if (!p) return;
+          if (p.DescuentosPublico) {
+            var lista = String(p.DescuentosPublico).split(",")
+              .map(function (x) { return parseFloat(x.trim()); })
+              .filter(function (x) { return !isNaN(x) && x > 0 && x <= 100; });
+            if (lista.length > 0) descuentosPublico = lista;
+          }
+          var dm = parseFloat(p.DescuentoMecanico);
+          if (!isNaN(dm)) descuentoMecanico = dm;
+        })
+        .catch(function () { /* se usan los valores por defecto */ });
+    }
+
+    function pintarBotonesDescuento() {
+      var cont = document.getElementById("botonesDescuento");
+      var esMecanico = tipoCliente === "mecanico";
+
+      // El mecanico tiene un descuento fijo: no se le ofrecen escalones.
+      var valores = esMecanico ? [descuentoMecanico] : descuentosPublico;
+
+      var html = '<button type="button" class="btn-desc' +
+                 (descuentoActual === 0 ? ' activo' : '') +
+                 '" onclick="setDescuento(0)">Sin</button>';
+
+      valores.forEach(function (v) {
+        html += '<button type="button" class="btn-desc' +
+                (descuentoActual === v ? ' activo' : '') +
+                '" onclick="setDescuento(' + v + ')">' + v + '%</button>';
+      });
+
+      cont.innerHTML = html;
+    }
+
+    function setDescuento(v) {
+      descuentoActual = v;
+      pintarBotonesDescuento();
+      renderCarrito();
+    }
+
+    function setFormaPago(fp) {
+      formaPago = fp;
+      document.getElementById("fpContado").classList.toggle("activo", fp === "Contado");
+      document.getElementById("fpCredito").classList.toggle("activo", fp === "CuentaCorriente");
+      document.getElementById("entregaWrap").classList.toggle("visible", fp === "CuentaCorriente");
+      if (fp === "Contado") document.getElementById("entrega").value = "0";
+    }
+
+    // La opcion de fiar solo existe si hay un cliente registrado con
+    // cuenta corriente habilitada. Con los clientes internos el SP la
+    // rechaza, asi que no tiene sentido ofrecerla.
+    function actualizarOpcionCredito() {
+      var habilitado = !!(clienteElegido && (clienteElegido.CuentaCorriente === true ||
+                                             clienteElegido.CuentaCorriente === 1));
+      var btn = document.getElementById("fpCredito");
+      btn.disabled = !habilitado;
+      btn.title = habilitado
+        ? "Vender a cuenta corriente"
+        : "Requiere un cliente registrado con cuenta corriente";
+
+      if (!habilitado && formaPago === "CuentaCorriente") setFormaPago("Contado");
+    }
+
+    // El saldo se muestra al lado del nombre. No bloquea nada: informar
+    // no es lo mismo que restringir, y la decision de seguir fiando es
+    // del mostrador.
+    function cargarSaldoCliente() {
+      saldoCliente = null;
+      if (!clienteElegido) { pintarChipCliente(); return; }
+
+      fetchAuth(apiCuentaCorriente + "/" + clienteElegido.Id)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && d[0]) saldoCliente = Number(d[0].Saldo);
+          pintarChipCliente();
+        })
+        .catch(function () { pintarChipCliente(); });
+    }
+
+    /* ================= CONVERSIÓN DESDE PRESUPUESTO ================= */
+
+    // Web API serializa DataSet distinto segun version: array de tablas
+    // o { Table: [...], Table1: [...] }. Se contemplan las dos.
+    function partirDataSet(ds) {
+      var tablas = Array.isArray(ds) ? ds : (ds && ds.Table ? [ds.Table, ds.Table1 || []] : []);
+      var cab = (tablas[0] && tablas[0][0]) ? tablas[0][0] : null;
+      return { cabecera: cab, detalle: tablas[1] || [] };
+    }
+
+    function idPresupuestoDeLaUrl() {
+      var m = window.location.search.match(/[?&]presupuesto=(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    }
+
+    function cargarDesdePresupuesto(id) {
+      fetchAuth(apiPresupuesto + "/" + id).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return r.json();
+      }).then(function (ds) {
+        var d = partirDataSet(ds);
+        if (!d.cabecera) throw new Error("No se encontró el presupuesto.");
+        if (d.cabecera.Estado === "Anulado") throw new Error("El presupuesto está anulado.");
+        if (d.cabecera.Estado === "Convertido") throw new Error("Ese presupuesto ya se convirtió en venta.");
+
+        presupuestoOrigen = { Id: d.cabecera.Id, Numero: d.cabecera.Numero };
+
+        // Tipo de cliente y datos, tal como se presupuestó
+        setTipo(d.cabecera.TipoCliente === "Mecanico" ? "mecanico" : "publico");
+        if (d.cabecera.IdCliente) {
+          clienteElegido = todosClientes.find(function (c) { return c.Id === d.cabecera.IdCliente; }) || null;
+          pintarChipCliente();
+        }
+
+        // Armado del carrito, respetando el precio presupuestado
+        var sinStock = [];
+        var ajustados = [];
+        var cambiaronPrecio = [];
+
+        carrito = [];
+        d.detalle.forEach(function (r) {
+          var rep = todosRepuestos.find(function (x) { return x.Id === r.IdRepuesto; });
+          var stock = rep && rep.StockActual !== undefined ? rep.StockActual : 0;
+
+          if (stock <= 0) { sinStock.push(r.Descripcion); return; }
+
+          var cant = r.Cantidad;
+          if (cant > stock) { ajustados.push(r.Descripcion + " (" + r.Cantidad + " → " + stock + ")"); cant = stock; }
+
+          if (r.PrecioActual !== undefined &&
+              Math.abs(Number(r.PrecioActual) - Number(r.PrecioUnitario)) > 0.009) {
+            cambiaronPrecio.push(r.Descripcion);
+          }
+
+          carrito.push({
+            IdRepuesto: r.IdRepuesto,
+            Codigo: r.Codigo || "",
+            Descripcion: r.Descripcion,
+            // Se respeta el precio del presupuesto: para eso se emitió
+            PrecioUnitario: Number(r.PrecioUnitario),
+            Cantidad: cant,
+            StockActual: stock,
+            StockMinimo: (rep && rep.StockMinimo) || 5
+          });
+        });
+
+        renderCarrito();
+
+        document.getElementById("bannerPresup").style.display = "flex";
+        document.getElementById("bannerPresupTexto").textContent =
+          "Convirtiendo el presupuesto N° " + d.cabecera.Numero +
+          " — se respetan los precios presupuestados";
+
+        // Avisos solo si hubo algo raro
+        var avisos = [];
+        if (sinStock.length > 0)
+          avisos.push("<strong>Sin stock, quedaron fuera:</strong><br>" + sinStock.join("<br>"));
+        if (ajustados.length > 0)
+          avisos.push("<strong>Cantidad ajustada al stock:</strong><br>" + ajustados.join("<br>"));
+        if (cambiaronPrecio.length > 0)
+          avisos.push("<strong>Cambiaron de precio desde que se presupuestó:</strong><br>" +
+                      cambiaronPrecio.join("<br>") +
+                      "<br><em>Se mantiene el precio presupuestado.</em>");
+        if (d.cabecera.Estado === "Vencido")
+          avisos.unshift("<strong>El presupuesto está vencido</strong> (venció el " +
+                         new Date(d.cabecera.FechaVencimiento).toLocaleDateString("es-AR") + ").");
+
+        if (avisos.length > 0) {
+          Swal.fire({
+            icon: "warning",
+            title: "Revisá antes de confirmar",
+            html: "<div style='text-align:left;font-size:0.86rem;'>" + avisos.join("<hr>") + "</div>",
+            width: 520
+          });
+        }
+      }).catch(function (err) {
+        Swal.fire("No se pudo cargar el presupuesto", err.message || "Error de conexión.", "error");
+      });
+    }
+
+    function cancelarConversion() {
+      presupuestoOrigen = null;
+      document.getElementById("bannerPresup").style.display = "none";
+      // Se saca el parámetro de la URL para que un F5 no lo vuelva a cargar
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }
+
+    // Marca el presupuesto como Convertido. Si falla, la venta ya está hecha:
+    // se avisa pero no se revierte nada.
+    function vincularPresupuesto(idVenta) {
+      if (!presupuestoOrigen) return Promise.resolve();
+
+      if (!idVenta) {
+        Swal.fire({
+          icon: "info",
+          title: "Venta registrada",
+          text: "No se pudo leer el número de la venta, así que el presupuesto N° " +
+                presupuestoOrigen.Numero + " no quedó marcado como convertido."
+        });
+        return Promise.resolve();
+      }
+
+      return fetchAuth(apiPresupuesto + "/" + presupuestoOrigen.Id, {
+        method: "PUT",
+        body: JSON.stringify({ IdVenta: idVenta })
+      }).then(function (r) {
+        if (!r.ok) throw new Error("no vinculado");
+      }).catch(function () {
+        Swal.fire({
+          icon: "info",
+          title: "Venta registrada",
+          text: "La venta se guardó, pero el presupuesto N° " + presupuestoOrigen.Numero +
+                " no quedó marcado como convertido. Podés vincularlo después."
+        });
+      });
+    }
+
+    /* ================= CONFIRMAR VENTA ================= */
+
+    function resolverIdCliente() {
+      if (clienteElegido) return clienteElegido.Id;
+      var dni = tipoCliente === "mecanico" ? DNI_MECANICO_MOSTRADOR : DNI_CONSUMIDOR_FINAL;
+      var g = todosClientes.find(function (c) { return String(c.Dni) === dni; });
+      return g ? g.Id : null;
+    }
+
+    function confirmar() {
+      if (carrito.length === 0) return;
+
+      var idCliente = resolverIdCliente();
+      if (!idCliente) {
+        Swal.fire({
+          icon: "error",
+          title: "Falta el cliente interno",
+          html: "No encontré el cliente con DNI <strong>" +
+                (tipoCliente === "mecanico" ? DNI_MECANICO_MOSTRADOR : DNI_CONSUMIDOR_FINAL) +
+                "</strong>.<br><br>Cargalo una vez desde Clientes y ya vas a poder vender sin seleccionar cliente."
+        });
+        return;
+      }
+
+      var nombreMostrar = clienteElegido
+        ? clienteElegido.Apellido + ", " + clienteElegido.Nombre
+        : (tipoCliente === "mecanico" ? "Mecánico Mostrador" : "Consumidor Final");
+
+      var total = totalCarrito();
+      var entrega = formaPago === "CuentaCorriente"
+        ? (precioANumero(document.getElementById("entrega").value) || 0)
+        : total;
+
+      if (formaPago === "CuentaCorriente") {
+        if (entrega < 0) {
+          Swal.fire("Entrega inválida", "La entrega no puede ser negativa.", "warning");
+          return;
+        }
+        if (entrega > total) {
+          Swal.fire("Entrega inválida",
+                    "La entrega no puede superar el total de " + formatearMoneda(total) + ".",
+                    "warning");
+          return;
+        }
+      }
+
+      var criticos = carrito.filter(function (c) {
+        return (c.StockActual - c.Cantidad) <= c.StockMinimo;
+      });
+      var extra = criticos.length > 0
+        ? "<br><small style='color:#856404;'><i class='bi bi-exclamation-triangle'></i> " +
+          criticos.length + " repuesto(s) quedan en stock crítico.</small>"
+        : "";
+
+      var lineaDesc = descuentoActual > 0
+        ? "<strong>Descuento:</strong> " + descuentoActual + "% (-" +
+          formatearMoneda(montoDescuento()) + ")<br>"
+        : "";
+
+      var lineaPago = formaPago === "CuentaCorriente"
+        ? "<strong>Forma de pago:</strong> Cuenta corriente<br>" +
+          "<strong>Entrega:</strong> " + formatearMoneda(entrega) + "<br>" +
+          "<strong style='color:#c0392b;'>Queda debiendo:</strong> <strong>" +
+          formatearMoneda(total - entrega) + "</strong><br>"
+        : "<strong>Forma de pago:</strong> Contado<br>";
+
+      Swal.fire({
+        title: "¿Confirmar venta?",
+        html: "<div style='text-align:left;'>" +
+              "<strong>Cliente:</strong> " + escapeHtml(nombreMostrar) + "<br>" +
+              "<strong>Ítems:</strong> " + carrito.length + "<br>" +
+              lineaDesc +
+              "<strong>Total:</strong> " + formatearMoneda(total) + "<br>" +
+              lineaPago + extra + "</div>",
+        icon: "question", showCancelButton: true,
+        confirmButtonColor: "#28a745",
+        confirmButtonText: "Sí, confirmar", cancelButtonText: "Cancelar"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+
+        var btn = document.getElementById("btnConfirmar");
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando…';
+
+        var venta = {
+          IdCliente: idCliente,
+          PorcentajeDescuento: descuentoActual,
+          FormaPago: formaPago,
+          Entrega: entrega,
+          TipoCliente: tipoCliente === "mecanico" ? "Mecanico" : "Publico",
+          // Si la venta viene de un presupuesto con datos de contacto,
+          // se arrastran a la venta.
+          NombreOcasional: (presupActual && presupActual.nombre) ? presupActual.nombre : null,
+          TelefonoOcasional: (presupActual && presupActual.telefono) ? presupActual.telefono : null,
+          Detalle: carrito.map(function (c) {
+            return { IdRepuesto: c.IdRepuesto, Cantidad: c.Cantidad, PrecioUnitario: c.PrecioUnitario };
+          })
+        };
+        var totalGuardado = total;
+        var entregaGuardada = entrega;
+
+        fetchAuth(apiVenta, { method: "POST", body: JSON.stringify(venta) }).then(function (r) {
+          if (r.ok) {
+            // VentaController devuelve Ok(new { IdVenta = idVenta }), o sea un objeto.
+            // Se contempla igual el caso de que devuelva el numero pelado.
+            return r.json().catch(function () { return null; }).then(function (res) {
+              var idVenta = null;
+              if (typeof res === "number") idVenta = res;
+              else if (res && typeof res === "object") idVenta = res.IdVenta || res.idVenta || res.Id;
+              idVenta = parseInt(idVenta, 10);
+              if (isNaN(idVenta) || idVenta <= 0) idVenta = null;
+
+              return vincularPresupuesto(idVenta).then(function () {
+                var extraPresup = presupuestoOrigen
+                  ? "<br><small class='text-muted'>Presupuesto N° " + presupuestoOrigen.Numero +
+                    " marcado como convertido.</small>"
+                  : "";
+                var saldoGenerado = (res && res.SaldoGenerado !== undefined)
+                  ? Number(res.SaldoGenerado)
+                  : (totalGuardado - entregaGuardada);
+
+                var extraCredito = "";
+                if (formaPago === "CuentaCorriente" && saldoGenerado > 0) {
+                  extraCredito = "<br><span style='color:#c0392b;'>Quedó debiendo <strong>" +
+                    formatearMoneda(saldoGenerado) + "</strong></span>";
+                  if (entregaGuardada > 0)
+                    extraCredito += "<br><small class='text-muted'>Entregó " +
+                      formatearMoneda(entregaGuardada) + ", que ingresó a caja.</small>";
+                  else
+                    extraCredito += "<br><small class='text-muted'>No ingresó dinero a caja.</small>";
+                }
+
+                Swal.fire({
+                  icon: "success",
+                  title: "Venta registrada",
+                  html: "Total: <strong>" + formatearMoneda(totalGuardado) + "</strong>" +
+                        extraCredito +
+                        "<br><small class='text-muted'>El stock se actualizó automáticamente.</small>" +
+                        extraPresup,
+                  showCancelButton: true,
+                  confirmButtonText: "Nueva venta",
+                  cancelButtonText: "Ir al listado",
+                  confirmButtonColor: "#28a745"
+                }).then(function (r2) {
+                  if (r2.isConfirmed) window.location.href = window.location.pathname;
+                  else window.location.href = "ListadoVentas.html";
+                });
+              });
+            });
+          } else {
+            leerError(r).then(function (msg) {
+              Swal.fire({
+                icon: "error",
+                title: "No se pudo registrar la venta",
+                html: "<div class='text-start'>" + escapeHtml(msg) + "</div><br>" +
+                      "<small class='text-muted'>El stock pudo cambiar mientras armabas la venta.</small>"
+              });
+              restaurarBoton();
+            });
+          }
+        }).catch(function () {
+          Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error");
+          restaurarBoton();
+        });
+      });
+    }
+
+    function restaurarBoton() {
+      var btn = document.getElementById("btnConfirmar");
+      btn.disabled = carrito.length === 0;
+      btn.innerHTML = '<i class="bi bi-check2-circle"></i> CONFIRMAR VENTA';
+    }
+
+    function leerError(response) {
+      return response.text().then(function (text) {
+        try { var d = JSON.parse(text); return d.Message || d.message || text; }
+        catch (e) { return text; }
+      }).catch(function () { return "No se pudo completar la operación."; });
+    }
+
+    /* ================= INICIO ================= */
+
+    window.onload = function () {
+      cargarCombos();
+      renderCarrito();
+
+      var idPresup = idPresupuestoDeLaUrl();
+
+      // Los repuestos y los clientes tienen que estar antes de armar
+      // el carrito desde un presupuesto: de ahí salen stock y precios.
+      Promise.all([cargarClientes(), cargarRepuestos()]).then(function () {
+        if (idPresup) cargarDesdePresupuesto(idPresup);
+      });
+
+      document.getElementById("tipoPublico").addEventListener("click", function () { setTipo("publico"); });
+      document.getElementById("tipoMecanico").addEventListener("click", function () { setTipo("mecanico"); });
+      document.getElementById("btnBuscarCliente").addEventListener("click", abrirBuscarCliente);
+
+      document.getElementById("buscarRepuesto").addEventListener("input", buscar);
+      document.getElementById("buscarRepuesto").addEventListener("keydown", function (e) {
+        // Enter agrega el primer resultado con stock: venta sin usar el mouse
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        var primero = document.querySelector(".res-item:not(.sin-stock) .btn-add");
+        if (primero) primero.click();
+      });
+
+      document.getElementById("filtroRubro").addEventListener("change", buscar);
+      document.getElementById("filtroMarca").addEventListener("change", function () {
+        filtrarModelosPorMarca();
+        buscar();
+      });
+      document.getElementById("filtroModelo").addEventListener("change", buscar);
+      document.getElementById("btnLimpiarFiltros").addEventListener("click", function () {
+        document.getElementById("filtroRubro").value = "";
+        document.getElementById("filtroMarca").value = "";
+        filtrarModelosPorMarca();
+        document.getElementById("filtroModelo").value = "";
+        document.getElementById("buscarRepuesto").value = "";
+        buscar();
+        document.getElementById("buscarRepuesto").focus();
+      });
+
+      document.getElementById("fpContado").addEventListener("click", function () {
+        setFormaPago("Contado");
+      });
+      document.getElementById("fpCredito").addEventListener("click", function () {
+        if (!this.disabled) setFormaPago("CuentaCorriente");
+      });
+      activarInputPrecio("entrega");
+
+      cargarParametrosVenta().then(pintarBotonesDescuento);
+
+      document.getElementById("btnVaciar").addEventListener("click", vaciar);
+      document.getElementById("btnPresupuesto").addEventListener("click", abrirPresupuesto);
+      document.getElementById("btnConfirmar").addEventListener("click", confirmar);
+
+      document.getElementById("buscarRepuesto").focus();
+    };
+  </script>
+</body>
+</html>

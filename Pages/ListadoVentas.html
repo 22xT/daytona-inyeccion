@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ventas - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .col-auditoria {
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+    .col-auditoria strong { color: #001f3f; }
+    .col-auditoria .fecha { font-size: 0.78rem; opacity: 0.8; }
+  </style>
+</head>
+
+<body data-page="ventas">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-receipt"></i> Ventas</h2>
+        <span class="subtitle">Historial de ventas registradas</span>
+      </div>
+      <a href="CargarVenta.html" id="btnNuevaVenta" class="btn btn-danger" style="display:none;">
+        <i class="bi bi-cart-plus"></i> Nueva venta
+      </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="bi bi-bar-chart"></i></div>
+          <div>
+            <p class="stat-value" id="statTotal">0</p>
+            <p class="stat-label">Ventas totales</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="bi bi-calendar-check"></i></div>
+          <div>
+            <p class="stat-value" id="statHoy">0</p>
+            <p class="stat-label">Ventas de hoy</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="bi bi-cash-stack"></i></div>
+          <div>
+            <p class="stat-value" id="statFacturado">$0</p>
+            <p class="stat-label">Facturado (confirmadas)</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="bi bi-slash-circle"></i></div>
+          <div>
+            <p class="stat-value" id="statAnuladas">0</p>
+            <p class="stat-label">Anuladas</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros</div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Desde</label>
+            <input type="date" id="filtroDesde" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Hasta</label>
+            <input type="date" id="filtroHasta" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Estado</label>
+            <select id="filtroEstado" class="form-select">
+              <option value="">Todos</option>
+              <option value="Confirmada">Confirmada</option>
+              <option value="Anulada">Anulada</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Buscar cliente</label>
+            <input type="text" id="filtroCliente" class="form-control" placeholder="Nombre o apellido…">
+          </div>
+        </div>
+        <div class="text-end mt-3">
+          <button id="btnLimpiar" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-counterclockwise"></i> Limpiar filtros
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="panel">
+      <div class="panel-header" id="panelResultados"><i class="bi bi-list-ul"></i> Ventas</div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Vendedor</th>
+              <th>Estado</th>
+              <th id="thAuditoria" style="display:none;">Anulada por</th>
+              <th class="text-end">Total</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaVentas">
+            <tr class="loading-row"><td colspan="8">Cargando ventas…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty-state d-none">
+        <div class="icon"><i class="bi bi-inbox"></i></div>
+        <h4>No se encontraron ventas</h4>
+        <p>Probá cambiar los filtros o registrá una nueva venta.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalle -->
+  <div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-receipt"></i> Detalle de Venta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="detalle-info" id="detalleInfo"></div>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Repuesto</th>
+                  <th class="text-center">Cantidad</th>
+                  <th class="text-end">Precio Unit.</th>
+                  <th class="text-end">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody id="tablaDetalle"></tbody>
+            </table>
+          </div>
+          <div class="total-modal">
+            <span>Total:</span>
+            <span id="totalDetalle">$0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiVenta = API_BASE + "Venta";
+
+    const usuario = Auth.getUsuario();
+    const rolUsuario = usuario ? usuario.Rol : null;
+
+    // Helpers de permisos
+    function tieneRol(roles) {
+      if (!rolUsuario) return false;
+      return roles.indexOf(rolUsuario) !== -1;
+    }
+
+    const puedeVender = tieneRol(["Administrador", "Supervisor", "Vendedor"]);
+    const puedeAnular = tieneRol(["Administrador", "Supervisor", "Vendedor"]);
+    const veAuditoria = tieneRol(["Dueño", "Administrador"]);
+
+    // Mostrar "Nueva venta" solo si puede vender
+    if (puedeVender) {
+      document.getElementById("btnNuevaVenta").style.display = "inline-flex";
+    }
+
+    // Mostrar columna "Anulada por" solo si tiene acceso a auditoria
+    if (veAuditoria) {
+      document.getElementById("thAuditoria").style.display = "";
+    }
+
+    let ventas = [];
+
+    // Helper para leer el estado (compatibilidad con SP nuevo y viejo)
+    function getEstado(v) {
+      return v.Estado || v.EstadoVenta || "";
+    }
+
+    function cargar() {
+      fetchAuth(apiVenta).then(r => r.json()).then(data => {
+        ventas = data;
+        actualizarStats();
+        aplicarFiltros();
+      }).catch(() => {
+        document.getElementById("tablaVentas").innerHTML =
+          "<tr><td colspan='8' class='text-center text-danger p-4'>No se pudieron cargar las ventas.</td></tr>";
+      });
+    }
+
+    function actualizarStats() {
+      const hoy = new Date().toISOString().slice(0, 10);
+      let ventasHoy = 0;
+      let facturado = 0;
+      let anuladas = 0;
+
+      ventas.forEach(v => {
+        const fechaVenta = (v.Fecha || "").slice(0, 10);
+        const estado = getEstado(v);
+        if (fechaVenta === hoy && estado === "Confirmada") ventasHoy++;
+        if (estado === "Confirmada") facturado += Number(v.Total || 0);
+        if (estado === "Anulada") anuladas++;
+      });
+
+      document.getElementById("statTotal").textContent = ventas.length;
+      document.getElementById("statHoy").textContent = ventasHoy;
+      document.getElementById("statFacturado").textContent = "$" + facturado.toFixed(2);
+      document.getElementById("statAnuladas").textContent = anuladas;
+    }
+
+    function aplicarFiltros() {
+      const desde = document.getElementById("filtroDesde").value;
+      const hasta = document.getElementById("filtroHasta").value;
+      const estado = document.getElementById("filtroEstado").value;
+      const cliente = document.getElementById("filtroCliente").value.trim().toLowerCase();
+
+      let lista = ventas.slice();
+      if (desde !== "") lista = lista.filter(v => (v.Fecha || "").slice(0, 10) >= desde);
+      if (hasta !== "") lista = lista.filter(v => (v.Fecha || "").slice(0, 10) <= hasta);
+      if (estado !== "") lista = lista.filter(v => getEstado(v) === estado);
+      if (cliente !== "") lista = lista.filter(v => (v.Cliente || "").toLowerCase().includes(cliente));
+
+      renderizar(lista);
+    }
+
+    function renderizar(lista) {
+      const tbody = document.getElementById("tablaVentas");
+      const empty = document.getElementById("emptyState");
+      const panel = document.getElementById("panelResultados");
+      panel.innerHTML = '<i class="bi bi-list-ul"></i> Ventas (' + lista.length + ')';
+
+      if (lista.length === 0) {
+        tbody.innerHTML = "";
+        empty.classList.remove("d-none");
+        return;
+      }
+      empty.classList.add("d-none");
+
+      let html = "";
+      lista.forEach(v => {
+        const fecha = new Date(v.Fecha).toLocaleString("es-AR");
+        const estado = getEstado(v);
+        const esConfirmada = estado === "Confirmada";
+        const badgeClass = esConfirmada ? "badge-confirmada" : "badge-anulada";
+        const badgeIcon = esConfirmada ? "bi-check-circle" : "bi-x-circle";
+
+        // Quien la vendio (nombre del usuario que la creo)
+        const vendedor = v.Vendedor || v.Usuario || "-";
+
+        html += "<tr>";
+        html += "<td><strong>#" + v.Id + "</strong></td>";
+        html += "<td>" + fecha + "</td>";
+        html += "<td>" + escapeHtml(v.Cliente) + "</td>";
+        html += "<td>" + escapeHtml(vendedor) + "</td>";
+        html += "<td><span class='badge-estado " + badgeClass + "'><i class='bi " + badgeIcon + "'></i> " + estado + "</span></td>";
+
+        // Columna de auditoria (solo si tiene permiso)
+        if (veAuditoria) {
+          if (estado === "Anulada" && v.AnuladoPor) {
+            const fechaAnul = v.FechaAnulacion ? new Date(v.FechaAnulacion).toLocaleString("es-AR") : "";
+            html += "<td class='col-auditoria'>";
+            html += "<div><strong>" + escapeHtml(v.AnuladoPor) + "</strong></div>";
+            if (fechaAnul) html += "<div class='fecha'>" + fechaAnul + "</div>";
+            html += "</td>";
+          } else {
+            html += "<td><span class='text-muted small'>—</span></td>";
+          }
+        }
+
+        html += "<td class='text-end precio'>$" + Number(v.Total).toFixed(2) + "</td>";
+        html += "<td class='text-center'>";
+        html += "<button class='btn btn-sm btn-outline-primary me-1' onclick='verDetalle(" + v.Id + ")' title='Ver detalle'><i class='bi bi-eye'></i></button>";
+        if (esConfirmada && puedeAnular) {
+          html += "<button class='btn btn-sm btn-outline-danger' onclick='anular(" + v.Id + ")' title='Anular venta'><i class='bi bi-slash-circle'></i></button>";
+        }
+        html += "</td></tr>";
+      });
+      tbody.innerHTML = html;
+    }
+
+    function verDetalle(id) {
+      const venta = ventas.find(v => v.Id === id);
+      if (!venta) return;
+
+      const fecha = new Date(venta.Fecha).toLocaleString("es-AR");
+      const estado = getEstado(venta);
+      const esConfirmada = estado === "Confirmada";
+      const badgeClass = esConfirmada ? "badge-confirmada" : "badge-anulada";
+      const badgeIcon = esConfirmada ? "bi-check-circle" : "bi-x-circle";
+      const vendedor = venta.Vendedor || venta.Usuario || "-";
+
+      let infoHtml = "<div class='row g-2'>";
+      infoHtml += "<div class='col-md-6'><strong>Venta:</strong> #" + venta.Id + "</div>";
+      infoHtml += "<div class='col-md-6'><strong>Fecha:</strong> " + fecha + "</div>";
+      infoHtml += "<div class='col-md-6'><strong>Cliente:</strong> " + escapeHtml(venta.Cliente) + "</div>";
+      infoHtml += "<div class='col-md-6'><strong>Vendedor:</strong> " + escapeHtml(vendedor) + "</div>";
+      infoHtml += "<div class='col-md-12'><strong>Estado:</strong> <span class='badge-estado " + badgeClass + "'><i class='bi " + badgeIcon + "'></i> " + estado + "</span></div>";
+
+      // Auditoria en modal (solo si rol tiene acceso)
+      if (veAuditoria && estado === "Anulada" && venta.AnuladoPor) {
+        const fechaAnul = venta.FechaAnulacion ? new Date(venta.FechaAnulacion).toLocaleString("es-AR") : "";
+        infoHtml += "<div class='col-md-12 mt-2 p-2' style='background:#fff3cd;border-radius:6px;border-left:4px solid #ffc107;'>";
+        infoHtml += "<i class='bi bi-shield-exclamation'></i> <strong>Auditoría:</strong> Anulada por " +
+                    escapeHtml(venta.AnuladoPor) + (fechaAnul ? " el " + fechaAnul : "");
+        infoHtml += "</div>";
+      }
+
+      infoHtml += "</div>";
+      document.getElementById("detalleInfo").innerHTML = infoHtml;
+
+      document.getElementById("tablaDetalle").innerHTML =
+        "<tr><td colspan='4' class='text-center text-muted p-3'>Cargando detalle…</td></tr>";
+      document.getElementById("totalDetalle").textContent = "$" + Number(venta.Total).toFixed(2);
+
+      new bootstrap.Modal(document.getElementById("modalDetalle")).show();
+
+      fetchAuth(apiVenta + "/" + id + "/Detalle").then(r => r.json()).then(detalle => {
+        let html = "";
+        detalle.forEach(d => {
+          html += "<tr>";
+          html += "<td>" + escapeHtml(d.Repuesto) + "</td>";
+          html += "<td class='text-center'>" + d.Cantidad + "</td>";
+          html += "<td class='text-end precio'>$" + Number(d.PrecioUnitario).toFixed(2) + "</td>";
+          html += "<td class='text-end precio'>$" + Number(d.Subtotal).toFixed(2) + "</td>";
+          html += "</tr>";
+        });
+        document.getElementById("tablaDetalle").innerHTML = html;
+      }).catch(() => {
+        document.getElementById("tablaDetalle").innerHTML =
+          "<tr><td colspan='4' class='text-center text-danger p-3'>No se pudo cargar el detalle.</td></tr>";
+      });
+    }
+
+    function anular(id) {
+      Swal.fire({
+        title: "¿Anular venta?",
+        text: "Se devolverá el stock de los repuestos. La acción quedará registrada con tu usuario.",
+        icon: "warning", showCancelButton: true,
+        confirmButtonColor: "#ff3333", confirmButtonText: "Sí, anular",
+        cancelButtonText: "Cancelar"
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetchAuth(apiVenta + "/" + id + "/Anular", { method: "PUT" }).then(r => {
+          if (r.ok) {
+            Swal.fire("Anulada", "La venta fue anulada y se devolvió el stock.", "success");
+            cargar();
+          } else {
+            leerError(r).then(msg => Swal.fire("Error", msg, "error"));
+          }
+        }).catch(() => Swal.fire("Error", "No se pudo contactar al servidor.", "error"));
+      });
+    }
+
+    // POPUP de anuladas recientes (solo Admin y Dueño)
+    function chequearAnuladasRecientes() {
+      if (!veAuditoria) return;
+
+      fetchAuth(apiVenta + "/AnuladasRecientes").then(r => r.json()).then(lista => {
+        if (!lista || lista.length === 0) return;
+
+        const ultimoVisto = parseInt(localStorage.getItem("ultimaAnuladaVista") || "0");
+        const nuevas = lista.filter(v => v.Id > ultimoVisto);
+        if (nuevas.length === 0) return;
+
+        let html = "<div class='text-start'>";
+        html += "<p>Se anularon <strong>" + nuevas.length + "</strong> venta(s) en las últimas 24hs:</p>";
+        html += "<ul>";
+        nuevas.forEach(v => {
+          const fecha = new Date(v.Fecha).toLocaleString("es-AR");
+          const quien = v.AnuladoPor || v.Usuario || v.Vendedor || "-";
+          html += "<li><strong>Venta #" + v.Id + "</strong> — " + escapeHtml(v.Cliente) +
+                  " — " + fecha + " — anulada por <strong>" + escapeHtml(quien) + "</strong> ($" +
+                  Number(v.Total).toFixed(2) + ")</li>";
+        });
+        html += "</ul></div>";
+
+        Swal.fire({
+          title: "Ventas anuladas recientemente",
+          html: html,
+          icon: "warning",
+          confirmButtonText: "Entendido",
+          confirmButtonColor: "#001f3f"
+        }).then(() => {
+          const maxId = Math.max.apply(null, lista.map(v => v.Id));
+          localStorage.setItem("ultimaAnuladaVista", maxId);
+        });
+      }).catch(() => {});
+    }
+
+    function leerError(response) {
+      return response.text().then(text => {
+        try { const data = JSON.parse(text); return data.Message || data.message || text; }
+        catch { return text; }
+      }).catch(() => "No se pudo completar la operación.");
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+
+    window.onload = function () {
+      cargar();
+      chequearAnuladasRecientes();
+
+      document.getElementById("filtroDesde").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroHasta").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroEstado").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroCliente").addEventListener("input", aplicarFiltros);
+      document.getElementById("btnLimpiar").addEventListener("click", () => {
+        document.getElementById("filtroDesde").value = "";
+        document.getElementById("filtroHasta").value = "";
+        document.getElementById("filtroEstado").value = "";
+        document.getElementById("filtroCliente").value = "";
+        aplicarFiltros();
+      });
+    };
+  </script>
+</body>
+</html>

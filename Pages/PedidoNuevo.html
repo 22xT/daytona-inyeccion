@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Nuevo Pedido - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+
+    .required { color:#dc3545; font-weight:bold; }
+    .is-invalid { border-color:#dc3545 !important; }
+    .is-valid { border-color:#198754 !important; }
+    .cant-input { width:80px; text-align:center; }
+    .precio-input { width:130px; text-align:right; }
+    .item-dup { background:#fff8e1; }
+    .precio-alerta { border-color:#ffc107 !important; background:#fffdf5; }
+
+    /* ============ BARRA DE PESTAÑAS ============ */
+    .modo-bar { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .modo-btn {
+      background: #fff; border: 2px solid var(--border); border-radius: 9px;
+      padding: 9px 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+      color: var(--text-muted); font-weight: 600; font-size: 0.88rem; transition: 0.15s;
+    }
+    .modo-btn i { font-size: 1.05rem; }
+    .modo-btn:hover { border-color: #b9d3f2; background: var(--nav-accent-soft); }
+    .modo-btn.activo {
+      border-color: var(--nav-accent); background: var(--nav-accent-soft); color: var(--nav-accent-dark);
+    }
+    .modo-volver {
+      margin-left: auto; font-size: 0.84rem; color: var(--text-muted);
+      text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .modo-volver:hover { color: var(--nav-accent-dark); }
+
+    /* ============ LAYOUT DE REPOSICIÓN ============ */
+    /* Solo la pestaña de reposición usa alto fijo. El pedido manual
+       conserva el scroll normal de siempre. */
+    body.repo-activo { overflow: hidden; }
+    body.repo-activo .main-content {
+      height: calc(100vh - 70px);
+      display: flex; flex-direction: column; gap: 10px;
+      padding: 12px 16px 14px !important;
+    }
+
+    .repo-body { display: flex; gap: 12px; flex: 1; min-height: 0; }
+    .repo-col-izq { flex: 0 0 65%; display: flex; flex-direction: column; min-height: 0; }
+    .repo-col-der { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+    .caja {
+      background: #fff; border: 1px solid var(--border); border-radius: 12px;
+      display: flex; flex-direction: column; min-height: 0; flex: 1;
+    }
+
+    .repo-head {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 600; color: var(--navy); font-size: 0.92rem; flex-shrink: 0;
+    }
+
+    /* ---- Filas de productos ---- */
+    .repo-lista { overflow-y: auto; flex: 1; min-height: 0; }
+    .repo-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+    }
+    .repo-item:last-child { border-bottom: none; }
+    .repo-item:hover { background: var(--bg-soft); }
+
+    .repo-foto {
+      width: 44px; height: 44px; flex-shrink: 0; border-radius: 7px;
+      border: 1px solid var(--border); object-fit: cover; background: var(--bg);
+    }
+    .repo-foto-ph {
+      width: 44px; height: 44px; flex-shrink: 0; border-radius: 7px;
+      border: 1px solid var(--border); background: var(--bg); color: #b6c0cc;
+      display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+    }
+
+    .repo-info { flex: 1; min-width: 0; }
+    .repo-desc {
+      font-size: 0.86rem; line-height: 1.25;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .repo-stock { font-size: 0.74rem; color: var(--text-muted); margin-top: 3px; }
+    .repo-stock .repo-sep { margin: 0 5px; }
+    .repo-cero { color: var(--red); font-weight: 700; }
+    .repo-bajo { color: #c47700; font-weight: 700; }
+
+    .repo-cant { flex-shrink: 0; }
+
+    .repo-prov { flex: 0 0 168px; min-width: 0; font-size: 0.78rem; }
+    .repo-prov-nombre {
+      font-weight: 600; color: var(--navy);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .repo-estrella { color: #e8a800; }
+    .repo-sin-prov {
+      color: #856404; background: #fff8e1; border: 1px solid #ffeaa7;
+      border-radius: 7px; padding: 4px 8px; font-size: 0.73rem; line-height: 1.3;
+    }
+    .repo-link {
+      background: none; border: none; padding: 2px 0;
+      color: var(--nav-accent-dark); font-size: 0.74rem; cursor: pointer;
+      text-decoration: underline; display: block;
+    }
+    .repo-link:hover { color: var(--nav-accent); }
+
+    .repo-alts { margin-top: 4px; border-left: 2px solid var(--border); padding-left: 6px; }
+    .repo-alt {
+      display: flex; justify-content: space-between; gap: 8px; width: 100%;
+      background: none; border: none; padding: 3px 5px; border-radius: 5px;
+      font-size: 0.74rem; color: var(--text); cursor: pointer; text-align: left;
+    }
+    .repo-alt:hover { background: var(--nav-accent-soft); }
+    .repo-alt.elegida { background: var(--nav-accent-soft); font-weight: 600; color: var(--nav-accent-dark); }
+
+    .repo-precio { flex: 0 0 108px; text-align: right; }
+    .repo-unit { font-size: 0.78rem; color: var(--text-muted); }
+    .repo-sub { font-size: 0.95rem; font-weight: 700; color: var(--navy); }
+
+    .repo-quitar {
+      background: none; border: none; color: #c0392b; cursor: pointer;
+      padding: 3px 5px; border-radius: 5px; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .repo-quitar:hover { background: #ffeded; }
+
+    /* ---- Resumen por proveedor ---- */
+    .repo-resumen { overflow-y: auto; flex: 1; min-height: 0; padding: 6px 0; }
+    .repo-grupo { padding: 8px 14px; border-bottom: 1px solid var(--border); }
+    .repo-grupo:last-child { border-bottom: none; }
+    .repo-grupo-head {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      margin-bottom: 5px;
+    }
+    .repo-grupo-head .nom { font-weight: 700; color: var(--navy); font-size: 0.85rem; }
+    .repo-grupo-head .cant {
+      font-size: 0.7rem; color: var(--text-muted);
+      background: var(--bg); padding: 2px 8px; border-radius: 9px; white-space: nowrap;
+    }
+    .repo-grupo-item {
+      display: flex; justify-content: space-between; gap: 10px;
+      font-size: 0.78rem; color: var(--text-muted); padding: 2px 0;
+    }
+    .repo-grupo-item .d { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .repo-grupo-item .m { white-space: nowrap; color: var(--text); }
+    .repo-grupo-sub {
+      text-align: right; font-size: 0.8rem; font-weight: 700;
+      color: var(--navy); margin-top: 4px;
+    }
+    .repo-grupo.pendiente { background: #fffdf5; }
+    .repo-grupo.pendiente .nom { color: #856404; }
+    .repo-grupo.pendiente .repo-grupo-sub { color: #856404; font-weight: 500; font-size: 0.73rem; }
+
+    .repo-total {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-soft) 100%);
+      color: #fff; padding: 13px 18px; border-radius: 0 0 12px 12px;
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .repo-total .lbl { font-size: 0.8rem; opacity: 0.85; letter-spacing: 0.6px; }
+    .repo-total .monto { font-size: 1.5rem; font-weight: 700; }
+
+    .repo-nota {
+      font-size: 0.78rem; color: var(--text-muted);
+      text-align: center; margin-top: 8px; flex-shrink: 0;
+    }
+    .btn-repo-confirmar {
+      background: var(--green); border: 2px solid var(--green); color: #fff;
+      border-radius: 10px; padding: 13px 6px; margin-top: 6px; width: 100%;
+      font-size: 0.98rem; font-weight: 700; letter-spacing: 0.4px;
+      cursor: pointer; transition: 0.15s; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-repo-confirmar:hover:not(:disabled) { background: #1e7e34; border-color: #1e7e34; }
+    .btn-repo-confirmar:disabled {
+      opacity: 0.45; cursor: not-allowed;
+      background: #e9ecef; border-color: #dee2e6; color: #8b96a3;
+    }
+
+    .qty-group { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+    .qty-group button {
+      width: 27px; height: 27px; border: none; background: #fff;
+      color: var(--navy); font-size: 0.95rem; cursor: pointer; line-height: 1;
+    }
+    .qty-group button:hover { background: var(--bg); }
+    .qty-group input {
+      width: 42px; height: 27px; border: none; text-align: center;
+      font-size: 0.84rem; font-weight: 600; color: var(--navy);
+      border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+    }
+
+    .codigo-repuesto {
+      font-family: 'Courier New', monospace; font-weight: 700;
+      color: #2c3e50; letter-spacing: 0.5px;
+    }
+
+    @media (max-width: 1200px) {
+      .repo-prov { flex-basis: 140px; }
+      .repo-precio { flex-basis: 92px; }
+    }
+    @media (max-width: 991px) {
+      body.repo-activo { overflow: auto; }
+      body.repo-activo .main-content { height: auto; }
+      .repo-body { flex-direction: column; }
+      .repo-col-izq, .repo-col-der { flex: 1 1 auto; }
+      .repo-lista { max-height: 55vh; }
+      .repo-resumen { max-height: 40vh; }
+    }
+  </style>
+</head>
+
+<body data-page="pedido-nuevo">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <!-- ============ BARRA DE PESTAÑAS ============ -->
+    <div class="modo-bar">
+      <button type="button" class="modo-btn activo" id="btnTabRepo">
+        <i class="bi bi-stars"></i> Reposición sugerida
+      </button>
+      <button type="button" class="modo-btn" id="btnTabManual">
+        <i class="bi bi-hand-index"></i> Pedido manual
+      </button>
+      <a href="ListadoPedido.html" class="modo-volver" id="linkVolver">
+        <i class="bi bi-arrow-left"></i> Volver al listado
+      </a>
+    </div>
+
+    <!-- ============ PESTAÑA: REPOSICIÓN SUGERIDA ============ -->
+    <div id="tabRepo" class="repo-body">
+
+      <!-- Izquierda: productos para reponer -->
+      <div class="repo-col-izq">
+        <div class="caja">
+          <div class="repo-head">
+            <span id="repoTitulo">Productos para reponer</span>
+            <button type="button" class="repo-link" id="btnRepoRefrescar" title="Volver a analizar el stock">
+              <i class="bi bi-arrow-clockwise"></i> Actualizar
+            </button>
+          </div>
+          <div class="repo-lista" id="repoLista"></div>
+        </div>
+      </div>
+
+      <!-- Derecha: resumen por proveedor -->
+      <div class="repo-col-der">
+        <div class="caja">
+          <div class="repo-head">
+            <span><i class="bi bi-truck"></i> Pedidos que se van a generar</span>
+          </div>
+          <div class="repo-resumen" id="repoResumen"></div>
+          <div class="repo-total">
+            <span class="lbl">TOTAL ESTIMADO</span>
+            <span class="monto" id="repoTotal">$0,00</span>
+          </div>
+        </div>
+
+        <div class="repo-nota" id="repoNota"></div>
+        <button type="button" class="btn-repo-confirmar" id="btnRepoConfirmar" disabled>
+          <i class="bi bi-check2-circle"></i> CONFIRMAR REPOSICIÓN
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ============ PESTAÑA: PEDIDO MANUAL ============ -->
+    <div id="tabManual" style="display:none;">
+    
+
+    <div class="panel">
+      <div class="panel-header"><span class="num">1</span> Proveedor</div>
+      <div class="panel-body">
+        <label class="form-label">Proveedor <span class="required">*</span></label>
+        <select id="proveedor" class="form-select" required>
+          <option value="">Seleccione proveedor…</option>
+        </select>
+        <div class="invalid-feedback" id="fb-proveedor">Seleccione un proveedor de la lista.</div>
+        <div class="form-text">Todo pedido debe estar asociado a un proveedor.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span class="num">2</span> Agregar repuestos al pedido</div>
+      <div class="panel-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Filtrar por rubro</label>
+            <select id="rubro" class="form-select"><option value="">Todos</option></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Filtrar por marca</label>
+            <select id="marca" class="form-select"><option value="">Todas</option></select>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="btnFiltrar" type="button" class="btn btn-primary w-100">
+              <i class="bi bi-funnel"></i> Aplicar filtros
+            </button>
+          </div>
+        </div>
+
+        <input type="text" id="busqueda" class="form-control mb-3" placeholder="Buscar por descripción, marca o rubro...">
+
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Descripción</th><th>Marca</th><th>Rubro</th>
+                <th class="text-end">Precio</th><th class="text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tablaRepuestos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" id="headerDetalle"><span class="num">3</span> Detalle del pedido</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>Repuesto</th>
+              <th class="text-center">Cantidad</th>
+              <th class="text-end">Precio Unit.</th>
+              <th class="text-end">Subtotal</th>
+              <th class="text-center">Quitar</th>
+            </tr>
+          </thead>
+          <tbody id="tablaDetalle"></tbody>
+        </table>
+        <div id="detalleVacio" class="cart-empty">
+          <div class="icon"><i class="bi bi-inbox"></i></div>
+          <p class="mb-0">No agregaste ningún repuesto al pedido.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="total-bar">
+      <span class="total-label">Total del pedido:</span>
+      <span class="total-amount" id="totalLabel">$0,00</span>
+    </div>
+
+    <div class="actions">
+      <a href="ListadoPedido.html" class="btn btn-outline-secondary" id="btnCancelar">Cancelar</a>
+      <button id="btnGuardar" type="button" class="btn btn-primary btn-lg">
+        <i class="bi bi-check2-circle"></i> <span id="btnTexto">Finalizar pedido</span>
+      </button>
+    </div>
+    </div>
+
+  </div>
+
+  <script src="layout.js"></script>
+<script>
+
+  if (!Auth.requireSession()) { /* redirect */ }
+
+  const api = API_BASE;
+  let pedidoItems = [];
+  let repuestosCache = [];
+  let guardadoOk = false;
+
+  /* ===================== LÍMITES DE NEGOCIO ===================== */
+  const CANT_MAX = 500;            // tope duro de unidades por ítem
+  const CANT_ADVERTENCIA = 100;    // a partir de acá avisa (no bloquea)
+  const FACTOR_MAX = 5;            // el precio no puede superar 5x el de lista
+  const FACTOR_MIN = 0.1;          // ni bajar del 10% del de lista
+  const FACTOR_ADVERTENCIA = 2;    // a partir de 2x avisa (no bloquea)
+  const PRECIO_TOPE = 50000000;    // tope absoluto por si no hay precio de lista
+  const TOTAL_ADVERTENCIA = 2000000;
+
+  const usuario = Auth.getUsuario();
+  const rolesCrear = ["Administrador", "Supervisor", "Vendedor"];
+  const puedeCrear = usuario && rolesCrear.indexOf(usuario.Rol) !== -1;
+  if (!puedeCrear) {
+    Swal.fire({ icon: "info", title: "Solo lectura", text: "Podés consultar los pedidos, pero no crear nuevos." });
+  }
+
+  /* ===================== HELPERS ===================== */
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+  }
+  // Se mantiene el nombre corto, pero el formato ahora vive en precio.js
+  function fmt(n) {
+    return formatearMoneda(n);
+  }
+  function marcarInvalido(el, fbId, msg) {
+    el.classList.add("is-invalid");
+    el.classList.remove("is-valid");
+    if (fbId && msg) { const fb = document.getElementById(fbId); if (fb) fb.textContent = msg; }
+  }
+  function limpiarMarca(el) { el.classList.remove("is-invalid", "is-valid"); }
+
+  document.getElementById("proveedor").addEventListener("change", function () {
+    if (this.value) { this.classList.remove("is-invalid"); this.classList.add("is-valid"); }
+    else limpiarMarca(this);
+  });
+
+  /* ===================== CARGA DE COMBOS ===================== */
+  function cargarCombos() {
+    fetchAuth(api + "Proveedor").then(r => {
+      if (!r.ok) throw new Error("No se pudieron cargar los proveedores.");
+      return r.json();
+    }).then(datos => {
+      const sel = document.getElementById("proveedor");
+      const activos = datos.filter(p => p.Activo !== false && p.Activo !== 0);
+      if (activos.length === 0) {
+        sel.innerHTML = "<option value=''>No hay proveedores activos</option>";
+        Swal.fire({
+          icon: "warning",
+          title: "Sin proveedores activos",
+          text: "Para cargar un pedido primero tenés que registrar al menos un proveedor activo."
+        });
+        return;
+      }
+      let html = "<option value=''>Seleccione proveedor…</option>";
+      activos.forEach(p => {
+        html += "<option value='" + p.Id + "'>" + escapeHtml(p.RazonSocial) + "</option>";
+      });
+      sel.innerHTML = html;
+    }).catch(err => {
+      document.getElementById("proveedor").innerHTML = "<option value=''>Error al cargar</option>";
+      Swal.fire("Error", err.message || "No se pudieron cargar los proveedores.", "error");
+    });
+
+    fetchAuth(api + "Rubro").then(r => r.json()).then(datos => {
+      const sel = document.getElementById("rubro");
+      datos.forEach(r => sel.innerHTML += "<option value='" + r.Id + "'>" + escapeHtml(r.Nombre) + "</option>");
+    }).catch(() => {});
+
+    fetchAuth(api + "Marca").then(r => r.json()).then(datos => {
+      const sel = document.getElementById("marca");
+      datos.forEach(m => sel.innerHTML += "<option value='" + m.Id + "'>" + escapeHtml(m.Nombre) + "</option>");
+    }).catch(() => {});
+  }
+
+  /* ===================== REPUESTOS ===================== */
+  function cargarRepuestos(filtrar) {
+    let url = api + "Repuesto";
+    const idRubro = document.getElementById("rubro").value;
+    const idMarca = document.getElementById("marca").value;
+    if (filtrar && idRubro && idMarca) url = api + "Repuesto/Filtrar?IdRubro=" + idRubro + "&IdMarca=" + idMarca;
+
+    const tbody = document.getElementById("tablaRepuestos");
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="5" class="text-center p-3">' +
+                      '<span class="spinner-border spinner-border-sm"></span> Cargando repuestos…</td></tr>';
+
+    fetchAuth(url).then(r => {
+      if (!r.ok) throw new Error("No se pudieron cargar los repuestos.");
+      return r.json();
+    }).then(datos => {
+      repuestosCache = datos;
+      mostrarRepuestos(datos);
+    }).catch(() => {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger p-3">' +
+                        'Error al cargar repuestos. ' +
+                        '<button class="btn btn-sm btn-outline-danger ms-2" onclick="cargarRepuestos()">Reintentar</button></td></tr>';
+    });
+  }
+
+  function mostrarRepuestos(datos) {
+    const tbody = document.getElementById("tablaRepuestos");
+    if (!datos || datos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-3">No se encontraron repuestos con ese criterio.</td></tr>';
+      return;
+    }
+    let html = "";
+    datos.slice(0, 50).forEach(r => {
+      const yaEsta = pedidoItems.some(i => i.IdRepuesto === r.Id);
+      const precio = parseFloat(r.PrecioDeVenta) || 0;
+      html += '<tr' + (yaEsta ? ' class="item-dup"' : '') + '>' +
+        '<td>' + escapeHtml(r.Descripcion) +
+          (yaEsta ? ' <span class="badge bg-warning text-dark ms-1">En el pedido</span>' : '') + '</td>' +
+        '<td>' + escapeHtml(r.Marca || "-") + '</td>' +
+        '<td><span class="badge-rubro">' + escapeHtml(r.Rubro || "-") + '</span></td>' +
+        '<td class="text-end precio">' + fmt(precio) + '</td>' +
+        '<td class="text-center">' +
+          '<button type="button" class="btn btn-sm btn-success" ' + (!puedeCrear ? 'disabled' : '') +
+          ' title="Agregar al pedido" onclick="agregar(' + r.Id + ')"><i class="bi bi-plus-circle"></i></button>' +
+        '</td></tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  document.addEventListener("input", function (e) {
+    if (e.target.id !== "busqueda") return;
+    const texto = e.target.value.toLowerCase().trim();
+    const filtrados = repuestosCache.filter(r =>
+      (r.Descripcion || "").toLowerCase().includes(texto) ||
+      (r.Marca && r.Marca.toLowerCase().includes(texto)) ||
+      (r.Rubro && r.Rubro.toLowerCase().includes(texto))
+    );
+    mostrarRepuestos(filtrados);
+  });
+
+  /* ===================== AGREGAR ÍTEM ===================== */
+  function agregar(idRepuesto) {
+    const rep = repuestosCache.find(r => r.Id === idRepuesto);
+    if (!rep) return;
+
+    const precioSugerido = parseFloat(rep.PrecioDeVenta) || 0;
+    const existente = pedidoItems.find(i => i.IdRepuesto === idRepuesto);
+
+    const rangoTxt = precioSugerido > 0
+      ? "Rango admitido: " + fmt(precioSugerido * FACTOR_MIN) + " a " + fmt(precioSugerido * FACTOR_MAX) + "."
+      : "";
+
+    Swal.fire({
+      title: existente ? "Ya está en el pedido" : "Agregar al pedido",
+      html:
+        '<div style="text-align:left;">' +
+          '<strong>' + escapeHtml(rep.Descripcion) + '</strong>' +
+          (existente ? '<div class="text-warning small mt-1">Ya cargaste ' + existente.Cantidad +
+                       ' unidad(es). Lo que ingreses se suma a esa cantidad.</div>' : '') +
+          '<div class="mt-3"><label class="form-label mb-1">Cantidad</label>' +
+          '<input type="number" id="swCant" class="form-control" min="1" max="' + CANT_MAX + '" value="1"></div>' +
+          '<div class="mt-2"><label class="form-label mb-1">Precio de compra unitario</label>' +
+          '<div class="input-group">' +
+            '<span class="input-group-text">$</span>' +
+            '<input type="text" inputmode="decimal" id="swPrecio" class="form-control text-end" ' +
+            'value="' + numeroAPrecio(precioSugerido) + '">' +
+          '</div>' +
+          '<div class="form-text">Precio de lista: ' + fmt(precioSugerido) + '. ' + rangoTxt + '</div></div>' +
+        '</div>',
+      showCancelButton: true,
+      confirmButtonText: existente ? "Sumar cantidad" : "Agregar",
+      cancelButtonText: "Cancelar",
+      focusConfirm: false,
+      didOpen: () => { activarInputPrecio("swPrecio", PRECIO_TOPE); },
+      preConfirm: () => {
+        const cant = parseInt(document.getElementById("swCant").value, 10);
+        const precio = precioANumero(document.getElementById("swPrecio").value);
+
+        if (isNaN(cant) || cant <= 0) {
+          Swal.showValidationMessage("La cantidad debe ser un número entero mayor a cero.");
+          return false;
+        }
+        if (cant > CANT_MAX) {
+          Swal.showValidationMessage("La cantidad máxima por ítem es " + CANT_MAX + " unidades.");
+          return false;
+        }
+        if (isNaN(precio) || precio <= 0) {
+          Swal.showValidationMessage("El precio debe ser mayor a cero.");
+          return false;
+        }
+        if (precio > PRECIO_TOPE) {
+          Swal.showValidationMessage("El precio no puede superar " + fmt(PRECIO_TOPE) + ".");
+          return false;
+        }
+        if (precioSugerido > 0) {
+          if (precio > precioSugerido * FACTOR_MAX) {
+            Swal.showValidationMessage(
+              "El precio no puede superar " + FACTOR_MAX + " veces el de lista (máximo " +
+              fmt(precioSugerido * FACTOR_MAX) + "). Verificá el monto ingresado.");
+            return false;
+          }
+          if (precio < precioSugerido * FACTOR_MIN) {
+            Swal.showValidationMessage(
+              "El precio es demasiado bajo respecto al de lista (mínimo " +
+              fmt(precioSugerido * FACTOR_MIN) + ").");
+            return false;
+          }
+        }
+        return { cant: cant, precio: precio };
+      }
+    }).then(res => {
+      if (!res.isConfirmed || !res.value) return;
+
+      const cant = res.value.cant;
+      const precio = res.value.precio;
+
+      if (existente) {
+        const nuevaCant = existente.Cantidad + cant;
+        if (nuevaCant > CANT_MAX) {
+          Swal.fire("Cantidad excedida",
+            "Ya tenés " + existente.Cantidad + " unidades. Sumando " + cant +
+            " superás el máximo de " + CANT_MAX + " por ítem.", "warning");
+          return;
+        }
+        existente.Cantidad = nuevaCant;
+        existente.PrecioUnitario = precio;
+      } else {
+        pedidoItems.push({
+          IdRepuesto: idRepuesto,
+          Descripcion: rep.Descripcion,
+          Cantidad: cant,
+          PrecioUnitario: precio,
+          PrecioLista: precioSugerido
+        });
+      }
+      actualizarTabla();
+      mostrarRepuestos(repuestosCache);
+    });
+  }
+
+  /* ===================== TABLA DE DETALLE (editable) ===================== */
+  function actualizarTabla() {
+    const tbody = document.getElementById("tablaDetalle");
+    const vacio = document.getElementById("detalleVacio");
+    let total = 0;
+
+    document.getElementById("headerDetalle").innerHTML =
+      '<span class="num">3</span> Detalle del pedido' +
+      (pedidoItems.length > 0 ? ' (' + pedidoItems.length + ' ítem' + (pedidoItems.length === 1 ? '' : 's') + ')' : '');
+
+    if (pedidoItems.length === 0) {
+      tbody.innerHTML = "";
+      vacio.style.display = "block";
+      document.getElementById("totalLabel").textContent = "$0,00";
+      return;
+    }
+
+    vacio.style.display = "none";
+    let html = "";
+    pedidoItems.forEach((item, index) => {
+      const subtotal = item.Cantidad * item.PrecioUnitario;
+      total += subtotal;
+      const lista = item.PrecioLista || 0;
+      const alerta = (lista > 0 && item.PrecioUnitario > lista * FACTOR_ADVERTENCIA) ? " precio-alerta" : "";
+      const tituloAlerta = alerta
+        ? ' title="Precio ' + (item.PrecioUnitario / lista).toFixed(1) + 'x el de lista (' + fmt(lista) + ')"'
+        : "";
+
+      html += '<tr>' +
+        '<td>' + escapeHtml(item.Descripcion) + '</td>' +
+        '<td class="text-center">' +
+          '<input type="number" class="form-control form-control-sm cant-input" min="1" max="' + CANT_MAX + '" ' +
+          'value="' + item.Cantidad + '" onchange="cambiarCantidad(' + index + ', this)"></td>' +
+        '<td class="text-end">' +
+          '<input type="text" inputmode="decimal" class="form-control form-control-sm precio-input' + alerta + '" ' +
+          'value="' + numeroAPrecio(item.PrecioUnitario) + '"' + tituloAlerta +
+          ' onchange="cambiarPrecio(' + index + ', this)"></td>' +
+        '<td class="text-end precio"><strong>' + fmt(subtotal) + '</strong></td>' +
+        '<td class="text-center">' +
+          '<button type="button" class="btn btn-sm btn-outline-danger" title="Quitar del pedido" ' +
+          'onclick="eliminarItem(' + index + ')"><i class="bi bi-trash"></i></button></td>' +
+      '</tr>';
+    });
+    tbody.innerHTML = html;
+    document.getElementById("totalLabel").textContent = fmt(total);
+  }
+
+  function cambiarCantidad(index, input) {
+    const v = parseInt(input.value, 10);
+    if (isNaN(v) || v <= 0) {
+      Swal.fire("Cantidad inválida", "La cantidad debe ser un número entero mayor a cero.", "warning");
+      input.value = pedidoItems[index].Cantidad;
+      return;
+    }
+    if (v > CANT_MAX) {
+      Swal.fire("Cantidad excedida", "El máximo por ítem es " + CANT_MAX + " unidades.", "warning");
+      input.value = pedidoItems[index].Cantidad;
+      return;
+    }
+    pedidoItems[index].Cantidad = v;
+    actualizarTabla();
+  }
+
+  function cambiarPrecio(index, input) {
+    const v = precioANumero(input.value);
+    const item = pedidoItems[index];
+    const lista = item.PrecioLista || 0;
+
+    if (isNaN(v) || v <= 0) {
+      Swal.fire("Precio inválido", "El precio unitario debe ser mayor a cero.", "warning");
+      input.value = numeroAPrecio(item.PrecioUnitario);
+      return;
+    }
+
+    if (v > PRECIO_TOPE) {
+      Swal.fire("Precio fuera de rango",
+        "El precio unitario no puede superar " + fmt(PRECIO_TOPE) + ".", "warning");
+      input.value = numeroAPrecio(item.PrecioUnitario);
+      return;
+    }
+
+    if (lista > 0) {
+      if (v > lista * FACTOR_MAX) {
+        Swal.fire({
+          icon: "warning",
+          title: "Precio fuera de rango",
+          html: 'El precio de lista de <strong>' + escapeHtml(item.Descripcion) + '</strong> es ' + fmt(lista) + '.<br><br>' +
+                'No se admite un precio mayor a ' + fmt(lista * FACTOR_MAX) + ' (' + FACTOR_MAX + 'x el de lista).<br><br>' +
+                '<span class="text-muted">Si el proveedor realmente aumentó tanto, actualizá primero el precio del repuesto en el catálogo.</span>'
+        });
+        input.value = numeroAPrecio(item.PrecioUnitario);
+        return;
+      }
+      if (v < lista * FACTOR_MIN) {
+        Swal.fire("Precio demasiado bajo",
+          "El precio de lista es " + fmt(lista) + ". No se admite un precio menor a " +
+          fmt(lista * FACTOR_MIN) + ".", "warning");
+        input.value = numeroAPrecio(item.PrecioUnitario);
+        return;
+      }
+    }
+
+    item.PrecioUnitario = v;
+    actualizarTabla();
+  }
+
+  function eliminarItem(i) {
+    const item = pedidoItems[i];
+    Swal.fire({
+      title: "¿Quitar del pedido?",
+      html: '<strong>' + escapeHtml(item.Descripcion) + '</strong><br>' +
+            '<span class="text-muted">' + item.Cantidad + ' x ' + fmt(item.PrecioUnitario) + '</span>',
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, quitar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#c0392b"
+    }).then(res => {
+      if (!res.isConfirmed) return;
+      pedidoItems.splice(i, 1);
+      actualizarTabla();
+      mostrarRepuestos(repuestosCache);
+    });
+  }
+
+  /* ===================== VALIDACIÓN COMPLETA ===================== */
+  function validarPedido() {
+    const errores = [];
+    const selProv = document.getElementById("proveedor");
+    limpiarMarca(selProv);
+
+    // 1) Proveedor obligatorio
+    if (!selProv.value) {
+      errores.push({ el: selProv, fbId: "fb-proveedor",
+        msg: "Debe seleccionar un proveedor para finalizar la carga." });
+    }
+
+    // 2) Al menos un ítem
+    if (pedidoItems.length === 0) {
+      errores.push({ el: null, fbId: null,
+        msg: "El pedido debe tener al menos un repuesto. Agregá ítems desde la tabla de arriba." });
+    }
+
+    // 3) Cantidades y precios de cada ítem
+    pedidoItems.forEach(item => {
+      if (!Number.isInteger(item.Cantidad) || item.Cantidad <= 0)
+        errores.push({ el: null, fbId: null, msg: '"' + item.Descripcion + '": la cantidad debe ser un entero mayor a cero.' });
+      else if (item.Cantidad > CANT_MAX)
+        errores.push({ el: null, fbId: null, msg: '"' + item.Descripcion + '": la cantidad supera el máximo de ' + CANT_MAX + '.' });
+
+      if (isNaN(item.PrecioUnitario) || item.PrecioUnitario <= 0)
+        errores.push({ el: null, fbId: null, msg: '"' + item.Descripcion + '": el precio unitario debe ser mayor a cero.' });
+
+      const lista = item.PrecioLista || 0;
+      if (lista > 0 && item.PrecioUnitario > lista * FACTOR_MAX)
+        errores.push({ el: null, fbId: null,
+          msg: '"' + item.Descripcion + '": el precio (' + fmt(item.PrecioUnitario) +
+               ') supera el máximo permitido de ' + fmt(lista * FACTOR_MAX) + '.' });
+
+      if (item.PrecioUnitario > PRECIO_TOPE)
+        errores.push({ el: null, fbId: null,
+          msg: '"' + item.Descripcion + '": el precio supera el tope de ' + fmt(PRECIO_TOPE) + '.' });
+    });
+
+    // 4) Sin duplicados
+    const ids = pedidoItems.map(i => i.IdRepuesto);
+    if (new Set(ids).size !== ids.length)
+      errores.push({ el: null, fbId: null, msg: "Hay repuestos repetidos en el detalle. Unificá las cantidades en un solo ítem." });
+
+    // 5) Total > 0
+    const total = pedidoItems.reduce((s, i) => s + (i.Cantidad * i.PrecioUnitario), 0);
+    if (pedidoItems.length > 0 && total <= 0)
+      errores.push({ el: null, fbId: null, msg: "El total del pedido debe ser mayor a cero." });
+
+    return errores;
+  }
+
+  /* ===================== ADVERTENCIAS (no bloquean) ===================== */
+  function detectarAdvertencias() {
+    const avisos = [];
+    const total = pedidoItems.reduce((s, i) => s + (i.Cantidad * i.PrecioUnitario), 0);
+
+    pedidoItems.forEach(item => {
+      if (item.Cantidad >= CANT_ADVERTENCIA)
+        avisos.push('"' + item.Descripcion + '": estás pidiendo ' + item.Cantidad + ' unidades. Verificá que sea correcto.');
+
+      const lista = item.PrecioLista || 0;
+      if (lista > 0 && item.PrecioUnitario > lista * FACTOR_ADVERTENCIA) {
+        const veces = (item.PrecioUnitario / lista).toFixed(1);
+        avisos.push('"' + item.Descripcion + '": el precio de compra (' + fmt(item.PrecioUnitario) +
+                    ') es ' + veces + ' veces el precio de lista (' + fmt(lista) + ').');
+      }
+    });
+
+    if (total >= TOTAL_ADVERTENCIA)
+      avisos.push("El total del pedido es " + fmt(total) + ", un monto inusualmente alto.");
+
+    return avisos;
+  }
+
+  function setLoading(loading) {
+    document.getElementById("btnGuardar").disabled = loading;
+    document.getElementById("btnTexto").innerHTML = loading
+      ? '<span class="spinner-border spinner-border-sm"></span> Guardando…'
+      : "Finalizar pedido";
+  }
+
+  /* ===================== GUARDAR ===================== */
+  function guardarPedido() {
+    if (!puedeCrear) {
+      Swal.fire("Sin permisos", "Tu rol no permite crear pedidos.", "info");
+      return;
+    }
+
+    const errores = validarPedido();
+
+    if (errores.length > 0) {
+      errores.forEach(e => { if (e.el) marcarInvalido(e.el, e.fbId, e.msg); });
+
+      const primero = errores.find(e => e.el);
+      if (primero) {
+        primero.el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => primero.el.focus(), 300);
+      }
+
+      const lista = errores.map(e => "• " + escapeHtml(e.msg)).join("<br>");
+      Swal.fire({
+        icon: "warning",
+        title: "No se puede finalizar el pedido",
+        html: '<div style="text-align:left; font-size:0.9rem;">' + lista + '</div>',
+        confirmButtonText: "Entendido"
+      });
+      return;
+    }
+
+    const avisos = detectarAdvertencias();
+    if (avisos.length > 0) {
+      const lista = avisos.map(a => "• " + escapeHtml(a)).join("<br><br>");
+      Swal.fire({
+        icon: "warning",
+        title: "Revisá estos datos",
+        html: '<div style="text-align:left; font-size:0.9rem;">' + lista +
+              '<br><br><em style="color:#6c757d;">Podés continuar si está todo bien.</em></div>',
+        showCancelButton: true,
+        confirmButtonText: "Finalizar igual",
+        cancelButtonText: "Revisar",
+        confirmButtonColor: "#1F3864"
+      }).then(res => { if (res.isConfirmed) confirmarYEnviar(); });
+      return;
+    }
+
+    confirmarYEnviar();
+  }
+
+  function confirmarYEnviar() {
+    const selProv = document.getElementById("proveedor");
+    const nombreProv = selProv.options[selProv.selectedIndex].text;
+    const total = pedidoItems.reduce((s, i) => s + (i.Cantidad * i.PrecioUnitario), 0);
+
+    Swal.fire({
+      title: "¿Confirmar el pedido?",
+      html: '<div style="text-align:left;">' +
+            '<strong>Proveedor:</strong> ' + escapeHtml(nombreProv) + '<br>' +
+            '<strong>Ítems:</strong> ' + pedidoItems.length + '<br>' +
+            '<strong>Total:</strong> ' + fmt(total) + '<br><br>' +
+            '<span class="text-muted">El pedido quedará en estado Pendiente hasta que recibas la mercadería.</span>' +
+            '</div>',
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, finalizar pedido",
+      cancelButtonText: "Volver"
+    }).then(res => { if (res.isConfirmed) enviarPedido(total); });
+  }
+
+  function enviarPedido(total) {
+    const idProveedor = parseInt(document.getElementById("proveedor").value, 10);
+    setLoading(true);
+
+    fetchAuth(api + "Pedido", {
+      method: "POST",
+      body: JSON.stringify({ IdProveedor: idProveedor, Total: total, IdEstado: 1 })
+    }).then(r => {
+      if (!r.ok) return r.text().then(t => { throw new Error(extraerMensaje(t) || "No se pudo crear el pedido."); });
+      return r.json();
+    }).then(idPedido => {
+      const promesas = pedidoItems.map(item =>
+        fetchAuth(api + "DetallePedido", {
+          method: "POST",
+          body: JSON.stringify({
+            IdPedido: idPedido, IdRepuesto: item.IdRepuesto,
+            Cantidad: item.Cantidad, PrecioUnitario: item.PrecioUnitario
+          })
+        }).then(r => {
+          if (!r.ok) throw new Error('No se pudo agregar "' + item.Descripcion + '" al pedido.');
+          return true;
+        })
+      );
+
+      return Promise.all(promesas).then(() => {
+        guardadoOk = true;
+        Swal.fire({
+          icon: "success",
+          title: "Pedido N° " + idPedido + " creado",
+          text: "El pedido quedó registrado en estado Pendiente.",
+          timer: 1800, showConfirmButton: false
+        }).then(() => window.location.href = "ListadoPedido.html");
+      }).catch(err => {
+        Swal.fire({
+          icon: "error",
+          title: "Pedido incompleto",
+          html: 'Se creó el pedido N° ' + idPedido + ' pero hubo un problema al cargar el detalle:<br><br>' +
+                '<strong>' + escapeHtml(err.message) + '</strong><br><br>' +
+                'Revisá el pedido en el listado y completalo o cancelalo.',
+          confirmButtonText: "Ir al listado"
+        }).then(() => window.location.href = "ListadoPedido.html");
+      });
+    }).catch(err => {
+      setLoading(false);
+      Swal.fire("No se pudo guardar", err.message || "Ocurrió un error al crear el pedido.", "error");
+    });
+  }
+
+  function extraerMensaje(text) {
+    try { const d = JSON.parse(text); return d.Message || d.message || null; }
+    catch { return text || null; }
+  }
+
+  /* ===================== SALIR CON CARGA PENDIENTE ===================== */
+  function confirmarSalida(destino) {
+    if (guardadoOk || pedidoItems.length === 0) { window.location.href = destino; return; }
+    Swal.fire({
+      icon: "question",
+      title: "¿Descartar el pedido?",
+      text: "Tenés " + pedidoItems.length + " ítem(s) cargados sin guardar. Si salís ahora se pierden.",
+      showCancelButton: true,
+      confirmButtonText: "Sí, descartar",
+      cancelButtonText: "Seguir cargando",
+      confirmButtonColor: "#c0392b"
+    }).then(res => { if (res.isConfirmed) window.location.href = destino; });
+  }
+
+  function initManual() {
+    activarInputsPrecioPorClase("precio-input", PRECIO_TOPE);
+
+    cargarCombos();
+    cargarRepuestos();
+    actualizarTabla();
+
+    document.getElementById("btnFiltrar").onclick = () => cargarRepuestos(true);
+    document.getElementById("btnGuardar").onclick = guardarPedido;
+
+    ["linkVolver", "btnCancelar"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        confirmarSalida("ListadoPedido.html");
+      });
+    });
+  }
+
+  /* ==========================================================
+     REPOSICION SUGERIDA
+     Nombres con prefijo "repo" para no pisar el pedido manual.
+     ========================================================== */
+
+  var apiRepuestoRepo = api + "Repuesto";
+  var apiProvRep = api + "ProveedorRepuesto";   // puede no existir todavia
+
+  var repoItems = [];          // {IdRepuesto, Codigo, Descripcion, Stock, Minimo, Cantidad,
+                               //  IdProveedor, Precio, Alternativas:[{IdProveedor,Nombre,Precio}]}
+  var repoProveedores = [];    // catalogo de proveedores activos
+  var repoMapaPrecios = {};    // IdRepuesto -> [{IdProveedor, Nombre, Precio}]
+  var repoHayListas = false;   // true si el endpoint de listas respondio con datos
+
+  /* ---------- Carga ---------- */
+
+  function repoCargarProveedores() {
+    return fetchAuth(api + "Proveedor")
+      .then(function (r) { return r.json(); })
+      .then(function (datos) {
+        repoProveedores = datos.filter(function (p) {
+          return p.Activo !== false && p.Activo !== 0;
+        });
+      })
+      .catch(function () { repoProveedores = []; });
+  }
+
+  // Intenta leer la relacion Proveedor-Repuesto con precios de compra.
+  // Si el endpoint no existe (404) o viene vacio, se sigue funcionando
+  // sin precios: cada item queda como "sin proveedor" y se asigna a mano.
+  function repoCargarListas() {
+    return fetchAuth(apiProvRep)
+      .then(function (r) {
+        if (!r.ok) throw new Error("sin endpoint");
+        return r.json();
+      })
+      .then(function (datos) {
+        if (!datos || datos.length === 0) { repoHayListas = false; return; }
+        repoMapaPrecios = {};
+        datos.forEach(function (x) {
+          var idRep = x.IdRepuesto;
+          var precio = Number(x.PrecioCompra !== undefined ? x.PrecioCompra : x.Precio);
+          if (!idRep || isNaN(precio)) return;
+          if (!repoMapaPrecios[idRep]) repoMapaPrecios[idRep] = [];
+          var prov = repoProveedores.find(function (p) { return p.Id === x.IdProveedor; });
+          repoMapaPrecios[idRep].push({
+            IdProveedor: x.IdProveedor,
+            Nombre: x.Proveedor || (prov ? prov.RazonSocial : "Proveedor " + x.IdProveedor),
+            Precio: precio
+          });
+        });
+        // Cada lista queda ordenada de menor a mayor precio
+        Object.keys(repoMapaPrecios).forEach(function (k) {
+          repoMapaPrecios[k].sort(function (a, b) { return a.Precio - b.Precio; });
+        });
+        repoHayListas = true;
+      })
+      .catch(function () { repoHayListas = false; repoMapaPrecios = {}; });
+  }
+
+  function repoEsActivo(r) {
+    return r.Activo === true || r.Activo === 1 || r.Activo === undefined;
+  }
+
+  // Cantidad sugerida = StockMinimo - StockActual (nunca negativa).
+  // Si algun dia existe StockObjetivo en Repuesto, se usa ese en su lugar.
+  function repoCantidadSugerida(r) {
+    var stock = Number(r.StockActual || 0);
+    var objetivo = (r.StockObjetivo !== undefined && r.StockObjetivo !== null)
+      ? Number(r.StockObjetivo)
+      : Number(r.StockMinimo || 0);
+    var falta = objetivo - stock;
+    return falta > 0 ? falta : 0;
+  }
+
+  function repoCargarFaltantes() {
+    var cont = document.getElementById("repoLista");
+    cont.innerHTML = '<div class="p-4 text-center text-muted">' +
+      '<span class="spinner-border spinner-border-sm"></span> Analizando stock…</div>';
+
+    return fetchAuth(apiRepuestoRepo)
+      .then(function (r) { return r.json(); })
+      .then(function (datos) {
+        var faltantes = datos.filter(repoEsActivo).filter(function (r) {
+          return Number(r.StockActual || 0) <= Number(r.StockMinimo || 0) && repoCantidadSugerida(r) > 0;
+        });
+
+        // Una sola fila por repuesto: se calcula sobre el stock actual,
+        // asi que varias ventas del mismo item no generan filas repetidas.
+        repoItems = faltantes.map(function (r) {
+          var alternativas = repoMapaPrecios[r.Id] || [];
+          var mejor = alternativas.length > 0 ? alternativas[0] : null;
+          return {
+            IdRepuesto: r.Id,
+            Codigo: r.Codigo || "",
+            Descripcion: r.Descripcion,
+            Imagen: r.Imagen || r.UrlImagen || r.Foto || "",
+            Stock: Number(r.StockActual || 0),
+            Minimo: Number(r.StockMinimo || 0),
+            Cantidad: repoCantidadSugerida(r),
+            IdProveedor: mejor ? mejor.IdProveedor : null,
+            NombreProveedor: mejor ? mejor.Nombre : null,
+            Precio: mejor ? mejor.Precio : null,
+            Alternativas: alternativas,
+            verAlternativas: false
+          };
+        });
+
+        // Los mas criticos primero
+        repoItems.sort(function (a, b) { return a.Stock - b.Stock; });
+        repoRender();
+      })
+      .catch(function () {
+        cont.innerHTML = '<div class="p-4 text-center text-danger">' +
+          'No se pudieron cargar los repuestos. ' +
+          '<button class="btn btn-sm btn-outline-danger ms-2" onclick="repoCargarFaltantes()">Reintentar</button></div>';
+      });
+  }
+
+  /* ---------- Render de la lista ---------- */
+
+  function repoMiniatura(it) {
+    if (it.Imagen) {
+      return '<img class="repo-foto" src="' + escapeHtml(it.Imagen) + '" alt="" ' +
+             'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+             '<div class="repo-foto-ph" style="display:none;"><i class="bi bi-nut"></i></div>';
+    }
+    return '<div class="repo-foto-ph"><i class="bi bi-nut"></i></div>';
+  }
+
+  function repoBloqueProveedor(it, idx) {
+    if (!it.IdProveedor) {
+      return '<div class="repo-sin-prov">' +
+        '<i class="bi bi-exclamation-triangle-fill"></i> Sin proveedor/precio cargado' +
+        '<button type="button" class="repo-link" onclick="repoAsignar(' + idx + ')">Asignar</button>' +
+      '</div>';
+    }
+
+    var html = '<div class="repo-prov-nombre">' + escapeHtml(it.NombreProveedor);
+    if (it.Alternativas.length > 0 && it.Alternativas[0].IdProveedor === it.IdProveedor) {
+      html += ' <span class="repo-estrella" title="Mejor precio disponible">★</span>';
+    }
+    html += '</div>';
+
+    var otras = it.Alternativas.length - 1;
+    if (otras > 0) {
+      html += '<button type="button" class="repo-link" onclick="repoToggleAlt(' + idx + ')">' +
+        (it.verAlternativas ? 'Ocultar alternativas' : 'Ver ' + otras + ' alternativa' + (otras === 1 ? '' : 's')) +
+      '</button>';
+    } else {
+      html += '<button type="button" class="repo-link" onclick="repoAsignar(' + idx + ')">Cambiar</button>';
+    }
+
+    if (it.verAlternativas) {
+      html += '<div class="repo-alts">';
+      it.Alternativas.forEach(function (a) {
+        var elegida = a.IdProveedor === it.IdProveedor;
+        html += '<button type="button" class="repo-alt' + (elegida ? ' elegida' : '') + '" ' +
+          'onclick="repoElegirProveedor(' + idx + ', ' + a.IdProveedor + ')">' +
+          '<span>' + escapeHtml(a.Nombre) + '</span>' +
+          '<strong>' + formatearMoneda(a.Precio) + '</strong></button>';
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function repoRender() {
+    var cont = document.getElementById("repoLista");
+    document.getElementById("repoTitulo").textContent =
+      "Productos para reponer (" + repoItems.length + ")";
+
+    if (repoItems.length === 0) {
+      cont.innerHTML = '<div class="empty-state">' +
+        '<div class="icon"><i class="bi bi-check-circle"></i></div>' +
+        '<h4>Todo en orden</h4>' +
+        '<p>Ningún repuesto está por debajo del stock mínimo.</p></div>';
+      repoRenderResumen();
+      return;
+    }
+
+    var html = "";
+    repoItems.forEach(function (it, idx) {
+      var subtotal = it.Precio !== null ? it.Cantidad * it.Precio : null;
+      var claseStock = it.Stock <= 0 ? "repo-cero" : "repo-bajo";
+
+      html += '<div class="repo-item">' +
+        repoMiniatura(it) +
+
+        '<div class="repo-info">' +
+          '<div class="repo-desc"><span class="codigo-repuesto">' + escapeHtml(it.Codigo) + '</span> ' +
+            escapeHtml(it.Descripcion) + '</div>' +
+          '<div class="repo-stock">' +
+            '<span class="' + claseStock + '">Stock ' + it.Stock + '</span>' +
+            '<span class="repo-sep">·</span>Mínimo ' + it.Minimo +
+          '</div>' +
+        '</div>' +
+
+        '<div class="repo-cant">' +
+          '<div class="qty-group">' +
+            '<button type="button" onclick="repoSumar(' + idx + ', -1)">−</button>' +
+            '<input type="number" min="1" value="' + it.Cantidad + '" ' +
+              'onchange="repoCambiarCantidad(' + idx + ', this.value)">' +
+            '<button type="button" onclick="repoSumar(' + idx + ', 1)">+</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="repo-prov">' + repoBloqueProveedor(it, idx) + '</div>' +
+
+        '<div class="repo-precio">' +
+          (it.Precio !== null
+            ? '<div class="repo-unit">' + formatearMoneda(it.Precio) + '</div>' +
+              '<div class="repo-sub">' + formatearMoneda(subtotal) + '</div>'
+            : '<div class="repo-unit text-muted">—</div>') +
+        '</div>' +
+
+        '<button class="repo-quitar" onclick="repoQuitar(' + idx + ')" title="Quitar de la reposición">' +
+          '<i class="bi bi-x-lg"></i></button>' +
+      '</div>';
+    });
+
+    cont.innerHTML = html;
+    repoRenderResumen();
+  }
+
+  /* ---------- Acciones sobre la lista ---------- */
+
+  function repoCambiarCantidad(idx, valor) {
+    var it = repoItems[idx];
+    if (!it) return;
+    var n = parseInt(valor, 10);
+    if (!n || n < 1) n = 1;
+    it.Cantidad = n;
+    repoRender();
+  }
+
+  function repoSumar(idx, delta) {
+    var it = repoItems[idx];
+    if (!it) return;
+    repoCambiarCantidad(idx, it.Cantidad + delta);
+  }
+
+  function repoQuitar(idx) {
+    repoItems.splice(idx, 1);
+    repoRender();
+  }
+
+  function repoToggleAlt(idx) {
+    repoItems[idx].verAlternativas = !repoItems[idx].verAlternativas;
+    repoRender();
+  }
+
+  function repoElegirProveedor(idx, idProveedor) {
+    var it = repoItems[idx];
+    var alt = it.Alternativas.find(function (a) { return a.IdProveedor === idProveedor; });
+    if (!alt) return;
+    it.IdProveedor = alt.IdProveedor;
+    it.NombreProveedor = alt.Nombre;
+    it.Precio = alt.Precio;
+    it.verAlternativas = false;
+    repoRender();
+  }
+
+  // Asignacion manual: para repuestos sin lista de precios cargada.
+  function repoAsignar(idx) {
+    var it = repoItems[idx];
+    if (repoProveedores.length === 0) {
+      Swal.fire("Sin proveedores", "No hay proveedores activos cargados.", "info");
+      return;
+    }
+
+    var opciones = '<option value="">Seleccione proveedor…</option>';
+    repoProveedores.forEach(function (p) {
+      var sel = p.Id === it.IdProveedor ? " selected" : "";
+      opciones += '<option value="' + p.Id + '"' + sel + '>' + escapeHtml(p.RazonSocial) + '</option>';
+    });
+
+    Swal.fire({
+      title: "Asignar proveedor y precio",
+      html: '<div style="text-align:left;">' +
+              '<div class="mb-2"><strong>' + escapeHtml(it.Descripcion) + '</strong></div>' +
+              '<label class="form-label mb-1">Proveedor</label>' +
+              '<select id="swProv" class="form-select">' + opciones + '</select>' +
+              '<label class="form-label mb-1 mt-2">Precio de compra unitario</label>' +
+              '<div class="input-group">' +
+                '<span class="input-group-text">$</span>' +
+                '<input type="text" inputmode="decimal" id="swPrecioRepo" class="form-control text-end" value="' +
+                  (it.Precio !== null ? numeroAPrecio(it.Precio) : "") + '">' +
+              '</div>' +
+              '<div class="form-text mt-2">Se usa solo para este pedido. No modifica listas de precios.</div>' +
+            '</div>',
+      showCancelButton: true,
+      confirmButtonText: "Asignar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#1F3864",
+      didOpen: function () { activarInputPrecio("swPrecioRepo", PRECIO_TOPE); },
+      preConfirm: function () {
+        var idProv = parseInt(document.getElementById("swProv").value, 10);
+        var precio = precioANumero(document.getElementById("swPrecioRepo").value);
+        if (!idProv) { Swal.showValidationMessage("Elegí un proveedor."); return false; }
+        if (isNaN(precio) || precio <= 0) { Swal.showValidationMessage("El precio debe ser mayor a cero."); return false; }
+        if (precio > PRECIO_TOPE) {
+          Swal.showValidationMessage("El precio no puede superar " + fmt(PRECIO_TOPE) + ".");
+          return false;
+        }
+        return { idProv: idProv, precio: precio };
+      }
+    }).then(function (res) {
+      if (!res.isConfirmed || !res.value) return;
+      var prov = repoProveedores.find(function (p) { return p.Id === res.value.idProv; });
+      it.IdProveedor = res.value.idProv;
+      it.NombreProveedor = prov ? prov.RazonSocial : "Proveedor";
+      it.Precio = res.value.precio;
+      it.verAlternativas = false;
+      repoRender();
+    });
+  }
+
+  /* ---------- Resumen agrupado por proveedor ---------- */
+
+  function repoAgrupar() {
+    var grupos = {};
+    repoItems.forEach(function (it) {
+      if (!it.IdProveedor || it.Precio === null) return;
+      if (!grupos[it.IdProveedor]) {
+        grupos[it.IdProveedor] = { IdProveedor: it.IdProveedor, Nombre: it.NombreProveedor, items: [], subtotal: 0 };
+      }
+      grupos[it.IdProveedor].items.push(it);
+      grupos[it.IdProveedor].subtotal += it.Cantidad * it.Precio;
+    });
+    return Object.keys(grupos).map(function (k) { return grupos[k]; });
+  }
+
+  function repoRenderResumen() {
+    var cont = document.getElementById("repoResumen");
+    var grupos = repoAgrupar();
+    var pendientes = repoItems.filter(function (it) { return !it.IdProveedor || it.Precio === null; });
+
+    var html = "";
+
+    if (grupos.length === 0 && pendientes.length === 0) {
+      cont.innerHTML = '<div class="p-4 text-center text-muted">Nada para pedir.</div>';
+      document.getElementById("repoTotal").textContent = "$0,00";
+      document.getElementById("repoNota").textContent = "";
+      document.getElementById("btnRepoConfirmar").disabled = true;
+      return;
+    }
+
+    var total = 0;
+    grupos.forEach(function (g) {
+      total += g.subtotal;
+      html += '<div class="repo-grupo">' +
+        '<div class="repo-grupo-head">' +
+          '<span class="nom">' + escapeHtml(g.Nombre) + '</span>' +
+          '<span class="cant">' + g.items.length + ' producto' + (g.items.length === 1 ? '' : 's') + '</span>' +
+        '</div>';
+      g.items.forEach(function (it) {
+        html += '<div class="repo-grupo-item">' +
+          '<span class="d">' + escapeHtml(it.Descripcion) + ' × ' + it.Cantidad + '</span>' +
+          '<span class="m">' + formatearMoneda(it.Cantidad * it.Precio) + '</span>' +
+        '</div>';
+      });
+      html += '<div class="repo-grupo-sub">Subtotal: ' + formatearMoneda(g.subtotal) + '</div></div>';
+    });
+
+    if (pendientes.length > 0) {
+      html += '<div class="repo-grupo pendiente">' +
+        '<div class="repo-grupo-head">' +
+          '<span class="nom"><i class="bi bi-exclamation-triangle-fill"></i> Sin proveedor</span>' +
+          '<span class="cant">' + pendientes.length + '</span>' +
+        '</div>';
+      pendientes.forEach(function (it) {
+        html += '<div class="repo-grupo-item"><span class="d">' +
+          escapeHtml(it.Descripcion) + ' × ' + it.Cantidad + '</span></div>';
+      });
+      html += '<div class="repo-grupo-sub">No entran en los pedidos hasta asignarles proveedor.</div></div>';
+    }
+
+    cont.innerHTML = html;
+    document.getElementById("repoTotal").textContent = formatearMoneda(total);
+
+    var nota = document.getElementById("repoNota");
+    if (grupos.length === 0) {
+      nota.textContent = "Ningún producto tiene proveedor asignado todavía.";
+    } else {
+      nota.textContent = "Se generarán " + grupos.length + " pedido" + (grupos.length === 1 ? "" : "s") +
+        " a " + grupos.length + " proveedor" + (grupos.length === 1 ? "" : "es") + ".";
+    }
+    document.getElementById("btnRepoConfirmar").disabled = grupos.length === 0;
+  }
+
+  /* ---------- Confirmacion y generacion de pedidos ---------- */
+
+  function repoConfirmar() {
+    if (!puedeCrear) {
+      Swal.fire("Sin permisos", "Tu rol no permite crear pedidos.", "info");
+      return;
+    }
+
+    var grupos = repoAgrupar();
+    if (grupos.length === 0) return;
+
+    var pendientes = repoItems.filter(function (it) { return !it.IdProveedor || it.Precio === null; });
+    var total = grupos.reduce(function (s, g) { return s + g.subtotal; }, 0);
+
+    var detalle = "";
+    grupos.forEach(function (g) {
+      detalle += '<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;">' +
+        '<span>' + escapeHtml(g.Nombre) + ' — ' + g.items.length + ' producto' + (g.items.length === 1 ? '' : 's') + '</span>' +
+        '<strong>' + formatearMoneda(g.subtotal) + '</strong></div>';
+    });
+
+    var aviso = "";
+    if (pendientes.length > 0) {
+      aviso = '<div style="margin-top:10px;padding:8px;background:#fff8e1;border-radius:6px;font-size:0.85rem;color:#856404;">' +
+        '<i class="bi bi-exclamation-triangle"></i> ' + pendientes.length +
+        ' producto(s) sin proveedor quedan fuera de estos pedidos.</div>';
+    }
+
+    Swal.fire({
+      title: "Confirmar reposición",
+      html: '<div style="text-align:left;font-size:0.9rem;">' + detalle +
+            '<div style="border-top:1px solid #dee2e6;margin-top:8px;padding-top:8px;' +
+            'display:flex;justify-content:space-between;font-size:1.05rem;">' +
+            '<strong>Total estimado</strong><strong>' + formatearMoneda(total) + '</strong></div>' +
+            aviso + '</div>',
+      showCancelButton: true,
+      confirmButtonText: "Confirmar y generar pedidos",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#28a745",
+      width: 500
+    }).then(function (res) {
+      if (res.isConfirmed) repoGenerarPedidos(grupos);
+    });
+  }
+
+  function repoSetLoading(cargando) {
+    var btn = document.getElementById("btnRepoConfirmar");
+    btn.disabled = cargando;
+    btn.innerHTML = cargando
+      ? '<span class="spinner-border spinner-border-sm"></span> Generando…'
+      : '<i class="bi bi-check2-circle"></i> CONFIRMAR REPOSICIÓN';
+  }
+
+  // Un pedido por proveedor, usando la estructura actual (Pedido + DetallePedido).
+  // Se generan en secuencia para poder informar exactamente cual fallo.
+  function repoGenerarPedidos(grupos) {
+    repoSetLoading(true);
+
+    var creados = [];
+    var fallidos = [];
+    var idsPedidos = [];   // repuestos que quedaron efectivamente en un pedido
+
+    function siguiente(i) {
+      if (i >= grupos.length) return repoFinalizar(creados, fallidos, idsPedidos);
+
+      var g = grupos[i];
+      return fetchAuth(api + "Pedido", {
+        method: "POST",
+        body: JSON.stringify({ IdProveedor: g.IdProveedor, Total: g.subtotal, IdEstado: 1 })
+      }).then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(extraerMensaje(t) || "No se pudo crear el pedido."); });
+        return r.json();
+      }).then(function (idPedido) {
+        var promesas = g.items.map(function (it) {
+          return fetchAuth(api + "DetallePedido", {
+            method: "POST",
+            body: JSON.stringify({
+              IdPedido: idPedido,
+              IdRepuesto: it.IdRepuesto,
+              Cantidad: it.Cantidad,
+              PrecioUnitario: it.Precio
+            })
+          }).then(function (r) {
+            if (!r.ok) throw new Error('No se pudo agregar "' + it.Descripcion + '".');
+            return true;
+          });
+        });
+        return Promise.all(promesas).then(function () {
+          creados.push({ id: idPedido, nombre: g.Nombre, subtotal: g.subtotal });
+          g.items.forEach(function (it) { idsPedidos.push(it.IdRepuesto); });
+        });
+      }).catch(function (err) {
+        fallidos.push({ nombre: g.Nombre, motivo: err.message || "Error desconocido" });
+      }).then(function () {
+        return siguiente(i + 1);
+      });
+    }
+
+    siguiente(0);
+  }
+
+  function repoFinalizar(creados, fallidos, idsPedidos) {
+    repoSetLoading(false);
+
+    var html = "";
+    if (creados.length > 0) {
+      html += '<div style="text-align:left;font-size:0.9rem;">';
+      creados.forEach(function (c) {
+        html += '<div>✓ Pedido N° ' + c.id + ' — ' + escapeHtml(c.nombre) + ' — ' + formatearMoneda(c.subtotal) + '</div>';
+      });
+      html += '</div>';
+    }
+    if (fallidos.length > 0) {
+      html += '<div style="text-align:left;margin-top:10px;padding:8px;background:#f8d7da;border-radius:6px;font-size:0.85rem;color:#721c24;">';
+      fallidos.forEach(function (f) {
+        html += '<div>✗ ' + escapeHtml(f.nombre) + ': ' + escapeHtml(f.motivo) + '</div>';
+      });
+      html += '</div>';
+    }
+
+    Swal.fire({
+      icon: fallidos.length === 0 ? "success" : "warning",
+      title: fallidos.length === 0
+        ? creados.length + " pedido(s) generado(s)"
+        : "Reposición parcial",
+      html: html + '<div style="margin-top:10px;"><small class="text-muted">' +
+            'Quedan en estado Pendiente hasta que recibas la mercadería.</small></div>',
+      confirmButtonText: "Ir al listado de pedidos",
+      showCancelButton: true,
+      cancelButtonText: "Seguir acá"
+    }).then(function (res) {
+      if (res.isConfirmed) { guardadoOk = true; window.location.href = "ListadoPedido.html"; }
+      else {
+        // Crear un pedido NO descuenta stock, asi que recargar traeria los mismos
+        // items. Se sacan de la lista solo los que efectivamente se pidieron.
+        repoItems = repoItems.filter(function (it) {
+          return idsPedidos.indexOf(it.IdRepuesto) === -1;
+        });
+        repoRender();
+      }
+    });
+  }
+
+  /* ---------- Pestañas ---------- */
+
+  function repoMostrarTab(cual) {
+    var esRepo = cual === "repo";
+    document.getElementById("tabRepo").style.display = esRepo ? "flex" : "none";
+    document.getElementById("tabManual").style.display = esRepo ? "none" : "block";
+    document.getElementById("btnTabRepo").classList.toggle("activo", esRepo);
+    document.getElementById("btnTabManual").classList.toggle("activo", !esRepo);
+    document.body.classList.toggle("repo-activo", esRepo);
+  }
+
+  function initRepo() {
+    document.getElementById("btnTabRepo").addEventListener("click", function () { repoMostrarTab("repo"); });
+    document.getElementById("btnTabManual").addEventListener("click", function () { repoMostrarTab("manual"); });
+    document.getElementById("btnRepoConfirmar").addEventListener("click", repoConfirmar);
+    document.getElementById("btnRepoRefrescar").addEventListener("click", repoCargarFaltantes);
+
+    // Proveedores primero: hacen falta para resolver los nombres de las listas
+    repoCargarProveedores()
+      .then(repoCargarListas)
+      .then(repoCargarFaltantes);
+  }
+
+  /* ============ INICIO ============ */
+  window.onload = function () {
+    initManual();
+    initRepo();
+    repoMostrarTab("repo");   // arranca en Reposicion sugerida
+  };
+</script>
+</body>
+</html>

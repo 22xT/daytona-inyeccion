@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Proveedor - Daytona Inyección</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .required { color: #dc3545; font-weight: bold; }
+    .char-counter { font-size: 0.78rem; color: #6c757d; text-align: right; }
+    .cuit-preview { font-size: 0.82rem; color: #1F3864; font-weight: 600; margin-top: 4px; min-height: 18px; }
+    .is-valid { border-color: #198754 !important; }
+    .is-invalid { border-color: #dc3545 !important; }
+  </style>
+</head>
+
+<body data-page="proveedores">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2 id="tituloPagina"><i class="bi bi-building-add"></i> Nuevo Proveedor
+          <span class="mode-badge" id="modeBadge">Alta</span>
+        </h2>
+        <span class="subtitle">Los campos marcados con <span class="required">*</span> son obligatorios</span>
+      </div>
+      <a href="ProveedoresListado.html" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Volver al listado
+      </a>
+    </div>
+
+    <form id="formProveedor" novalidate>
+      <div class="panel">
+        <div class="panel-header"><span class="num">1</span> Datos fiscales</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">CUIT <span class="required">*</span></label>
+              <input type="text" id="cuit" class="form-control" maxlength="11" required placeholder="20123456789" autocomplete="off">
+              <div class="form-text">Ingrese 11 dígitos sin guiones. Ejemplo: 20123456789</div>
+              <div class="cuit-preview" id="cuitPreview"></div>
+              <div class="invalid-feedback" id="fb-cuit">Ingrese un CUIT válido de 11 dígitos.</div>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">Razón social <span class="required">*</span></label>
+              <input type="text" id="razonSocial" class="form-control" maxlength="100" required autocomplete="off">
+              <div class="invalid-feedback" id="fb-razonSocial">Ingrese una razón social válida.</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Condición IVA <span class="required">*</span></label>
+              <select id="condicionIva" class="form-select" required>
+                <option value="">Seleccionar...</option>
+                <option value="Responsable Inscripto">Responsable Inscripto</option>
+                <option value="Monotributista">Monotributista</option>
+                <option value="Exento">Exento</option>
+                <option value="Consumidor Final">Consumidor Final</option>
+              </select>
+              <div class="invalid-feedback" id="fb-condicionIva">Debe seleccionar una condición frente al IVA.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="num">2</span> Ubicación</div>
+        <div class="panel-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Provincia <span class="required">*</span></label>
+              <select id="provincia" class="form-select" required>
+                <option value="">Seleccionar...</option>
+                <option>Buenos Aires</option><option>CABA</option><option>Catamarca</option>
+                <option>Chaco</option><option>Chubut</option><option>Córdoba</option>
+                <option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option>
+                <option>Jujuy</option><option>La Pampa</option><option>La Rioja</option>
+                <option>Mendoza</option><option>Misiones</option><option>Neuquén</option>
+                <option>Río Negro</option><option>Salta</option><option>San Juan</option>
+                <option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option>
+                <option>Santiago del Estero</option><option>Tierra del Fuego</option><option>Tucumán</option>
+              </select>
+              <div class="invalid-feedback" id="fb-provincia">Debe seleccionar una provincia.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Localidad <span class="required">*</span></label>
+              <input type="text" id="localidad" class="form-control" list="localidadesList" maxlength="80" autocomplete="off">
+              <datalist id="localidadesList"></datalist>
+              <div class="invalid-feedback" id="fb-localidad">Debe ingresar o seleccionar una localidad.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Código postal</label>
+              <input type="text" id="codigoPostal" class="form-control" maxlength="10" autocomplete="off">
+              <div class="invalid-feedback" id="fb-codigoPostal">El código postal solo admite letras y números (máx. 10).</div>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label">Calle</label>
+              <input type="text" id="calle" class="form-control" maxlength="100" placeholder="Av. Colón" autocomplete="off">
+              <div class="invalid-feedback" id="fb-calle">Ingrese una calle válida (mínimo 2 caracteres).</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Número</label>
+              <input type="text" id="numero" class="form-control" maxlength="15" placeholder="1234" autocomplete="off">
+              <div class="invalid-feedback" id="fb-numero">El número admite dígitos, letras, / y -.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Barrio</label>
+              <input type="text" id="barrio" class="form-control" maxlength="100" autocomplete="off">
+              <div class="invalid-feedback" id="fb-barrio">Ingrese un barrio válido (mínimo 2 caracteres).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="num">3</span> Contacto y notas</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Teléfono</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                <input type="text" id="telefono" class="form-control" maxlength="30" placeholder="351 222-1111" autocomplete="off">
+              </div>
+              <div class="invalid-feedback d-block" id="fb-telefono" style="display:none !important;">Ingrese un teléfono válido.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Correo</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" id="mail" class="form-control" maxlength="100" placeholder="nombre@correo.com" autocomplete="off">
+              </div>
+              <div class="invalid-feedback d-block" id="fb-mail" style="display:none !important;">Ingrese un correo válido.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Observaciones</label>
+              <input type="text" id="observaciones" class="form-control" maxlength="200" autocomplete="off">
+              <div class="char-counter"><span id="obsCount">0</span>/200</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="id">
+
+      <div class="actions">
+        <a href="ProveedoresListado.html" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary" id="btnGuardar">
+          <i class="bi bi-save"></i> <span id="btnTexto">Guardar</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const apiProveedor = API_BASE + "Proveedor";
+    const usuario = Auth.getUsuario();
+    const esAdmin = usuario && usuario.Rol === "Administrador";
+
+    const CONDICIONES_IVA = ["Responsable Inscripto", "Monotributista", "Exento", "Consumidor Final"];
+
+    if (!esAdmin) {
+      Swal.fire({ icon: "error", title: "Acceso denegado", text: "Solo administradores pueden gestionar proveedores." })
+        .then(() => window.location.href = "ProveedoresListado.html");
+    }
+
+    const f = {
+      id: document.getElementById("id"),
+      cuit: document.getElementById("cuit"),
+      razonSocial: document.getElementById("razonSocial"),
+      condicionIva: document.getElementById("condicionIva"),
+      calle: document.getElementById("calle"),
+      numero: document.getElementById("numero"),
+      barrio: document.getElementById("barrio"),
+      localidad: document.getElementById("localidad"),
+      provincia: document.getElementById("provincia"),
+      codigoPostal: document.getElementById("codigoPostal"),
+      telefono: document.getElementById("telefono"),
+      mail: document.getElementById("mail"),
+      observaciones: document.getElementById("observaciones"),
+      dataList: document.getElementById("localidadesList")
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const idProveedor = params.get("id");
+
+    /* ===================== VALIDACIÓN REAL DE CUIT ===================== */
+    // Prefijos validos de CUIT en Argentina:
+    // 20,23,24,27 = persona fisica | 30,33,34 = persona juridica
+    const PREFIJOS_CUIT = ["20", "23", "24", "27", "30", "33", "34"];
+    const PREFIJOS_FISICA = ["20", "23", "24", "27"];
+    const PREFIJOS_JURIDICA = ["30", "33", "34"];
+
+    function validarCUIT(cuit) {
+      cuit = (cuit || "").replace(/[^0-9]/g, "");
+      if (cuit.length !== 11) return false;
+      if (/^(\d)\1{10}$/.test(cuit)) return false; // todos iguales
+
+      // Prefijo debe ser uno de los validos (rechaza 56, 99, etc.)
+      if (PREFIJOS_CUIT.indexOf(cuit.substring(0, 2)) === -1) return false;
+
+      const mult = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+      let suma = 0;
+      for (let i = 0; i < 10; i++) suma += parseInt(cuit[i]) * mult[i];
+      let resto = suma % 11;
+      let dig = 11 - resto;
+      if (dig === 11) dig = 0;
+      if (dig === 10) dig = 9;
+      return dig === parseInt(cuit[10]);
+    }
+
+    /* ===== SEGURIDAD: escapar HTML antes de meterlo en SweetAlert (evita XSS) ===== */
+    function esc(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+    }
+
+    /* ===== SANITIZACIÓN: rechaza HTML, scripts y caracteres de control ===== */
+    function sanitizar(s) {
+      if (s === null || s === undefined) return "";
+      return String(s)
+        .replace(/[\u0000-\u001F\u007F\u200B-\u200D\uFEFF]/g, "") // invisibles y de control
+        .replace(/\s+/g, " ")  // espacios multiples -> uno solo
+        .trim();
+    }
+
+    function tieneContenidoPeligroso(s) {
+      if (!s) return false;
+      const patrones = [
+        /<script/i, /<iframe/i, /<object/i, /<embed/i,
+        /javascript:/i, /on\w+\s*=/i, /<[a-z][\s\S]*>/i
+      ];
+      return patrones.some(p => p.test(s));
+    }
+
+    function formatearCUIT(cuit) {
+      cuit = (cuit || "").replace(/[^0-9]/g, "");
+      if (cuit.length !== 11) return "";
+      return cuit.substring(0, 2) + "-" + cuit.substring(2, 10) + "-" + cuit.substring(10);
+    }
+
+    /* ===================== HELPERS DE FEEDBACK ===================== */
+    function marcarInvalido(input, fbId, mensaje) {
+      input.classList.add("is-invalid");
+      input.classList.remove("is-valid");
+      if (fbId && mensaje) {
+        const fb = document.getElementById(fbId);
+        if (fb) fb.textContent = mensaje;
+      }
+    }
+    function marcarValido(input) {
+      input.classList.remove("is-invalid");
+      input.classList.add("is-valid");
+    }
+    function limpiarMarca(input) {
+      input.classList.remove("is-invalid");
+      input.classList.remove("is-valid");
+    }
+
+    /* ===================== FILTRADO EN VIVO ===================== */
+    f.cuit.addEventListener("input", () => {
+      f.cuit.value = f.cuit.value.replace(/[^0-9]/g, "");
+      const prev = document.getElementById("cuitPreview");
+      if (f.cuit.value.length === 11) {
+        prev.textContent = formatearCUIT(f.cuit.value);
+        if (validarCUIT(f.cuit.value)) marcarValido(f.cuit); else marcarInvalido(f.cuit, "fb-cuit", "El CUIT no es válido (dígito verificador incorrecto).");
+      } else {
+        prev.textContent = "";
+        limpiarMarca(f.cuit);
+      }
+    });
+    f.telefono.addEventListener("input", () => { f.telefono.value = f.telefono.value.replace(/[^0-9+\-() ]/g, ""); });
+    f.numero.addEventListener("input", () => { f.numero.value = f.numero.value.replace(/[^A-Za-z0-9/\- ]/g, ""); });
+    f.codigoPostal.addEventListener("input", () => { f.codigoPostal.value = f.codigoPostal.value.replace(/[^A-Za-z0-9]/g, ""); });
+    f.observaciones.addEventListener("input", () => { document.getElementById("obsCount").textContent = f.observaciones.value.length; });
+
+    // Limpiar marca de error al corregir
+    ["razonSocial","condicionIva","provincia","localidad","calle","numero","barrio","codigoPostal","telefono","mail"].forEach(k => {
+      f[k].addEventListener("input", () => limpiarMarca(f[k]));
+      f[k].addEventListener("change", () => limpiarMarca(f[k]));
+    });
+
+    function mostrarError(err) {
+      if (err && (err.message === "401 Unauthorized" || err.message === "403 Forbidden")) return;
+      Swal.fire("Error", (err && err.message) || "Ocurrió un error.", "error");
+    }
+    function obtenerMensajeError(response, defecto) {
+      return response.json().then(err => err && err.Message ? err.Message : defecto).catch(() => defecto);
+    }
+
+    const soloNumeros = (s) => /^[0-9]+$/.test(s);
+    const tieneCaracteresRaros = (s) => /[<>{}\\^~`|]/.test(s);
+
+    /* ===================== VALIDACIÓN COMPLETA ===================== */
+    // Devuelve un array de errores [{campo, fbId, mensaje}]
+    function validarFormulario(p) {
+      const errores = [];
+
+      // CUIT
+      if (p.Cuit === "") errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT es obligatorio." });
+      else if (p.Cuit.length !== 11) errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT debe tener exactamente 11 dígitos." });
+      else if (PREFIJOS_CUIT.indexOf(p.Cuit.substring(0, 2)) === -1)
+        errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT debe comenzar con 20, 23, 24 o 27 (persona) o 30, 33 o 34 (empresa). El prefijo " + p.Cuit.substring(0, 2) + " no existe." });
+      else if (!validarCUIT(p.Cuit))
+        errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT no es válido: el dígito verificador no corresponde. Revisá que no haya un número mal tipeado." });
+
+      // Razón social
+      const letrasRS = (p.RazonSocial.match(/[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]/g) || []).length;
+      if (p.RazonSocial === "") errores.push({ input: f.razonSocial, fbId: "fb-razonSocial", msg: "La razón social es obligatoria." });
+      else if (p.RazonSocial.length < 3) errores.push({ input: f.razonSocial, fbId: "fb-razonSocial", msg: "La razón social debe tener al menos 3 caracteres." });
+      else if (p.RazonSocial.length > 100) errores.push({ input: f.razonSocial, fbId: "fb-razonSocial", msg: "La razón social no puede superar los 100 caracteres." });
+      else if (tieneContenidoPeligroso(p.RazonSocial)) errores.push({ input: f.razonSocial, fbId: "fb-razonSocial", msg: "La razón social no puede contener etiquetas HTML ni código." });
+      else if (letrasRS < 2) errores.push({ input: f.razonSocial, fbId: "fb-razonSocial", msg: "La razón social debe contener al menos 2 letras. Ejemplo: Autopartes SRL." });
+      else if (/^(.)\1+$/.test(p.RazonSocial.replace(/\s/g, ""))) errores.push({ input: f.razonSocial, fbId: "fb-razonSocial", msg: "La razón social no puede ser un mismo carácter repetido." });
+      else if (tieneCaracteresRaros(p.RazonSocial)) errores.push({ input: f.razonSocial, fbId: "fb-razonSocial", msg: "La razón social contiene caracteres no válidos." });
+
+      // Condición IVA
+      if (p.CondicionIva === "") errores.push({ input: f.condicionIva, fbId: "fb-condicionIva", msg: "Debe seleccionar una condición frente al IVA." });
+      else if (CONDICIONES_IVA.indexOf(p.CondicionIva) === -1) errores.push({ input: f.condicionIva, fbId: "fb-condicionIva", msg: "La condición de IVA seleccionada no es válida." });
+
+      // Provincia
+      if (p.Provincia === "") errores.push({ input: f.provincia, fbId: "fb-provincia", msg: "Debe seleccionar una provincia." });
+
+      // Localidad
+      if (p.Localidad === "") errores.push({ input: f.localidad, fbId: "fb-localidad", msg: "Debe ingresar o seleccionar una localidad." });
+      else if (p.Localidad.length < 2) errores.push({ input: f.localidad, fbId: "fb-localidad", msg: "La localidad debe tener al menos 2 caracteres." });
+
+      // Código postal (opcional)
+      if (p.CodigoPostal !== "") {
+        if (p.CodigoPostal.length > 10) errores.push({ input: f.codigoPostal, fbId: "fb-codigoPostal", msg: "El código postal no puede superar los 10 caracteres." });
+        else if (!/^[A-Za-z0-9]+$/.test(p.CodigoPostal)) errores.push({ input: f.codigoPostal, fbId: "fb-codigoPostal", msg: "El código postal solo admite letras y números." });
+      }
+
+      // Calle (opcional)
+      if (p.Calle !== "") {
+        if (p.Calle.length < 2) errores.push({ input: f.calle, fbId: "fb-calle", msg: "La calle debe tener al menos 2 caracteres." });
+        else if (tieneCaracteresRaros(p.Calle)) errores.push({ input: f.calle, fbId: "fb-calle", msg: "La calle contiene caracteres no válidos." });
+      }
+
+      // Número (opcional)
+      if (p.Numero !== "" && !/^[A-Za-z0-9/\- ]+$/.test(p.Numero)) {
+        errores.push({ input: f.numero, fbId: "fb-numero", msg: "El número admite dígitos, letras, / y -." });
+      }
+
+      // Barrio (opcional)
+      if (p.Barrio !== "" && p.Barrio.length < 2) {
+        errores.push({ input: f.barrio, fbId: "fb-barrio", msg: "El barrio debe tener al menos 2 caracteres." });
+      }
+
+      // Teléfono (opcional)
+      if (p.Telefono !== "") {
+        const digitos = p.Telefono.replace(/[^0-9]/g, "");
+        if (!/^[0-9+\-() ]+$/.test(p.Telefono)) errores.push({ input: f.telefono, fbId: "fb-telefono", msg: "El teléfono solo admite números y los signos + - ( )." });
+        else if (digitos.length < 6) errores.push({ input: f.telefono, fbId: "fb-telefono", msg: "El teléfono debe tener al menos 6 dígitos." });
+      }
+
+      // Mail (opcional)
+      if (p.Mail !== "" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p.Mail)) {
+        errores.push({ input: f.mail, fbId: "fb-mail", msg: "Ingrese un correo válido (nombre@dominio.com)." });
+      }
+
+      // Observaciones
+      if (p.Observaciones.length > 200) {
+        errores.push({ input: f.observaciones, fbId: null, msg: "Las observaciones no pueden superar los 200 caracteres." });
+      }
+
+      /* ===== VALIDACIONES CRUZADAS (coherencia entre campos) ===== */
+
+      // No puede haber numero de calle sin calle
+      if (p.Numero !== "" && p.Calle === "") {
+        errores.push({ input: f.calle, fbId: "fb-calle", msg: "Cargaste un número pero falta la calle. Completá la calle o borrá el número." });
+      }
+
+      // No puede haber codigo postal sin localidad
+      if (p.CodigoPostal !== "" && p.Localidad === "") {
+        errores.push({ input: f.localidad, fbId: "fb-localidad", msg: "Cargaste un código postal pero falta la localidad." });
+      }
+
+      // No puede haber barrio sin localidad
+      if (p.Barrio !== "" && p.Localidad === "") {
+        errores.push({ input: f.localidad, fbId: "fb-localidad", msg: "Cargaste un barrio pero falta la localidad." });
+      }
+
+      return errores;
+    }
+
+    /* ===== ADVERTENCIAS: no bloquean, pero piden confirmación ===== */
+    function detectarAdvertencias(p) {
+      const avisos = [];
+
+      // Coherencia CUIT <-> condicion IVA
+      const pref = p.Cuit.substring(0, 2);
+      const esFisica = PREFIJOS_FISICA.indexOf(pref) !== -1;
+      const esJuridica = PREFIJOS_JURIDICA.indexOf(pref) !== -1;
+
+      if (esJuridica && p.CondicionIva === "Consumidor Final") {
+        avisos.push("El CUIT empieza con " + pref + " (empresa), pero seleccionaste \"Consumidor Final\", que es poco habitual en personas jurídicas.");
+      }
+      if (esFisica && p.RazonSocial.match(/\b(S\.?A\.?|S\.?R\.?L\.?|SAS)\b/i)) {
+        avisos.push("El CUIT empieza con " + pref + " (persona física), pero la razón social parece una sociedad (SA / SRL / SAS).");
+      }
+
+      // Mail con dominio publico para una empresa
+      if (p.Mail !== "" && /@(gmail|hotmail|yahoo|outlook|live)\./i.test(p.Mail) && esJuridica) {
+        avisos.push("El correo usa un dominio público (Gmail, Hotmail, etc.). Para una empresa suele usarse un dominio propio.");
+      }
+
+      return avisos;
+    }
+
+    function setLoading(loading) {
+      const btn = document.getElementById("btnGuardar");
+      const txt = document.getElementById("btnTexto");
+      btn.disabled = loading;
+      if (loading) {
+        txt.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+      } else {
+        txt.textContent = f.id.value.trim() !== "" ? "Guardar cambios" : "Guardar";
+      }
+    }
+
+    /* ===================== GUARDAR ===================== */
+    function guardar(e) {
+      e.preventDefault();
+
+      const proveedor = {
+        Id: f.id.value.trim() === "" ? 0 : parseInt(f.id.value.trim()),
+        Cuit: f.cuit.value.trim(),
+        RazonSocial: f.razonSocial.value.trim(),
+        CondicionIva: f.condicionIva.value.trim(),
+        Calle: f.calle.value.trim(),
+        Numero: f.numero.value.trim(),
+        Barrio: f.barrio.value.trim(),
+        Localidad: f.localidad.value.trim(),
+        Provincia: f.provincia.value.trim(),
+        CodigoPostal: f.codigoPostal.value.trim(),
+        Telefono: f.telefono.value.trim(),
+        Mail: f.mail.value.trim(),
+        Observaciones: f.observaciones.value.trim()
+      };
+
+      // Limpiar marcas previas
+      Object.keys(f).forEach(k => { if (f[k] && f[k].classList) limpiarMarca(f[k]); });
+
+      const errores = validarFormulario(proveedor);
+
+      if (errores.length > 0) {
+        // Marcar todos los campos con error
+        errores.forEach(err => marcarInvalido(err.input, err.fbId, err.msg));
+
+        // Foco y scroll al primer error
+        const primero = errores[0].input;
+        primero.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => primero.focus(), 300);
+
+        // Resumen en SweetAlert
+        const lista = errores.map(e => "• " + esc(e.msg)).join("<br>");
+        Swal.fire({
+          icon: "warning",
+          title: "Revisá estos campos",
+          html: '<div style="text-align:left; font-size:0.9rem;">' + lista + '</div>',
+          confirmButtonText: "Entendido"
+        });
+        return;
+      }
+
+      // Advertencias: no bloquean, pero pedimos confirmación
+      const avisos = detectarAdvertencias(proveedor);
+      if (avisos.length > 0) {
+        const listaAvisos = avisos.map(a => "• " + esc(a)).join("<br><br>");
+        Swal.fire({
+          icon: "warning",
+          title: "Revisá estos datos",
+          html: '<div style="text-align:left; font-size:0.9rem;">' + listaAvisos +
+                '<br><br><em style="color:#6c757d;">Podés guardar igual si estás seguro.</em></div>',
+          showCancelButton: true,
+          confirmButtonText: "Guardar de todas formas",
+          cancelButtonText: "Revisar",
+          confirmButtonColor: "#1F3864"
+        }).then(res => {
+          if (res.isConfirmed) enviarAlBackend(proveedor);
+        });
+        return;
+      }
+
+      enviarAlBackend(proveedor);
+    }
+
+    function enviarAlBackend(proveedor) {
+      const esEdicion = f.id.value.trim() !== "";
+      const metodo = esEdicion ? "PUT" : "POST";
+      const url = esEdicion ? apiProveedor + "/" + proveedor.Id : apiProveedor;
+
+      setLoading(true);
+      fetchAuth(url, { method: metodo, body: JSON.stringify(proveedor) }).then(r => {
+        if (!r.ok) return obtenerMensajeError(r, "No se pudo guardar el proveedor.").then(m => { throw new Error(m); });
+        guardadoOk = true;  // evita el aviso de "cambios sin guardar" al redirigir
+        Swal.fire({
+          icon: "success",
+          title: esEdicion ? "Proveedor actualizado" : "Proveedor registrado",
+          text: esEdicion ? "Los cambios se guardaron correctamente." : "El proveedor se cargó correctamente.",
+          timer: 1500, showConfirmButton: false
+        }).then(() => window.location.href = "ProveedoresListado.html");
+      }).catch(err => { setLoading(false); mostrarError(err); });
+    }
+
+    /* ===================== CARGA EN EDICIÓN ===================== */
+    function cargarProveedor(id) {
+      fetchAuth(apiProveedor + "/" + id).then(r => {
+        if (!r.ok) throw new Error("No se pudo cargar el proveedor.");
+        return r.json();
+      }).then(data => {
+        const p = data[0];
+        if (!p) return Swal.fire("Atención", "No se encontró el proveedor.", "warning").then(() => window.location.href = "ProveedoresListado.html");
+
+        f.id.value = p.Id || "";
+        f.cuit.value = p.Cuit || "";
+        f.razonSocial.value = p.RazonSocial || "";
+        f.condicionIva.value = p.CondicionIva || "";
+        f.calle.value = p.Calle || "";
+        f.numero.value = p.Numero || "";
+        f.barrio.value = p.Barrio || "";
+        f.localidad.value = p.Localidad || "";
+        f.provincia.value = p.Provincia || "";
+        f.codigoPostal.value = p.CodigoPostal || "";
+        f.telefono.value = p.Telefono || "";
+        f.mail.value = p.Mail || "";
+        f.observaciones.value = p.Observaciones || "";
+        document.getElementById("obsCount").textContent = (p.Observaciones || "").length;
+        if (f.cuit.value.length === 11) document.getElementById("cuitPreview").textContent = formatearCUIT(f.cuit.value);
+        if (p.Provincia) cargarLocalidades(p.Provincia);
+        estadoInicial = snapshot();  // baseline para detectar cambios sin guardar
+      }).catch(mostrarError);
+    }
+
+    function cargarLocalidades(prov) {
+      f.dataList.innerHTML = "";
+      if (!prov) return;
+      const url = "https://apis.datos.gob.ar/georef/api/localidades?provincia=" + encodeURIComponent(prov) + "&max=1000";
+      fetch(url).then(r => r.ok ? r.json() : Promise.reject()).then(data => {
+        if (data.localidades) {
+          data.localidades.forEach(loc => {
+            const opt = document.createElement("option");
+            opt.value = loc.nombre;
+            f.dataList.appendChild(opt);
+          });
+        }
+      }).catch(() => {});
+    }
+
+    f.provincia.addEventListener("change", () => cargarLocalidades(f.provincia.value));
+
+    /* ===== Detectar cambios sin guardar y confirmar antes de salir ===== */
+    let estadoInicial = "";
+    let guardadoOk = false;
+
+    function snapshot() {
+      return [f.cuit, f.razonSocial, f.condicionIva, f.calle, f.numero, f.barrio,
+              f.localidad, f.provincia, f.codigoPostal, f.telefono, f.mail, f.observaciones]
+              .map(el => el.value).join("|");
+    }
+
+    function hayCambios() {
+      return !guardadoOk && snapshot() !== estadoInicial;
+    }
+
+    function confirmarSalida(destino) {
+      if (!hayCambios()) { window.location.href = destino; return; }
+      Swal.fire({
+        icon: "question",
+        title: "¿Descartar los cambios?",
+        text: "Tenés cambios sin guardar. Si salís ahora se van a perder.",
+        showCancelButton: true,
+        confirmButtonText: "Sí, descartar",
+        cancelButtonText: "Seguir editando",
+        confirmButtonColor: "#c0392b"
+      }).then(res => { if (res.isConfirmed) window.location.href = destino; });
+    }
+
+    window.onload = function () {
+      document.getElementById("formProveedor").addEventListener("submit", guardar);
+
+      // Interceptar los links de salida (Cancelar y Volver al listado)
+      document.querySelectorAll('a[href="ProveedoresListado.html"]').forEach(a => {
+        a.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          confirmarSalida("ProveedoresListado.html");
+        });
+      });
+
+      if (idProveedor) {
+        document.getElementById("tituloPagina").innerHTML =
+          '<i class="bi bi-pencil-square"></i> Editar Proveedor <span class="mode-badge">Edición</span>';
+        document.getElementById("btnTexto").textContent = "Guardar cambios";
+        cargarProveedor(idProveedor);
+      } else {
+        f.cuit.focus();
+        setTimeout(() => { estadoInicial = snapshot(); }, 100);
+      }
+    };
+  </script>
+</body>
+</html>
