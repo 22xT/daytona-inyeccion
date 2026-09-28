@@ -48,6 +48,10 @@ namespace WebApi.Models
         // Lo devuelve el SP: total menos entrega. Es lo que quedo debiendo.
         public decimal SaldoGenerado { get; set; }
 
+        // Token unico de la operacion, generado por el cliente. Evita que
+        // un doble clic o un reenvio creen dos ventas iguales.
+        public Guid? TokenOperacion { get; set; }
+
         // Listar todas
         public DataTable ListarTodos()
         {
@@ -169,6 +173,54 @@ namespace WebApi.Models
             sqlCnn.Close();
 
             return Id;
+        }
+
+        /* ---------- Idempotencia ---------- */
+
+        // Reserva el token. Devuelve NUEVA, EXISTE (con IdVenta) o EN_CURSO.
+        public string ReservarOperacion(out int idVentaExistente)
+        {
+            idVentaExistente = 0;
+            string sqlSentencia = "SP_VentaOperacion_Reservar";
+            SqlConnection sqlCnn = new SqlConnection(connectionstring);
+            SqlCommand sqlCom = new SqlCommand(sqlSentencia, sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+            sqlCom.Parameters.Add("@Token", SqlDbType.UniqueIdentifier).Value = TokenOperacion.Value;
+            sqlCom.Parameters.Add("@IdUsuario", SqlDbType.Int).Value = IdUsuario;
+
+            string estado = "NUEVA";
+            sqlCnn.Open();
+            SqlDataReader dr = sqlCom.ExecuteReader();
+            if (dr.Read())
+            {
+                estado = Convert.ToString(dr["Estado"]);
+                if (dr["IdVenta"] != DBNull.Value) idVentaExistente = Convert.ToInt32(dr["IdVenta"]);
+            }
+            dr.Close();
+            sqlCnn.Close();
+            return estado;
+        }
+
+        public void CompletarOperacion()
+        {
+            EjecutarSimple("SP_VentaOperacion_Completar", true);
+        }
+
+        public void LiberarOperacion()
+        {
+            EjecutarSimple("SP_VentaOperacion_Liberar", false);
+        }
+
+        private void EjecutarSimple(string sp, bool conIdVenta)
+        {
+            SqlConnection sqlCnn = new SqlConnection(connectionstring);
+            SqlCommand sqlCom = new SqlCommand(sp, sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+            sqlCom.Parameters.Add("@Token", SqlDbType.UniqueIdentifier).Value = TokenOperacion.Value;
+            if (conIdVenta) sqlCom.Parameters.Add("@IdVenta", SqlDbType.Int).Value = Id;
+            sqlCnn.Open();
+            sqlCom.ExecuteNonQuery();
+            sqlCnn.Close();
         }
 
         public void Anular(int idUsuario)

@@ -29,7 +29,7 @@
         <span class="subtitle">Historial de ventas registradas</span>
       </div>
       <a href="CargarVenta.html" id="btnNuevaVenta" class="btn btn-danger" style="display:none;">
-        <i class="bi bi-cart-plus"></i> Nueva venta
+        <i class="bi bi-cart-plus"></i> Venta
       </a>
     </div>
 
@@ -132,7 +132,7 @@
       <div id="emptyState" class="empty-state d-none">
         <div class="icon"><i class="bi bi-inbox"></i></div>
         <h4>No se encontraron ventas</h4>
-        <p>Probá cambiar los filtros o registrá una nueva venta.</p>
+        <p>Probá cambiar los filtros o registrá una venta.</p>
       </div>
     </div>
   </div>
@@ -189,7 +189,7 @@
     const puedeAnular = tieneRol(["Administrador", "Supervisor", "Vendedor"]);
     const veAuditoria = tieneRol(["Dueño", "Administrador"]);
 
-    // Mostrar "Nueva venta" solo si puede vender
+    // Mostrar "Venta" solo si puede vender
     if (puedeVender) {
       document.getElementById("btnNuevaVenta").style.display = "inline-flex";
     }

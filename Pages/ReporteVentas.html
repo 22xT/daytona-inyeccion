@@ -7,11 +7,32 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="estilos.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <style>
     .stat-card { border-radius:12px; padding:18px 22px; color:#fff; }
+    /* Modo resumido / detallado */
+    .modo-toggle { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .modo-toggle button { border:none; background:#fff; padding:7px 16px; font-size:0.85rem; font-weight:600; color:var(--text-muted); cursor:pointer; }
+    .modo-toggle button.activo { background:var(--navy); color:#fff; }
+    .solo-resumido, .solo-detallado { display:none; }
+    body.modo-resumido .solo-resumido { display:block; }
+    body.modo-detallado .solo-detallado { display:block; }
+    .chart-wrap { position:relative; height:240px; }
+    /* Punto de equilibrio */
+    .eq-fila { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
+    .eq-fila:last-child { border-bottom:none; }
+    .eq-fila .lbl { color:var(--text-muted); }
+    .eq-fila .val { font-weight:600; color:var(--navy); }
+    .eq-barra { height:14px; background:var(--bg); border-radius:7px; overflow:hidden; margin:10px 0 4px; position:relative; }
+    .eq-barra .lleno { height:100%; background:var(--green); border-radius:7px; transition:width 0.4s; }
+    .eq-barra .lleno.falta { background:var(--yellow); }
+    .eq-marca { position:absolute; top:-4px; width:2px; height:22px; background:var(--navy); }
+    .eq-estado { font-size:1.1rem; font-weight:800; margin-top:8px; }
+    .eq-cubierto { color:var(--green); }
+    .eq-falta { color:var(--yellow); }
     .stat-total { background:linear-gradient(135deg,#1f7a1f,#27ae60); }
     .stat-cant { background:linear-gradient(135deg,#1F3864,#2E5496); }
     .stat-ticket { background:linear-gradient(135deg,#8e44ad,#9b59b6); }
@@ -31,9 +52,15 @@
         <h2><i class="bi bi-graph-up"></i> Reporte de Ventas por Período</h2>
         <span class="subtitle">Desempeño comercial en el rango de fechas seleccionado</span>
       </div>
-      <button class="btn btn-success" id="btnExcel">
-        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
-      </button>
+      <div class="d-flex gap-2 align-items-center">
+        <div class="modo-toggle">
+          <button type="button" id="modoRes" class="activo" onclick="setModo('resumido')"><i class="bi bi-bar-chart"></i> Resumido</button>
+          <button type="button" id="modoDet" onclick="setModo('detallado')"><i class="bi bi-table"></i> Detallado</button>
+        </div>
+        <button class="btn btn-success" id="btnExcel">
+          <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+        </button>
+      </div>
     </div>
 
     <div class="panel">
@@ -72,7 +99,28 @@
         <div class="stat-num" id="numAnul">—</div><div class="stat-label">Ventas anuladas</div></div></div>
     </div>
 
-    <div class="panel">
+    <!-- MODO RESUMIDO: grafico y rentabilidad -->
+    <div class="solo-resumido">
+      <div class="row g-3 mb-3">
+        <div class="col-md-7">
+          <div class="panel h-100">
+            <div class="panel-header"><i class="bi bi-bar-chart-fill"></i> Ventas por día</div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="chartDias"></canvas></div></div>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <div class="panel h-100">
+            <div class="panel-header"><i class="bi bi-bullseye"></i> Rentabilidad y punto de equilibrio</div>
+            <div class="panel-body" id="panelEquilibrio">
+              <div class="text-muted text-center p-3">Consultá un período.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODO DETALLADO: tabla completa -->
+    <div class="panel solo-detallado">
       <div class="panel-header" id="panelHeader"><i class="bi bi-list-ul"></i> Detalle por día</div>
       <div class="table-responsive">
         <table class="table">
@@ -94,6 +142,21 @@
     const API = API_BASE + "Reporte/";
     let datosDia = [];
     let resumen = {};
+    let equilibrio = null;
+    let chartDias = null;
+
+    /* Dos modos, como pidio la catedra: el resumido muestra el grafico
+       y la rentabilidad para leer de un vistazo; el detallado, la tabla
+       completa para revisar y exportar. */
+    function setModo(m) {
+      document.body.classList.toggle("modo-resumido", m === "resumido");
+      document.body.classList.toggle("modo-detallado", m === "detallado");
+      document.getElementById("modoRes").classList.toggle("activo", m === "resumido");
+      document.getElementById("modoDet").classList.toggle("activo", m === "detallado");
+      localStorage.setItem("reporteVentasModo", m);
+      // Chart.js necesita que el canvas este visible para medir
+      if (m === "resumido" && datosDia.length) pintarGrafico();
+    }
 
     function fmt(n) { return "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
     function esc(s) { return s == null ? "" : String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
@@ -120,11 +183,15 @@
       const qs = "?desde=" + desde + "&hasta=" + hasta;
       Promise.all([
         fetchAuth(API + "VentasResumen" + qs).then(r => r.json()),
-        fetchAuth(API + "VentasPorDia" + qs).then(r => r.json())
-      ]).then(([res, dias]) => {
+        fetchAuth(API + "VentasPorDia" + qs).then(r => r.json()),
+        fetchAuth(API_BASE + "Analisis/PuntoEquilibrio" + qs).then(r => r.ok ? r.json() : []).catch(() => [])
+      ]).then(([res, dias, eq]) => {
         resumen = res[0] || { TotalFacturado:0, CantidadVentas:0, TicketPromedio:0, VentasAnuladas:0 };
         datosDia = dias;
+        equilibrio = (eq || [])[0] || null;
         render();
+        pintarEquilibrio();
+        if (document.body.classList.contains("modo-resumido")) pintarGrafico();
       }).catch(() => {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger p-4">Error al consultar el reporte.</td></tr>';
       });
@@ -157,6 +224,62 @@
       tbody.innerHTML = html;
     }
 
+    function pintarGrafico() {
+      if (chartDias) chartDias.destroy();
+      const labels = datosDia.map(d => new Date(d.Dia).toLocaleDateString("es-AR", { day:'2-digit', month:'2-digit' }));
+      chartDias = new Chart(document.getElementById("chartDias"), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Total del día", data: datosDia.map(d => d.TotalDia),
+          backgroundColor: "rgba(46,84,150,0.75)", borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt(c.raw) } } },
+          scales: { y: { beginAtZero: true, ticks: { callback: v => "$" + Number(v).toLocaleString("es-AR") } } } }
+      });
+    }
+
+    /* Punto de equilibrio: cuanto hay que vender para cubrir los costos
+       fijos. Se muestra como barra: donde esta el objetivo y cuanto se
+       lleva vendido. Si faltan los costos fijos, lo dice en vez de
+       mostrar ceros. */
+    function pintarEquilibrio() {
+      const c = document.getElementById("panelEquilibrio");
+      const e = equilibrio;
+      if (!e) { c.innerHTML = '<div class="text-muted text-center p-3">Sin datos.</div>'; return; }
+
+      if (e.FaltaConfigurarCostosFijos) {
+        c.innerHTML =
+          '<div class="eq-fila"><span class="lbl">Ventas</span><span class="val">' + fmt(e.Ventas) + '</span></div>' +
+          '<div class="eq-fila"><span class="lbl">Costo de lo vendido</span><span class="val">' + fmt(e.CostoVendido) + '</span></div>' +
+          '<div class="eq-fila"><span class="lbl">Contribución marginal</span><span class="val">' + fmt(e.ContribucionMarginal) +
+            ' <small class="text-muted">(' + Number(e.RatioContribucionPorc).toFixed(1) + '%)</small></span></div>' +
+          '<div class="alert alert-warning mt-3 mb-0" style="font-size:0.82rem;">' +
+            '<i class="bi bi-exclamation-triangle"></i> Para calcular el punto de equilibrio hay que cargar los ' +
+            '<strong>costos fijos mensuales</strong> (alquiler, sueldos, servicios) en Configuración.</div>';
+        return;
+      }
+
+      const cubierto = e.Estado === "Cubierto";
+      const pct = e.PuntoEquilibrio > 0 ? Math.min(100, e.Ventas / e.PuntoEquilibrio * 100) : 0;
+
+      c.innerHTML =
+        '<div class="eq-fila"><span class="lbl">Ventas del período</span><span class="val">' + fmt(e.Ventas) + '</span></div>' +
+        '<div class="eq-fila"><span class="lbl">Costo de lo vendido</span><span class="val">' + fmt(e.CostoVendido) + '</span></div>' +
+        '<div class="eq-fila"><span class="lbl">Contribución marginal</span><span class="val">' + fmt(e.ContribucionMarginal) +
+          ' <small class="text-muted">(' + Number(e.RatioContribucionPorc).toFixed(1) + '%)</small></span></div>' +
+        '<div class="eq-fila"><span class="lbl">Costos fijos del período</span><span class="val">' + fmt(e.CostosFijosPeriodo) + '</span></div>' +
+        '<div class="eq-fila"><span class="lbl"><strong>Punto de equilibrio</strong></span><span class="val">' + fmt(e.PuntoEquilibrio) + '</span></div>' +
+        '<div class="eq-barra"><div class="lleno' + (cubierto ? '' : ' falta') + '" style="width:' + pct.toFixed(1) + '%"></div>' +
+          '<div class="eq-marca" style="left:' + Math.min(100, pct >= 100 ? 100 : 100) + '%"></div></div>' +
+        '<div class="d-flex justify-content-between" style="font-size:0.72rem;color:var(--text-muted);">' +
+          '<span>' + pct.toFixed(0) + '% del objetivo</span><span>objetivo</span></div>' +
+        '<div class="eq-estado ' + (cubierto ? 'eq-cubierto' : 'eq-falta') + '">' +
+          (cubierto
+            ? '<i class="bi bi-check-circle-fill"></i> Cubierto · ' + fmt(e.MargenSobreEquilibrio) + ' por encima'
+            : '<i class="bi bi-hourglass-split"></i> Faltan ' + fmt(-e.MargenSobreEquilibrio) +
+              (e.FaltaPorDia > 0 ? ' <small class="text-muted">(' + fmt(e.FaltaPorDia) + ' por día hasta fin de mes)</small>' : '')) +
+        '</div>';
+    }
+
     function exportarExcel() {
       if (datosDia.length === 0) { Swal.fire("Sin datos", "Consultá un período con ventas antes de exportar.", "info"); return; }
 
@@ -182,7 +305,10 @@
 
     document.getElementById("btnConsultar").addEventListener("click", consultar);
     document.getElementById("btnExcel").addEventListener("click", exportarExcel);
-    window.onload = () => rango("anio");
+    window.onload = () => {
+      setModo(localStorage.getItem("reporteVentasModo") || "resumido");
+      rango("mes");   // el mes actual es el periodo natural para el punto de equilibrio
+    };
   </script>
 </body>
 </html>

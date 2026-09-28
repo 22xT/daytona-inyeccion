@@ -121,7 +121,7 @@
           <span class="badge-solicitudes" id="badgeSolicitudes">0</span>
         </button>
         <a href="UsuarioForm.html" class="btn btn-danger admin-only">
-          <i class="bi bi-plus-lg"></i> Nuevo usuario
+          <i class="bi bi-plus-lg"></i> Usuario
         </a>
       </div>
     </div>
@@ -351,7 +351,7 @@
   setTimeout(function () {
     Swal.fire({
       title: 'Resetear contraseña',
-      html: 'Ingresá una contraseña temporal nueva para <strong>' + escapeHtml(nombre) + '</strong>:',
+      html: 'Ingresá una contraseña temporal para <strong>' + escapeHtml(nombre) + '</strong>:',
       input: 'password',
       inputAttributes: { 
         minlength: 8, 
@@ -402,7 +402,7 @@
           if (idSolicitud) {
             procesarSolicitud(idSolicitud, "Procesada", true);
           } else {
-            Swal.fire("Listo", "Contraseña reseteada. Comunicale al usuario la nueva.", "success");
+            Swal.fire("Listo", "Contraseña reseteada. Comunicale la contraseña al usuario.", "success");
           }
         }).catch(mostrarError);
       });
@@ -503,7 +503,7 @@
             icon: "success",
             title: "Contraseña reseteada",
             html: estado === "Procesada"
-              ? "La clave fue actualizada y la solicitud quedó marcada como procesada.<br><strong>Acordate de comunicarle la nueva clave al usuario.</strong>"
+              ? "La clave fue actualizada y la solicitud quedó marcada como procesada.<br><strong>Acordate de comunicarle la clave al usuario.</strong>"
               : "Solicitud descartada.",
             confirmButtonColor: "#001f3f"
           });

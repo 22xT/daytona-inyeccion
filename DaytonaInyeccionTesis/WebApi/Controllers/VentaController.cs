@@ -78,9 +78,46 @@ namespace WebApi.Controllers
 
             venta.IdUsuario = idUsuario;
 
+            /* ---------- Idempotencia ----------
+               Si viene token, se reserva antes de registrar. Un doble clic
+               o un reenvio con el mismo token devuelven la venta que ya
+               existe en vez de crear otra. Sin token se registra igual:
+               los clientes viejos siguen funcionando. */
+            bool conToken = venta.TokenOperacion.HasValue && venta.TokenOperacion.Value != Guid.Empty;
+
+            if (conToken)
+            {
+                int idExistente;
+                string estado;
+                try { estado = venta.ReservarOperacion(out idExistente); }
+                catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo iniciar la operacion.")); }
+
+                if (estado == "EN_CURSO")
+                    return Conflict();   // 409: la misma venta se esta registrando ahora
+
+                if (estado == "EXISTE")
+                {
+                    // Ya se registro con este token: se devuelve la misma
+                    Venta existente = new Venta();
+                    existente.Id = idExistente;
+                    DataTable dt = existente.ListarPorId();
+                    decimal totalExistente = dt.Rows.Count > 0 ? Convert.ToDecimal(dt.Rows[0]["Total"]) : 0;
+                    return Ok(new
+                    {
+                        IdVenta       = idExistente,
+                        Total         = totalExistente,
+                        Descuento     = 0m,
+                        Entrega       = 0m,
+                        SaldoGenerado = 0m,
+                        Duplicada     = true
+                    });
+                }
+            }
+
             try
             {
                 venta.Guardar();
+                if (conToken) venta.CompletarOperacion();
                 // Se devuelve el saldo generado: en una venta a cuenta
                 // corriente es lo que el cliente quedo debiendo, y el
                 // vendedor tiene que verlo al confirmar.
@@ -95,6 +132,8 @@ namespace WebApi.Controllers
             }
             catch (SqlException ex)
             {
+                // Fallo la venta: se libera el token para permitir reintentar
+                if (conToken) { try { venta.LiberarOperacion(); } catch { /* best effort */ } }
                 return BadRequest(TraducirErrorSql(ex, "No se pudo registrar la venta."));
             }
         }

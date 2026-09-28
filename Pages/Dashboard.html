@@ -19,6 +19,10 @@
     .kpi-num { font-size:1.75rem; font-weight:700; line-height:1.1; }
     .kpi-label { font-size:0.74rem; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px; }
     .kpi-icon { font-size:1.6rem; opacity:0.35; float:right; }
+    .kpi-var { font-size:0.78rem; margin-top:6px; opacity:0.95; font-weight:600; }
+    .kpi-var .flecha { display:inline-block; margin-right:3px; }
+    .aviso-pronostico { font-size:0.74rem; color:#856404; background:#fff3cd; border-radius:6px; padding:5px 9px; margin-top:8px; }
+    .chart-sub { font-size:0.76rem; color:#6c757d; margin-top:-10px; margin-bottom:12px; }
     .chart-card { background:#fff; border-radius:14px; padding:18px; box-shadow:0 3px 10px rgba(0,0,0,0.06); height:100%; }
     .chart-title { font-size:0.95rem; font-weight:700; color:#1F3864; margin-bottom:14px; }
     .chart-wrap { position:relative; height:260px; }
@@ -67,6 +71,7 @@
         <i class="bi bi-cash-stack kpi-icon"></i>
         <div class="kpi-num" id="kpiVentas">—</div>
         <div class="kpi-label">Ventas del período</div>
+        <div class="kpi-var" id="varVentas"></div>
       </div></div>
       <div class="col-md-3"><div class="kpi-card kpi-caja">
         <i class="bi bi-wallet2 kpi-icon"></i>
@@ -77,6 +82,7 @@
         <i class="bi bi-receipt kpi-icon"></i>
         <div class="kpi-num" id="kpiTicket">—</div>
         <div class="kpi-label">Ticket promedio</div>
+        <div class="kpi-var" id="varTicket"></div>
       </div></div>
       <div class="col-md-3"><div class="kpi-card kpi-critico">
         <i class="bi bi-exclamation-triangle kpi-icon"></i>
@@ -88,8 +94,10 @@
     <!-- Fila 1: tendencia + dona -->
     <div class="row g-3 mb-3">
       <div class="col-md-7"><div class="chart-card">
-        <div class="chart-title"><i class="bi bi-graph-up"></i> Tendencia de ventas</div>
+        <div class="chart-title"><i class="bi bi-graph-up-arrow"></i> Ventas mensuales y pronóstico</div>
+        <div class="chart-sub" id="subPronostico">Últimos 6 meses y proyección a 3</div>
         <div class="chart-wrap"><canvas id="chartTendencia"></canvas></div>
+        <div class="aviso-pronostico" id="avisoPronostico" style="display:none;"></div>
       </div></div>
       <div class="col-md-5"><div class="chart-card">
         <div class="chart-title"><i class="bi bi-pie-chart"></i> Ventas por rubro</div>
@@ -150,6 +158,18 @@
       const hasta = document.getElementById("hasta").value;
       if (!desde || !hasta) return;
 
+      // Comparacion con el periodo anterior: la variacion le da contexto al numero
+      fetchAuth(API_BASE + "Analisis/Periodo?desde=" + desde + "&hasta=" + hasta)
+        .then(r => r.ok ? r.json() : [])
+        .then(d => pintarVariaciones((d || [])[0] || {}))
+        .catch(() => {});
+
+      // Pronostico: no depende del rango elegido, mira los ultimos meses
+      fetchAuth(API_BASE + "Analisis/Pronostico?mesesHistoria=6&mesesProyectar=3")
+        .then(r => r.ok ? r.json() : [])
+        .then(d => pintarPronostico(d || []))
+        .catch(() => {});
+
       fetchAuth(API + "?desde=" + desde + "&hasta=" + hasta).then(r => {
         if (!r.ok) throw new Error("No se pudo cargar el dashboard.");
         return r.json();
@@ -157,7 +177,6 @@
         // El DataSet serializa como objeto con las tablas por nombre
         const kpis = (data.Kpis || [])[0] || {};
         pintarKpis(kpis);
-        pintarTendencia(data.VentasPorDia || []);
         pintarRubro(data.VentasPorRubro || []);
         pintarCaja(data.CajaPorMes || []);
         pintarRanking(data.TopProductos || []);
@@ -176,18 +195,66 @@
 
     function destruir(nombre) { if (charts[nombre]) charts[nombre].destroy(); }
 
-    function pintarTendencia(datos) {
+    // Flecha y porcentaje contra el periodo anterior. Verde sube, rojo baja.
+    function variacion(id, v) {
+      const el = document.getElementById(id);
+      if (v === null || v === undefined) { el.innerHTML = '<span style="opacity:0.7;">sin período anterior</span>'; return; }
+      const n = Number(v);
+      const flecha = n > 0 ? "▲" : n < 0 ? "▼" : "•";
+      el.innerHTML = '<span class="flecha">' + flecha + '</span>' + Math.abs(n).toFixed(1) + '% vs período anterior';
+    }
+
+    function pintarVariaciones(p) {
+      variacion("varVentas", p.VentasVariacion);
+      variacion("varTicket", p.TicketVariacion);
+    }
+
+    /* Serie mensual historica en linea llena y pronostico en punteada.
+       Son dos datasets sobre el mismo eje: se ve donde termina lo real
+       y donde empieza la proyeccion. */
+    function pintarPronostico(datos) {
       destruir("tend");
-      const labels = datos.map(d => new Date(d.Dia).toLocaleDateString("es-AR", {day:'2-digit', month:'2-digit'}));
-      const valores = datos.map(d => d.Total);
+      const labels = datos.map(d => d.Etiqueta);
+      const hist = datos.map(d => d.Tipo === "Historico" ? Number(d.Total) : null);
+      const pron = datos.map(d => d.Tipo === "Pronostico" ? Number(d.Total) : null);
+
+      // Unir las dos lineas: el pronostico arranca desde el ultimo real
+      const ultimoReal = datos.map((d, i) => d.Tipo === "Historico" ? i : -1).filter(i => i >= 0).pop();
+      if (ultimoReal !== undefined) pron[ultimoReal] = hist[ultimoReal];
+
       charts.tend = new Chart(document.getElementById("chartTendencia"), {
         type: "line",
-        data: { labels, datasets: [{ label: "Ventas", data: valores, borderColor: "#2E5496",
-          backgroundColor: "rgba(46,84,150,0.1)", fill: true, tension: 0.3, pointRadius: 3 }] },
+        data: { labels, datasets: [
+          { label: "Ventas reales", data: hist, borderColor: "#2E5496", backgroundColor: "rgba(46,84,150,0.1)",
+            fill: true, tension: 0.3, pointRadius: 4, spanGaps: false },
+          { label: "Pronóstico", data: pron, borderColor: "#c0392b", borderDash: [6, 4],
+            backgroundColor: "rgba(192,57,43,0.06)", fill: true, tension: 0.3, pointRadius: 4, pointStyle: "triangle" }
+        ]},
         options: { responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { y: { ticks: { callback: v => fmtCorto(v) } } } }
+          plugins: {
+            legend: { display: true, position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: { callbacks: { label: c => c.dataset.label + ": " + fmtCorto(c.raw) } }
+          },
+          scales: { y: { beginAtZero: true, ticks: { callback: v => fmtCorto(v) } } } }
       });
+
+      // R² dice cuanto confiar. Con pocos meses o mucha dispersion, avisar.
+      const r2 = datos.length ? Number(datos[0].R2) : 0;
+      const meses = datos.length ? Number(datos[0].MesesConDatos) : 0;
+      const aviso = document.getElementById("avisoPronostico");
+      const pendiente = datos.length ? Number(datos[0].Pendiente) : 0;
+
+      let texto = "";
+      if (meses < 3) texto = "Con menos de 3 meses de datos la proyección no es confiable.";
+      else if (r2 < 0.5) texto = "Las ventas varían mucho de mes a mes (R² " + r2.toFixed(2) + "): tomá la proyección como referencia, no como certeza.";
+
+      if (texto) { aviso.textContent = texto; aviso.style.display = "block"; }
+      else aviso.style.display = "none";
+
+      const sub = document.getElementById("subPronostico");
+      sub.textContent = "Últimos " + meses + " meses y proyección a 3 · tendencia " +
+        (pendiente > 0 ? "creciente" : pendiente < 0 ? "decreciente" : "estable") +
+        " (" + (pendiente >= 0 ? "+" : "") + fmtCorto(pendiente) + " por mes)";
     }
 
     function pintarRubro(datos) {

@@ -38,7 +38,7 @@
       section: 'Ventas',
       icon: 'bi-cart3',
       items: [
-        { key: 'venta-nueva', label: 'Nueva Venta', icon: 'bi-cart-plus', href: 'CargarVenta.html',
+        { key: 'venta-nueva', label: 'Venta', icon: 'bi-cart-plus', href: 'CargarVenta.html',
           roles: ['Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'ventas', label: 'Listado de Ventas', icon: 'bi-receipt', href: 'ListadoVentas.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
@@ -54,7 +54,7 @@
       section: 'Compras',
       icon: 'bi-truck',
       items: [
-        { key: 'pedido-nuevo', label: 'Nuevo Pedido', icon: 'bi-box-seam', href: 'PedidoNuevo.html',
+        { key: 'pedido-nuevo', label: 'Pedido', icon: 'bi-box-seam', href: 'PedidoNuevo.html',
           roles: ['Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'pedidos', label: 'Listado de Pedidos', icon: 'bi-clipboard-data', href: 'ListadoPedido.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
