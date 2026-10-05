@@ -188,12 +188,15 @@
     <Compile Include="Areas\HelpPage\XmlDocumentationProvider.cs" />
     <Compile Include="Controllers\AnalisisController.cs" />
     <Compile Include="Controllers\BusquedaController.cs" />
+    <Compile Include="Controllers\ComprasController.cs" />
     <Compile Include="Controllers\ConfiguracionController.cs" />
     <Compile Include="Controllers\CuentaCorrienteController.cs" />
     <Compile Include="Controllers\DetallePresupuestoController.cs" />
     <Compile Include="Controllers\EstadoVentaController.cs" />
+    <Compile Include="Controllers\FinanzasController.cs" />
     <Compile Include="Controllers\IndicadorController.cs" />
     <Compile Include="Controllers\LoginController.cs" />
+    <Compile Include="Controllers\MedioPagoController.cs" />
     <Compile Include="Controllers\MovimientoCajaController.cs" />
     <Compile Include="Controllers\MovimientoStockController.cs" />
     <Compile Include="Controllers\NotificacionController.cs" />
@@ -201,6 +204,7 @@
     <Compile Include="Controllers\ProveedorRepuestoController.cs" />
     <Compile Include="Controllers\ReporteController.cs" />
     <Compile Include="Controllers\RolController.cs" />
+    <Compile Include="Controllers\SesionCajaController.cs" />
     <Compile Include="Controllers\SolicitudResetController.cs" />
     <Compile Include="Controllers\StockController.cs" />
     <Compile Include="Controllers\VentaController.cs" />
@@ -222,6 +226,7 @@
     </Compile>
     <Compile Include="Models\Analisis.cs" />
     <Compile Include="Models\Busqueda.cs" />
+    <Compile Include="Models\Compras.cs" />
     <Compile Include="Models\Config.cs" />
     <Compile Include="Models\Configuracion.cs" />
     <Compile Include="Models\CuentaCorriente.cs" />
@@ -229,6 +234,7 @@
     <Compile Include="Models\DetallePresupuesto.cs" />
     <Compile Include="Models\DetalleVenta.cs" />
     <Compile Include="Models\EstadoVenta.cs" />
+    <Compile Include="Models\Finanzas.cs" />
     <Compile Include="Models\Indicador.cs" />
     <Compile Include="Models\JwtHelper.cs" />
     <Compile Include="Models\LoginRequest.cs" />
@@ -237,6 +243,7 @@
     <Compile Include="Models\DetallePedido.cs" />
     <Compile Include="Models\EstadoPedido.cs" />
     <Compile Include="Models\Marca.cs" />
+    <Compile Include="Models\MedioPago.cs" />
     <Compile Include="Models\Modelo.cs" />
     <Compile Include="Models\MovimientoCaja.cs" />
     <Compile Include="Models\MovimientoStock.cs" />
@@ -251,6 +258,7 @@
     <Compile Include="Models\Repuesto.cs" />
     <Compile Include="Models\Rol.cs" />
     <Compile Include="Models\Rubro.cs" />
+    <Compile Include="Models\SesionCaja.cs" />
     <Compile Include="Models\SolicitudReset.cs" />
     <Compile Include="Models\Stock.cs" />
     <Compile Include="Models\Usuario.cs" />

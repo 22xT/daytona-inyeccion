@@ -114,6 +114,17 @@ namespace WebApi.Controllers
                 }
             }
 
+            // Validacion de pagos: montos positivos y suma no mayor al total
+            // (el total exacto lo valida el SP, que es quien lo calcula)
+            if (venta.Pagos != null)
+            {
+                foreach (VentaPagoItem p in venta.Pagos)
+                {
+                    if (p.IdMedioPago <= 0) return BadRequest("Cada pago debe indicar el medio.");
+                    if (p.Monto <= 0) return BadRequest("Cada pago debe tener un importe mayor a cero.");
+                }
+            }
+
             try
             {
                 venta.Guardar();
@@ -127,7 +138,8 @@ namespace WebApi.Controllers
                     Total         = venta.Total,
                     Descuento     = venta.Descuento,
                     Entrega       = venta.Entrega,
-                    SaldoGenerado = venta.SaldoGenerado
+                    SaldoGenerado = venta.SaldoGenerado,
+                    Comision      = venta.Comision
                 });
             }
             catch (SqlException ex)

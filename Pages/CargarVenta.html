@@ -132,8 +132,27 @@
     }
     .chip-saldo.favor { background: var(--green-soft); border-color: #badbcc; color: #0f5132; }
 
-    #entregaWrap { display: none; }
-    #entregaWrap.visible { display: flex; }
+    /* ---------- Modal de cobro ---------- */
+    .cobro-total { text-align:center; background:var(--bg-soft); border-radius:10px; padding:12px; margin-bottom:14px; }
+    .cobro-total .lbl { font-size:0.72rem; font-weight:700; color:var(--text-muted); letter-spacing:0.5px; }
+    .cobro-total .val { font-size:1.9rem; font-weight:800; color:var(--navy); line-height:1.1; }
+    .cobro-medios { display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:7px; margin-bottom:12px; }
+    .cobro-medio { border:2px solid var(--border); background:#fff; border-radius:9px; padding:9px 6px;
+                   font-size:0.8rem; font-weight:700; color:var(--navy); cursor:pointer; text-align:center; transition:0.12s; }
+    .cobro-medio:hover { border-color:var(--nav-accent); background:var(--nav-accent-soft); }
+    .cobro-medio i { display:block; font-size:1.3rem; margin-bottom:3px; }
+    .cobro-medio .com { display:block; font-size:0.65rem; color:var(--text-muted); font-weight:600; margin-top:2px; }
+    .cobro-fila { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); }
+    .cobro-fila .nom { flex:1; font-weight:600; font-size:0.88rem; text-align:left; }
+    .cobro-fila .nom small { display:block; font-weight:400; color:var(--text-muted); font-size:0.72rem; }
+    .cobro-fila input { width:130px; text-align:right; }
+    .cobro-fila .quitar { border:none; background:none; color:var(--red); font-size:1.1rem; cursor:pointer; padding:0 4px; }
+    .cobro-resumen { margin-top:12px; font-size:0.9rem; }
+    .cobro-resumen .fila { display:flex; justify-content:space-between; padding:3px 0; }
+    .cobro-resumen .falta { color:var(--red); font-weight:700; }
+    .cobro-resumen .vuelto { color:var(--green); font-weight:700; }
+    .cobro-resumen .ctacte { color:#856404; font-weight:700; }
+    .cobro-vacio { color:var(--text-muted); font-size:0.85rem; padding:10px 0; text-align:center; }
 
     /* ---------- Fila 2: dos columnas ---------- */
     .venta-body { display: flex; gap: 12px; flex: 1; min-height: 0; }
@@ -403,20 +422,6 @@
               <span class="pago-lbl">Desc.</span>
               <div id="botonesDescuento" class="d-flex gap-1 flex-wrap"></div>
             </div>
-            <div class="pago-linea">
-              <span class="pago-lbl">Pago</span>
-              <button type="button" class="btn-fp activo" id="fpContado">Contado</button>
-              <button type="button" class="btn-fp" id="fpCredito" disabled
-                      title="Requiere un cliente con cuenta corriente">Cuenta corriente</button>
-            </div>
-            <div class="pago-linea" id="entregaWrap">
-              <span class="pago-lbl">Entrega</span>
-              <div class="input-group input-group-sm">
-                <span class="input-group-text">$</span>
-                <input type="text" inputmode="decimal" id="entrega"
-                       class="form-control text-end" value="0">
-              </div>
-            </div>
           </div>
 
           <div class="fila-desc" id="filaDescuento" style="display:none;">
@@ -483,6 +488,17 @@
     // reenvia, el servidor ve el mismo token y no crea una segunda venta.
     // Tras registrar, la pagina se recarga y el token nace de nuevo.
     var tokenOperacion = nuevoToken();
+    var mediosPago = [];   // de api/MedioPago
+
+    var ICONO_MEDIO = { EFE: "bi-cash-stack", TRF: "bi-bank", QR: "bi-qr-code",
+                        DEB: "bi-credit-card", CRE: "bi-credit-card-2-front", PRE: "bi-credit-card-2-back" };
+
+    function cargarMediosPago() {
+      return fetchAuth(API_BASE + "MedioPago")
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (d) { mediosPago = d || []; })
+        .catch(function () { mediosPago = []; });
+    }
 
     function nuevoToken() {
       if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -1207,28 +1223,16 @@
       renderCarrito();
     }
 
-    function setFormaPago(fp) {
-      formaPago = fp;
-      document.getElementById("fpContado").classList.toggle("activo", fp === "Contado");
-      document.getElementById("fpCredito").classList.toggle("activo", fp === "CuentaCorriente");
-      document.getElementById("entregaWrap").classList.toggle("visible", fp === "CuentaCorriente");
-      if (fp === "Contado") document.getElementById("entrega").value = "0";
+    // La forma de pago ahora se elige en el modal de cobro. Se conservan
+    // estas funciones porque las llaman otras partes de la pantalla.
+    function setFormaPago(fp) { formaPago = fp; }
+
+    function clienteTieneCuentaCorriente() {
+      return !!(clienteElegido && (clienteElegido.CuentaCorriente === true ||
+                                   clienteElegido.CuentaCorriente === 1));
     }
 
-    // La opcion de fiar solo existe si hay un cliente registrado con
-    // cuenta corriente habilitada. Con los clientes internos el SP la
-    // rechaza, asi que no tiene sentido ofrecerla.
-    function actualizarOpcionCredito() {
-      var habilitado = !!(clienteElegido && (clienteElegido.CuentaCorriente === true ||
-                                             clienteElegido.CuentaCorriente === 1));
-      var btn = document.getElementById("fpCredito");
-      btn.disabled = !habilitado;
-      btn.title = habilitado
-        ? "Vender a cuenta corriente"
-        : "Requiere un cliente registrado con cuenta corriente";
-
-      if (!habilitado && formaPago === "CuentaCorriente") setFormaPago("Contado");
-    }
+    function actualizarOpcionCredito() { /* se evalua en el modal de cobro */ }
 
     // El saldo se muestra al lado del nombre. No bloquea nada: informar
     // no es lo mismo que restringir, y la decision de seguir fiando es
@@ -1394,6 +1398,132 @@
       return g ? g.Id : null;
     }
 
+    /* ================= COBRO =================
+       El vendedor elige los medios cuando el cliente paga. Puede ser
+       uno solo o varios (mitad efectivo, mitad transferencia). El
+       efectivo admite vuelto; los demas no, porque nadie paga de mas
+       con tarjeta. Si el cliente tiene cuenta corriente, lo que falte
+       queda debiendo; si no, hay que completar el total. */
+
+    var pagos = [];   // [{ IdMedioPago, Codigo, Nombre, ComisionPorc, Monto }]
+
+    function medioPorId(id) {
+      return mediosPago.find(function (m) { return m.Id === id; });
+    }
+
+    function sumaPagos() {
+      return pagos.reduce(function (a, p) { return a + (Number(p.Monto) || 0); }, 0);
+    }
+
+    function redondear(n) { return Math.round(n * 100) / 100; }
+
+    // Lo que se registra de cada pago: el efectivo se recorta al total,
+    // el excedente es vuelto y no entra a caja.
+    function pagosARegistrar(total) {
+      var noEfe = pagos.filter(function (p) { return p.Codigo !== "EFE"; })
+                       .reduce(function (a, p) { return a + (Number(p.Monto) || 0); }, 0);
+      var restaEfe = Math.max(0, total - noEfe);
+      return pagos.map(function (p) {
+        var m = Number(p.Monto) || 0;
+        if (p.Codigo === "EFE") { var usado = Math.min(m, restaEfe); restaEfe -= usado; m = usado; }
+        return { IdMedioPago: p.IdMedioPago, Monto: redondear(m) };
+      }).filter(function (p) { return p.Monto > 0; });
+    }
+
+    function pintarCobro(total) {
+      var lista = document.getElementById("cobroLista");
+      var resumen = document.getElementById("cobroResumen");
+      if (!lista) return;
+
+      if (pagos.length === 0) {
+        lista.innerHTML = '<div class="cobro-vacio">Tocá el medio con el que paga el cliente.</div>';
+      } else {
+        lista.innerHTML = pagos.map(function (p, i) {
+          var com = Number(p.ComisionPorc) > 0
+            ? '<small>' + Number(p.ComisionPorc) + '% de comisión: ' +
+              formatearMoneda(redondear((Number(p.Monto) || 0) * p.ComisionPorc / 100)) + '</small>'
+            : (p.Codigo === "EFE" ? '<small>Lo que entrega el cliente</small>' : '');
+          return '<div class="cobro-fila">' +
+            '<div class="nom">' + escapeHtml(p.Nombre) + com + '</div>' +
+            '<div class="input-group input-group-sm" style="width:150px;">' +
+              '<span class="input-group-text">$</span>' +
+              '<input type="text" inputmode="decimal" class="form-control" id="pago_' + i + '" ' +
+                'value="' + numeroAPrecio(p.Monto) + '" data-idx="' + i + '">' +
+            '</div>' +
+            '<button type="button" class="quitar" data-quitar="' + i + '" title="Quitar">' +
+              '<i class="bi bi-x-circle"></i></button>' +
+          '</div>';
+        }).join("");
+
+        pagos.forEach(function (p, i) {
+          var inp = document.getElementById("pago_" + i);
+          activarInputPrecio("pago_" + i);
+          inp.addEventListener("input", function () {
+            pagos[i].Monto = precioANumero(inp.value) || 0;
+            pintarResumen(total);
+          });
+        });
+        lista.querySelectorAll("[data-quitar]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            pagos.splice(parseInt(b.getAttribute("data-quitar"), 10), 1);
+            pintarCobro(total);
+          });
+        });
+      }
+      pintarResumen(total);
+    }
+
+    function pintarResumen(total) {
+      var resumen = document.getElementById("cobroResumen");
+      var pagado = sumaPagos();
+      var hayEfe = pagos.some(function (p) { return p.Codigo === "EFE"; });
+      var noEfe = pagos.filter(function (p) { return p.Codigo !== "EFE"; })
+                       .reduce(function (a, p) { return a + (Number(p.Monto) || 0); }, 0);
+      var comision = pagosARegistrar(total).reduce(function (a, p) {
+        var m = medioPorId(p.IdMedioPago);
+        return a + (m ? p.Monto * m.ComisionPorc / 100 : 0);
+      }, 0);
+
+      var html = '<div class="fila"><span>Pagado</span><strong>' + formatearMoneda(pagado) + '</strong></div>';
+      var diff = redondear(pagado - total);
+
+      if (noEfe > total + 0.01) {
+        html += '<div class="fila falta"><span>Con tarjeta, QR o transferencia no puede haber vuelto</span></div>';
+      } else if (diff > 0.009) {
+        html += hayEfe
+          ? '<div class="fila vuelto"><span>Vuelto</span><span>' + formatearMoneda(diff) + '</span></div>'
+          : '<div class="fila falta"><span>Se pasó por ' + formatearMoneda(diff) + '</span></div>';
+      } else if (diff < -0.009) {
+        var falta = -diff;
+        html += clienteTieneCuentaCorriente()
+          ? '<div class="fila ctacte"><span>Queda en cuenta corriente</span><span>' + formatearMoneda(falta) + '</span></div>'
+          : '<div class="fila falta"><span>Falta cobrar</span><span>' + formatearMoneda(falta) + '</span></div>';
+      } else if (pagos.length > 0) {
+        html += '<div class="fila" style="color:var(--green);font-weight:700;"><span>Cobro completo</span><span>✓</span></div>';
+      }
+
+      if (comision > 0.009)
+        html += '<div class="fila" style="color:var(--text-muted);font-size:0.8rem;"><span>Comisiones</span><span>' +
+                formatearMoneda(comision) + '</span></div>';
+
+      resumen.innerHTML = html;
+    }
+
+    function validarCobro(total) {
+      var noEfe = pagos.filter(function (p) { return p.Codigo !== "EFE"; })
+                       .reduce(function (a, p) { return a + (Number(p.Monto) || 0); }, 0);
+      var registrado = pagosARegistrar(total).reduce(function (a, p) { return a + p.Monto; }, 0);
+
+      if (pagos.some(function (p) { return !(Number(p.Monto) > 0); }))
+        return "Hay un pago sin importe.";
+      if (noEfe > total + 0.01)
+        return "Con tarjeta, QR o transferencia no se puede cobrar más que el total.";
+      if (registrado < total - 0.01 && !clienteTieneCuentaCorriente())
+        return "Falta cobrar " + formatearMoneda(total - registrado) +
+               ". Para dejar saldo pendiente hay que elegir un cliente con cuenta corriente.";
+      return null;
+    }
+
     function confirmar() {
       if (carrito.length === 0) return;
 
@@ -1409,147 +1539,164 @@
         return;
       }
 
+      if (mediosPago.length === 0) {
+        Swal.fire("Sin medios de pago", "No se pudieron cargar los medios de pago. Recargá la pantalla.", "error");
+        return;
+      }
+
       var nombreMostrar = clienteElegido
         ? clienteElegido.Apellido + ", " + clienteElegido.Nombre
         : (tipoCliente === "mecanico" ? "Mecánico Mostrador" : "Consumidor Final");
 
       var total = totalCarrito();
-      var entrega = formaPago === "CuentaCorriente"
-        ? (precioANumero(document.getElementById("entrega").value) || 0)
-        : total;
-
-      if (formaPago === "CuentaCorriente") {
-        if (entrega < 0) {
-          Swal.fire("Entrega inválida", "La entrega no puede ser negativa.", "warning");
-          return;
-        }
-        if (entrega > total) {
-          Swal.fire("Entrega inválida",
-                    "La entrega no puede superar el total de " + formatearMoneda(total) + ".",
-                    "warning");
-          return;
-        }
-      }
 
       var criticos = carrito.filter(function (c) {
         return (c.StockActual - c.Cantidad) <= c.StockMinimo;
       });
       var extra = criticos.length > 0
-        ? "<br><small style='color:#856404;'><i class='bi bi-exclamation-triangle'></i> " +
-          criticos.length + " repuesto(s) quedan en stock crítico.</small>"
+        ? "<div style='color:#856404;font-size:0.8rem;margin-top:8px;'><i class='bi bi-exclamation-triangle'></i> " +
+          criticos.length + " repuesto(s) quedan en stock crítico.</div>"
         : "";
 
-      var lineaDesc = descuentoActual > 0
-        ? "<strong>Descuento:</strong> " + descuentoActual + "% (-" +
-          formatearMoneda(montoDescuento()) + ")<br>"
-        : "";
+      // Arranca con efectivo por el total: es el caso mas comun
+      var efe = mediosPago.find(function (m) { return m.Codigo === "EFE"; });
+      pagos = efe ? [{ IdMedioPago: efe.Id, Codigo: efe.Codigo, Nombre: efe.Nombre,
+                       ComisionPorc: Number(efe.ComisionPorc), Monto: total }] : [];
 
-      var lineaPago = formaPago === "CuentaCorriente"
-        ? "<strong>Forma de pago:</strong> Cuenta corriente<br>" +
-          "<strong>Entrega:</strong> " + formatearMoneda(entrega) + "<br>" +
-          "<strong style='color:#c0392b;'>Queda debiendo:</strong> <strong>" +
-          formatearMoneda(total - entrega) + "</strong><br>"
-        : "<strong>Forma de pago:</strong> Contado<br>";
+      var botones = mediosPago.map(function (m) {
+        return '<button type="button" class="cobro-medio" data-medio="' + m.Id + '">' +
+          '<i class="bi ' + (ICONO_MEDIO[m.Codigo] || "bi-wallet2") + '"></i>' +
+          escapeHtml(m.Nombre) +
+          (Number(m.ComisionPorc) > 0 ? '<span class="com">' + Number(m.ComisionPorc) + '%</span>' : '') +
+        '</button>';
+      }).join("");
 
       Swal.fire({
-        title: "¿Confirmar venta?",
-        html: "<div style='text-align:left;'>" +
-              "<strong>Cliente:</strong> " + escapeHtml(nombreMostrar) + "<br>" +
-              "<strong>Ítems:</strong> " + carrito.length + "<br>" +
-              lineaDesc +
-              "<strong>Total:</strong> " + formatearMoneda(total) + "<br>" +
-              lineaPago + extra + "</div>",
-        icon: "question", showCancelButton: true,
+        title: "Cobrar",
+        width: 560,
+        html:
+          "<div style='text-align:left;'>" +
+            "<div style='font-size:0.85rem;color:var(--text-muted);margin-bottom:8px;'>" +
+              escapeHtml(nombreMostrar) + " · " + carrito.length + " ítem(s)" +
+              (descuentoActual > 0 ? " · " + descuentoActual + "% desc." : "") +
+              (clienteTieneCuentaCorriente() ? " · <span style='color:#856404;'>tiene cuenta corriente</span>" : "") +
+            "</div>" +
+            "<div class='cobro-total'><div class='lbl'>TOTAL</div><div class='val'>" + formatearMoneda(total) + "</div></div>" +
+            "<div class='cobro-medios'>" + botones + "</div>" +
+            "<div id='cobroLista'></div>" +
+            "<div class='cobro-resumen' id='cobroResumen'></div>" +
+            extra +
+          "</div>",
+        showCancelButton: true,
         confirmButtonColor: "#28a745",
-        confirmButtonText: "Sí, confirmar", cancelButtonText: "Cancelar"
+        confirmButtonText: "Registrar venta",
+        cancelButtonText: "Cancelar",
+        didOpen: function () {
+          document.querySelectorAll("[data-medio]").forEach(function (b) {
+            b.addEventListener("click", function () {
+              var m = medioPorId(parseInt(b.getAttribute("data-medio"), 10));
+              if (!m) return;
+              // Propone lo que falta; si ya esta cubierto, cero para que lo cargue
+              var falta = Math.max(0, redondear(total - sumaPagos()));
+              // Si el unico pago es el efectivo inicial por el total, se
+              // reemplaza: el vendedor esta cambiando de medio, no sumando
+              if (pagos.length === 1 && pagos[0].Codigo === "EFE" &&
+                  Math.abs(pagos[0].Monto - total) < 0.01 && m.Codigo !== "EFE") {
+                pagos = [];
+                falta = total;
+              }
+              pagos.push({ IdMedioPago: m.Id, Codigo: m.Codigo, Nombre: m.Nombre,
+                           ComisionPorc: Number(m.ComisionPorc), Monto: falta });
+              pintarCobro(total);
+              var ultimo = document.getElementById("pago_" + (pagos.length - 1));
+              if (ultimo) { ultimo.focus(); ultimo.select(); }
+            });
+          });
+          pintarCobro(total);
+        },
+        preConfirm: function () {
+          var err = validarCobro(total);
+          if (err) { Swal.showValidationMessage(err); return false; }
+          return pagosARegistrar(total);
+        }
       }).then(function (res) {
-        if (!res.isConfirmed) return;
+        if (!res.isConfirmed || !res.value) return;
+        registrarVenta(idCliente, total, res.value);
+      });
+    }
 
-        var btn = document.getElementById("btnConfirmar");
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando…';
+    function registrarVenta(idCliente, total, pagosFinal) {
+      var btn = document.getElementById("btnConfirmar");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando…';
 
-        var venta = {
-          IdCliente: idCliente,
-          TokenOperacion: tokenOperacion,
-          PorcentajeDescuento: descuentoActual,
-          FormaPago: formaPago,
-          Entrega: entrega,
-          TipoCliente: tipoCliente === "mecanico" ? "Mecanico" : "Publico",
-          // Si la venta viene de un presupuesto con datos de contacto,
-          // se arrastran a la venta.
-          NombreOcasional: (presupActual && presupActual.nombre) ? presupActual.nombre : null,
-          TelefonoOcasional: (presupActual && presupActual.telefono) ? presupActual.telefono : null,
-          Detalle: carrito.map(function (c) {
-            return { IdRepuesto: c.IdRepuesto, Cantidad: c.Cantidad, PrecioUnitario: c.PrecioUnitario };
-          })
-        };
-        var totalGuardado = total;
-        var entregaGuardada = entrega;
+      var pagado = pagosFinal.reduce(function (a, p) { return a + p.Monto; }, 0);
 
-        fetchAuth(apiVenta, { method: "POST", body: JSON.stringify(venta) }).then(function (r) {
-          if (r.ok) {
-            // VentaController devuelve Ok(new { IdVenta = idVenta }), o sea un objeto.
-            // Se contempla igual el caso de que devuelva el numero pelado.
-            return r.json().catch(function () { return null; }).then(function (res) {
-              var idVenta = null;
-              if (typeof res === "number") idVenta = res;
-              else if (res && typeof res === "object") idVenta = res.IdVenta || res.idVenta || res.Id;
-              idVenta = parseInt(idVenta, 10);
-              if (isNaN(idVenta) || idVenta <= 0) idVenta = null;
+      var venta = {
+        IdCliente: idCliente,
+        TokenOperacion: tokenOperacion,
+        PorcentajeDescuento: descuentoActual,
+        Pagos: pagosFinal,
+        TipoCliente: tipoCliente === "mecanico" ? "Mecanico" : "Publico",
+        NombreOcasional: (presupActual && presupActual.nombre) ? presupActual.nombre : null,
+        TelefonoOcasional: (presupActual && presupActual.telefono) ? presupActual.telefono : null,
+        Detalle: carrito.map(function (c) {
+          return { IdRepuesto: c.IdRepuesto, Cantidad: c.Cantidad, PrecioUnitario: c.PrecioUnitario };
+        })
+      };
 
-              return vincularPresupuesto(idVenta).then(function () {
-                var extraPresup = presupuestoOrigen
-                  ? "<br><small class='text-muted'>Presupuesto N° " + presupuestoOrigen.Numero +
-                    " marcado como convertido.</small>"
-                  : "";
-                var saldoGenerado = (res && res.SaldoGenerado !== undefined)
-                  ? Number(res.SaldoGenerado)
-                  : (totalGuardado - entregaGuardada);
-
-                var extraCredito = "";
-                if (formaPago === "CuentaCorriente" && saldoGenerado > 0) {
-                  extraCredito = "<br><span style='color:#c0392b;'>Quedó debiendo <strong>" +
-                    formatearMoneda(saldoGenerado) + "</strong></span>";
-                  if (entregaGuardada > 0)
-                    extraCredito += "<br><small class='text-muted'>Entregó " +
-                      formatearMoneda(entregaGuardada) + ", que ingresó a caja.</small>";
-                  else
-                    extraCredito += "<br><small class='text-muted'>No ingresó dinero a caja.</small>";
-                }
-
-                Swal.fire({
-                  icon: "success",
-                  title: "Venta registrada",
-                  html: "Total: <strong>" + formatearMoneda(totalGuardado) + "</strong>" +
-                        extraCredito +
-                        "<br><small class='text-muted'>El stock se actualizó automáticamente.</small>" +
-                        extraPresup,
-                  showCancelButton: true,
-                  confirmButtonText: "Venta",
-                  cancelButtonText: "Ir al listado",
-                  confirmButtonColor: "#28a745"
-                }).then(function (r2) {
-                  if (r2.isConfirmed) window.location.href = window.location.pathname;
-                  else window.location.href = "ListadoVentas.html";
-                });
-              });
+      fetchAuth(apiVenta, { method: "POST", body: JSON.stringify(venta) }).then(function (r) {
+        if (!r.ok) {
+          return leerError(r).then(function (msg) {
+            Swal.fire({
+              icon: "error",
+              title: "No se pudo registrar la venta",
+              html: "<div class='text-start'>" + escapeHtml(msg) + "</div><br>" +
+                    "<small class='text-muted'>El stock pudo cambiar mientras armabas la venta.</small>"
             });
-          } else {
-            leerError(r).then(function (msg) {
-              Swal.fire({
-                icon: "error",
-                title: "No se pudo registrar la venta",
-                html: "<div class='text-start'>" + escapeHtml(msg) + "</div><br>" +
-                      "<small class='text-muted'>El stock pudo cambiar mientras armabas la venta.</small>"
-              });
-              restaurarBoton();
+            restaurarBoton();
+          });
+        }
+
+        return r.json().catch(function () { return null; }).then(function (res) {
+          var idVenta = res && (res.IdVenta || res.idVenta || res.Id);
+          idVenta = parseInt(idVenta, 10);
+          if (isNaN(idVenta) || idVenta <= 0) idVenta = null;
+
+          return vincularPresupuesto(idVenta).then(function () {
+            var saldo = res && res.SaldoGenerado !== undefined ? Number(res.SaldoGenerado) : (total - pagado);
+            var comision = res && res.Comision !== undefined ? Number(res.Comision) : 0;
+
+            var detallePagos = pagosFinal.map(function (p) {
+              var m = medioPorId(p.IdMedioPago);
+              return (m ? m.Nombre : "Pago") + ": " + formatearMoneda(p.Monto);
+            }).join("<br>");
+
+            var html = "N° <strong>" + String(idVenta || "").padStart(8, "0") + "</strong><br>" +
+                       "Total: <strong>" + formatearMoneda(total) + "</strong><br><br>" +
+                       "<div style='font-size:0.88rem;'>" + detallePagos + "</div>";
+            if (saldo > 0.009)
+              html += "<br><span style='color:#c0392b;'>Quedó debiendo <strong>" + formatearMoneda(saldo) + "</strong></span>";
+            if (comision > 0.009)
+              html += "<br><small class='text-muted'>Comisiones: " + formatearMoneda(comision) + "</small>";
+            if (res && res.Duplicada)
+              html += "<br><small class='text-muted'>Esta venta ya estaba registrada: no se duplicó.</small>";
+            if (presupuestoOrigen)
+              html += "<br><small class='text-muted'>Presupuesto N° " + presupuestoOrigen.Numero + " marcado como convertido.</small>";
+
+            Swal.fire({
+              icon: "success", title: "Venta registrada", html: html,
+              showCancelButton: true, confirmButtonText: "Venta", cancelButtonText: "Ir al listado",
+              confirmButtonColor: "#28a745"
+            }).then(function (r2) {
+              if (r2.isConfirmed) window.location.href = window.location.pathname;
+              else window.location.href = "ListadoVentas.html";
             });
-          }
-        }).catch(function () {
-          Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error");
-          restaurarBoton();
+          });
         });
+      }).catch(function () {
+        Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error");
+        restaurarBoton();
       });
     }
 
@@ -1570,6 +1717,7 @@
 
     window.onload = function () {
       cargarCombos();
+      cargarMediosPago();
       renderCarrito();
 
       var idPresup = idPresupuestoDeLaUrl();
@@ -1609,13 +1757,6 @@
         document.getElementById("buscarRepuesto").focus();
       });
 
-      document.getElementById("fpContado").addEventListener("click", function () {
-        setFormaPago("Contado");
-      });
-      document.getElementById("fpCredito").addEventListener("click", function () {
-        if (!this.disabled) setFormaPago("CuentaCorriente");
-      });
-      activarInputPrecio("entrega");
 
       cargarParametrosVenta().then(pintarBotonesDescuento);
 

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Pedidos - Daytona Inyección</title>
+  <title>Pedidos - Daytona Repuestos Automotor</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="estilos.css" rel="stylesheet">
@@ -11,119 +11,218 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    /* ================= BASE =================
+       Herramienta de trabajo, no dashboard: compacto, lineas finas,
+       color solo donde hay un estado que leer. */
+    .ped-main { padding: 18px 22px 28px !important; max-width: 1480px; }
+    .ped-main * { transition-duration: 150ms; }
+    :root { --ped-borde: #E5E7EB; --ped-suave: #F7F8FA; --ped-texto2: #6B7280; }
+
+    /* Encabezado */
+    .ped-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+    .ped-head h2 { font-size:1.55rem; font-weight:800; color:var(--navy); margin:0; letter-spacing:-0.2px; }
+    .ped-head p { margin:2px 0 0; color:var(--ped-texto2); font-size:0.9rem; }
+    .btn-ped { background:var(--navy); color:#fff; border:none; border-radius:9px; padding:9px 18px; font-weight:700; font-size:0.9rem; display:inline-flex; align-items:center; gap:7px; text-decoration:none; }
+    .btn-ped:hover { background:#0b2c55; color:#fff; }
+
+    /* KPI: compactas y clickeables (filtran por estado) */
+    .kpis { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; margin-bottom:14px; }
+    .kpi { background:#fff; border:1px solid var(--ped-borde); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px; cursor:pointer; box-shadow:0 1px 2px rgba(16,24,40,0.03); }
+    .kpi:hover { border-color:#c9d6ea; }
+    .kpi.activo { border-color:var(--navy); box-shadow:0 0 0 1px var(--navy) inset; }
+    .kpi .ico { width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; flex-shrink:0; }
+    .kpi .num { font-size:1.55rem; font-weight:800; color:var(--navy); line-height:1; }
+    .kpi .lbl { font-size:0.8rem; font-weight:600; color:var(--ped-texto2); margin-top:3px; }
+    .kpi .extra { font-size:0.72rem; color:var(--ped-texto2); margin-top:1px; }
+    .k-pend .ico { background:#FEF3C7; color:#92400E; }
+    .k-parc .ico { background:#E0EAFF; color:#1E40AF; }
+    .k-rec  .ico { background:#DCFCE7; color:#166534; }
+    .k-canc .ico { background:#F3F4F6; color:#6B7280; }
+
+    /* Barra de filtros tipo ERP: una sola linea */
+    .filtros { background:#fff; border:1px solid var(--ped-borde); border-radius:10px; padding:10px 12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+    .filtros .buscar { position:relative; flex:1 1 240px; }
+    .filtros .buscar i { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--ped-texto2); }
+    .filtros .buscar input { padding-left:34px; }
+    .filtros .form-control, .filtros .form-select { font-size:0.88rem; height:36px; border-color:var(--ped-borde); border-radius:8px; }
+    .filtros .form-control:focus, .filtros .form-select:focus { border-color:var(--nav-accent); box-shadow:0 0 0 3px rgba(18,102,209,0.12); }
+    .filtros .f-prov { flex:0 1 220px; } .filtros .f-est { flex:0 1 160px; } .filtros .f-fecha { flex:0 1 160px; }
+    .btn-limpiar { border:none; background:none; color:var(--ped-texto2); font-size:0.84rem; font-weight:600; padding:6px 8px; border-radius:7px; white-space:nowrap; }
+    .btn-limpiar:hover { color:var(--navy); background:var(--ped-suave); }
+    .cuenta { font-size:0.8rem; color:var(--ped-texto2); margin-left:auto; white-space:nowrap; }
+
+    /* Tabla */
+    .tabla-wrap { background:#fff; border:1px solid var(--ped-borde); border-radius:10px; overflow:hidden; }
+    .tabla-ped { margin:0; font-size:0.875rem; }
+    .tabla-ped thead th { background:var(--ped-suave); color:var(--ped-texto2); font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--ped-borde); padding:9px 14px; white-space:nowrap; }
+    .tabla-ped tbody td { padding:10px 14px; border-bottom:1px solid #F0F1F3; vertical-align:middle; }
+    .tabla-ped tbody tr:last-child td { border-bottom:none; }
+    .tabla-ped tbody tr:hover { background:#FAFBFD; }
+    .nro { font-family:'Courier New', monospace; font-weight:700; color:var(--navy); letter-spacing:0.3px; }
+    .f1 { color:#1F2937; } .f2 { font-size:0.75rem; color:var(--ped-texto2); }
+    .prov-nom { font-weight:700; color:#111827; }
+    .total { font-weight:600; color:#111827; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+    /* Estados: icono + texto, nunca solo color */
+    .est { display:inline-flex; align-items:center; gap:5px; font-size:0.76rem; font-weight:700; border-radius:7px; padding:3px 9px; white-space:nowrap; }
+    .est-pend { background:#FEF3C7; color:#92400E; }
+    .est-parc { background:#E0EAFF; color:#1E40AF; }
+    .est-rec  { background:#DCFCE7; color:#166534; }
+    .est-canc { background:#F3F4F6; color:#6B7280; }
+    .prog { height:5px; background:#E5E7EB; border-radius:3px; margin-top:6px; width:120px; overflow:hidden; }
+    .prog > div { height:100%; background:#3B6FD8; border-radius:3px; }
+    .prog-txt { font-size:0.7rem; color:var(--ped-texto2); margin-top:2px; }
+
+    /* Acciones: una principal visible, el resto en el menu */
+    .acc { display:flex; gap:6px; justify-content:flex-end; align-items:center; }
+    .btn-ico { border:1px solid var(--ped-borde); background:#fff; color:#374151; border-radius:7px; height:32px; min-width:32px; padding:0 9px; display:inline-flex; align-items:center; justify-content:center; gap:5px; font-size:0.8rem; font-weight:600; text-decoration:none; }
+    .btn-ico:hover { border-color:#c9d6ea; background:var(--ped-suave); color:var(--navy); }
+    .btn-recibir { background:#166534; border-color:#166534; color:#fff; }
+    .btn-recibir:hover { background:#14532d; border-color:#14532d; color:#fff; }
+    .dropdown-menu { font-size:0.85rem; border-color:var(--ped-borde); box-shadow:0 8px 24px rgba(16,24,40,0.10); border-radius:9px; padding:5px; }
+    .dropdown-item { border-radius:6px; padding:7px 10px; display:flex; gap:8px; align-items:center; }
+    .dropdown-item.peligro { color:#B42318; }
+    .dropdown-item.peligro:hover { background:#FEF3F2; color:#B42318; }
+
+    /* Vacio */
+    .vacio { text-align:center; padding:48px 20px; color:var(--ped-texto2); }
+    .vacio i { font-size:2.2rem; color:#CBD5E1; display:block; margin-bottom:10px; }
+    .vacio h6 { color:var(--navy); font-weight:700; margin-bottom:4px; }
+
+    /* Modal como ficha */
+    .ficha .modal-content { border:none; border-radius:12px; }
+    .ficha .modal-header { border-bottom:1px solid var(--ped-borde); padding:16px 20px; }
+    .ficha .modal-title { font-weight:800; color:var(--navy); font-size:1.1rem; }
+    .ficha .modal-body { padding:18px 20px; }
+    .ficha .sec { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--ped-texto2); margin:0 0 8px; }
+    .ficha .datos { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; background:var(--ped-suave); border-radius:10px; padding:12px 14px; margin-bottom:18px; }
+    .ficha .datos .l { font-size:0.7rem; color:var(--ped-texto2); font-weight:600; }
+    .ficha .datos .v { font-weight:700; color:#111827; font-size:0.92rem; }
+    .ficha table { font-size:0.86rem; }
+    .ficha table th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--ped-texto2); background:var(--ped-suave); }
+    .ficha .tot { display:flex; justify-content:flex-end; gap:24px; align-items:baseline; padding:10px 4px 0; border-top:2px solid var(--ped-borde); }
+    .ficha .tot .l { color:var(--ped-texto2); font-weight:700; font-size:0.8rem; text-transform:uppercase; }
+    .ficha .tot .v { font-size:1.35rem; font-weight:800; color:var(--navy); }
+    .ficha .modal-footer { border-top:1px solid var(--ped-borde); padding:12px 20px; justify-content:space-between; }
+    .ficha .modal-footer .der { display:flex; gap:8px; }
+    .btn-peligro { border:1px solid #F3C5C0; color:#B42318; background:#fff; border-radius:8px; font-weight:600; font-size:0.85rem; padding:7px 14px; }
+    .btn-peligro:hover { background:#FEF3F2; }
+    .btn-sec { border:1px solid var(--ped-borde); color:#374151; background:#fff; border-radius:8px; font-weight:600; font-size:0.85rem; padding:7px 14px; }
+    .btn-sec:hover { background:var(--ped-suave); }
+
+    /* Responsive: en pantallas chicas se ocultan los datos secundarios */
+    @media (max-width: 1199px) { .kpis { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 991px) {
+      .col-hora, .prog-txt { display:none; }
+      .ficha .datos { grid-template-columns:repeat(2, 1fr); }
+      .cuenta { margin-left:0; width:100%; }
+    }
+    @media (max-width: 767px) { .col-fecha { display:none; } .btn-recibir .txt { display:none; } }
+  </style>
 </head>
 
 <body data-page="pedidos">
   <div id="sidebar-container"></div>
 
-  <div class="main-content">
-    <div class="header-bar">
+  <div class="main-content ped-main">
+
+    <!-- Encabezado -->
+    <div class="ped-head">
       <div>
-        <h2><i class="bi bi-clipboard-data"></i> Pedidos de compra</h2>
-        <span class="subtitle">Historial y seguimiento de pedidos a proveedores</span>
+        <h2>Pedidos de compra</h2>
+        <p>Gestioná, recibí y consultá los pedidos realizados a proveedores.</p>
       </div>
-      <a href="PedidoNuevo.html" class="btn btn-danger">
-        <i class="bi bi-plus-lg"></i> Pedido
-      </a>
+      <a href="PedidoNuevo.html" class="btn-ped"><i class="bi bi-plus-lg"></i> Pedido</a>
     </div>
 
-    <div class="row g-3 mb-4">
-      <div class="col-md-4">
-        <div class="stat-card">
-          <div class="stat-icon yellow"><i class="bi bi-hourglass-split"></i></div>
-          <div>
-            <p class="stat-value" id="statPendientes">0</p>
-            <p class="stat-label">Pendientes</p>
-          </div>
-        </div>
+    <!-- Resumen: cada tarjeta filtra el listado -->
+    <div class="kpis">
+      <div class="kpi k-pend" data-estado="pendiente" title="Ver pendientes">
+        <div class="ico"><i class="bi bi-hourglass-split"></i></div>
+        <div><div class="num" id="statPendientes">0</div><div class="lbl">Pendientes</div><div class="extra" id="statMontoPend"></div></div>
       </div>
-      <div class="col-md-4">
-        <div class="stat-card">
-          <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
-          <div>
-            <p class="stat-value" id="statRecibidos">0</p>
-            <p class="stat-label">Recibidos</p>
-          </div>
-        </div>
+      <div class="kpi k-parc" data-estado="parcial" title="Ver recibidos en parte">
+        <div class="ico"><i class="bi bi-circle-half"></i></div>
+        <div><div class="num" id="statParciales">0</div><div class="lbl">Parciales</div><div class="extra">llegó una parte</div></div>
       </div>
-      <div class="col-md-4">
-        <div class="stat-card">
-          <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
-          <div>
-            <p class="stat-value" id="statCancelados">0</p>
-            <p class="stat-label">Cancelados</p>
-          </div>
-        </div>
+      <div class="kpi k-rec" data-estado="recibido" title="Ver recibidos">
+        <div class="ico"><i class="bi bi-check-circle"></i></div>
+        <div><div class="num" id="statRecibidos">0</div><div class="lbl">Recibidos</div></div>
+      </div>
+      <div class="kpi k-canc" data-estado="cancelado" title="Ver cancelados">
+        <div class="ico"><i class="bi bi-x-circle"></i></div>
+        <div><div class="num" id="statCancelados">0</div><div class="lbl">Cancelados</div></div>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-header"><i class="bi bi-funnel"></i> Filtros</div>
-      <div class="panel-body">
-        <div class="row g-3">
-          <div class="col-md-5">
-            <label class="form-label">Proveedor</label>
-            <select id="filtroProveedor" class="form-select"><option value="">Todos</option></select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Fecha</label>
-            <input type="date" id="filtroFecha" class="form-control">
-          </div>
-          <div class="col-md-3 d-flex align-items-end">
-            <button id="btnLimpiar" class="btn btn-outline-secondary w-100">
-              <i class="bi bi-arrow-counterclockwise"></i> Limpiar
-            </button>
-          </div>
-        </div>
+    <!-- Filtros -->
+    <div class="filtros">
+      <div class="buscar">
+        <i class="bi bi-search"></i>
+        <input type="text" id="filtroTexto" class="form-control" placeholder="Buscar por número o proveedor…" aria-label="Buscar pedido">
       </div>
+      <select id="filtroProveedor" class="form-select f-prov" aria-label="Proveedor"><option value="">Todos los proveedores</option></select>
+      <select id="filtroEstado" class="form-select f-est" aria-label="Estado">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="parcial">Parciales</option>
+        <option value="recibido">Recibidos</option>
+        <option value="cancelado">Cancelados</option>
+      </select>
+      <input type="date" id="filtroFecha" class="form-control f-fecha" aria-label="Fecha">
+      <button id="btnLimpiar" class="btn-limpiar"><i class="bi bi-x-circle"></i> Limpiar filtros</button>
+      <span class="cuenta" id="cuenta"></span>
     </div>
 
-    <div class="panel">
-      <div class="panel-header"><i class="bi bi-list-ul"></i> Listado</div>
+    <!-- Tabla -->
+    <div class="tabla-wrap">
       <div class="table-responsive">
-        <table class="table">
+        <table class="table tabla-ped">
           <thead>
             <tr>
-              <th>ID</th><th>Fecha</th><th>Proveedor</th>
+              <th>Pedido</th><th class="col-fecha">Fecha</th><th>Proveedor</th>
               <th class="text-end">Total</th>
-              <th class="text-center">Estado</th>
-              <th class="text-center">Acciones</th>
+              <th>Estado</th>
+              <th class="text-end">Acciones</th>
             </tr>
           </thead>
-          <tbody id="tablaPedidos"></tbody>
+          <tbody id="tablaPedidos"><tr><td colspan="6" class="vacio">Cargando…</td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <div class="modal fade" id="detalleModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+  <!-- Detalle del pedido -->
+  <div class="modal fade ficha" id="detalleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-receipt"></i> Detalle del pedido</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <h5 class="modal-title" id="detalleTitulo">Pedido</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
-          <div class="detalle-info" id="detalleInfo"></div>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Repuesto</th><th class="text-center">Cantidad</th>
-                <th class="text-end">Precio Unit.</th><th class="text-end">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody id="detalleTabla"></tbody>
-          </table>
-          <div class="total-modal">
-            <span>Total:</span>
-            <span>$<span id="detalleTotal">0.00</span></span>
+          <p class="sec">Información del pedido</p>
+          <div class="datos" id="detalleInfo"></div>
+          <p class="sec">Productos</p>
+          <div class="table-responsive">
+            <table class="table mb-0">
+              <thead>
+                <tr><th>Repuesto</th><th class="text-center">Cantidad</th><th class="text-end">Precio unit.</th><th class="text-end">Subtotal</th></tr>
+              </thead>
+              <tbody id="detalleTabla"></tbody>
+            </table>
           </div>
+          <div class="tot"><span class="l">Total</span><span class="v">$<span id="detalleTotal">0,00</span></span></div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-success" id="btnRecibir"><i class="bi bi-check-circle"></i> Recibir</button>
-          <button class="btn btn-danger" id="btnCancelar"><i class="bi bi-x-circle"></i> Cancelar</button>
-          <button class="btn btn-warning" id="btnPDF"><i class="bi bi-file-pdf"></i> PDF</button>
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button class="btn-peligro" id="btnCancelar"><i class="bi bi-x-circle"></i> Cancelar pedido</button>
+          <div class="der">
+            <button class="btn-sec" id="btnPDF"><i class="bi bi-file-earmark-pdf"></i> Descargar PDF</button>
+            <button class="btn-sec" data-bs-dismiss="modal">Cerrar</button>
+            <button class="btn-ped" id="btnRecibir"><i class="bi bi-box-arrow-in-down"></i> Recibir mercadería</button>
+          </div>
         </div>
       </div>
     </div>
@@ -140,86 +239,157 @@
 
     const usuario = Auth.getUsuario();
     const esAdmin = usuario && usuario.Rol === "Administrador";
+    // Recibir lo hacen quienes reciben la mercaderia en el local
+    const puedeRecibir = usuario && ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
+    let resumenRecep = {};   // IdPedido -> { Pedidas, Recibidas, Cerradas }
 
+    /* ---------- Presentacion ---------- */
+    const nroPedido = id => "#" + String(id).padStart(4, "0");
+    const fecha1 = f => new Date(f).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "");
+    const hora = f => new Date(f).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    const moneda = n => (typeof formatearMoneda === "function") ? formatearMoneda(n) : "$" + Number(n).toFixed(2);
+
+    // Estado que ve el usuario: el de la base mas el parcial derivado de lo recibido
+    function estadoVisible(p) {
+      const rr = resumenRecep[p.Id];
+      if (p.Estado === "Pendiente" && rr && rr.Recibidas > 0) return "parcial";
+      return (p.Estado || "").toLowerCase();
+    }
+
+    function badgeEstado(p) {
+      const e = estadoVisible(p), rr = resumenRecep[p.Id];
+      if (e === "parcial") {
+        const pct = rr.Pedidas ? Math.round(rr.Recibidas * 100 / rr.Pedidas) : 0;
+        return '<span class="est est-parc"><i class="bi bi-circle-half"></i> Parcial · ' + rr.Recibidas + '/' + rr.Pedidas + '</span>' +
+               '<div class="prog" title="' + pct + '% recibido"><div style="width:' + pct + '%"></div></div>' +
+               '<div class="prog-txt">' + pct + '% recibido</div>';
+      }
+      if (e === "pendiente") return '<span class="est est-pend"><i class="bi bi-hourglass-split"></i> Pendiente</span>';
+      if (e === "recibido") {
+        const nota = rr && rr.Cerradas > 0 ? '<div class="prog-txt">' + rr.Recibidas + ' de ' + rr.Pedidas + ' · resto cerrado</div>' : '';
+        return '<span class="est est-rec"><i class="bi bi-check-circle"></i> Recibido</span>' + nota;
+      }
+      return '<span class="est est-canc"><i class="bi bi-x-circle"></i> Cancelado</span>';
+    }
+
+    /* ---------- Carga ---------- */
     function cargarPedidos() {
+      // Cuanto llego de cada pedido, para marcar los parciales
+      fetchAuth(api + "Compras/ResumenRecepcion").then(r => r.ok ? r.json() : []).then(d => {
+        resumenRecep = {};
+        (d || []).forEach(x => resumenRecep[x.IdPedido] = x);
+        if (pedidosGlobal.length) { actualizarStats(pedidosGlobal); aplicarFiltros(); }
+      }).catch(() => {});
+
       fetchAuth(api + "Pedido").then(r => r.json()).then(datos => {
         pedidosGlobal = datos;
         cargarProveedoresFiltro(datos);
         actualizarStats(datos);
-        renderPedidos(datos);
+        aplicarFiltros();
       }).catch(() => Swal.fire("Error", "No se pudieron cargar los pedidos.", "error"));
     }
 
     function cargarProveedoresFiltro(datos) {
       const proveedores = [];
       datos.forEach(p => { if (!proveedores.includes(p.Proveedor)) proveedores.push(p.Proveedor); });
+      proveedores.sort((a, b) => String(a).localeCompare(String(b)));
       const sel = document.getElementById("filtroProveedor");
-      sel.innerHTML = '<option value="">Todos</option>';
+      const actual = sel.value;
+      sel.innerHTML = '<option value="">Todos los proveedores</option>';
       proveedores.forEach(p => sel.innerHTML += `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`);
+      sel.value = actual;
     }
 
     function actualizarStats(datos) {
-      document.getElementById("statPendientes").textContent = datos.filter(p => p.Estado === "Pendiente").length;
-      document.getElementById("statRecibidos").textContent = datos.filter(p => p.Estado === "Recibido").length;
-      document.getElementById("statCancelados").textContent = datos.filter(p => p.Estado === "Cancelado").length;
+      const cuenta = e => datos.filter(p => estadoVisible(p) === e).length;
+      document.getElementById("statPendientes").textContent = cuenta("pendiente");
+      document.getElementById("statParciales").textContent = cuenta("parcial");
+      document.getElementById("statRecibidos").textContent = cuenta("recibido");
+      document.getElementById("statCancelados").textContent = cuenta("cancelado");
+      const monto = datos.filter(p => estadoVisible(p) === "pendiente").reduce((a, p) => a + Number(p.Total || 0), 0);
+      document.getElementById("statMontoPend").textContent = monto > 0 ? moneda(monto) + " en camino" : "";
     }
 
+    /* ---------- Filtros ---------- */
     function aplicarFiltros() {
       const prov = document.getElementById("filtroProveedor").value;
       const fecha = document.getElementById("filtroFecha").value;
+      const est = document.getElementById("filtroEstado").value;
+      const txt = document.getElementById("filtroTexto").value.trim().toLowerCase().replace(/^#?0*/, "");
       let lista = pedidosGlobal;
       if (prov) lista = lista.filter(p => p.Proveedor === prov);
       if (fecha) lista = lista.filter(p => (p.Fecha || "").split('T')[0] === fecha);
+      if (est) lista = lista.filter(p => estadoVisible(p) === est);
+      if (txt) lista = lista.filter(p => String(p.Id) === txt || String(p.Id).startsWith(txt) ||
+                                          String(p.Proveedor || "").toLowerCase().includes(txt));
+      document.querySelectorAll(".kpi").forEach(k => k.classList.toggle("activo", k.getAttribute("data-estado") === est));
+      document.getElementById("cuenta").textContent = lista.length + " de " + pedidosGlobal.length + " pedidos";
       renderPedidos(lista);
     }
 
+    function limpiarFiltros() {
+      ["filtroProveedor", "filtroFecha", "filtroEstado", "filtroTexto"].forEach(id => document.getElementById(id).value = "");
+      aplicarFiltros();
+    }
+
+    /* ---------- Tabla ---------- */
     function renderPedidos(datos) {
       const tbody = document.getElementById("tablaPedidos");
       if (!datos || datos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted p-4">Sin pedidos.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6"><div class="vacio"><i class="bi bi-inbox"></i>
+          <h6>No encontramos pedidos</h6>
+          <div>No hay pedidos que coincidan con los filtros seleccionados.</div>
+          <button class="btn-sec mt-3" onclick="limpiarFiltros()">Limpiar filtros</button></div></td></tr>`;
         return;
       }
 
       let html = "";
       datos.forEach(p => {
-        const badge = p.Estado === "Pendiente" ? "badge-pendiente"
-                    : p.Estado === "Recibido" ? "badge-recibido"
-                    : "badge-cancelado";
-        const icon = p.Estado === "Pendiente" ? "bi-hourglass-split"
-                   : p.Estado === "Recibido" ? "bi-check-circle"
-                   : "bi-x-circle";
+        const e = estadoVisible(p);
+        const abierto = e === "pendiente" || e === "parcial";
 
-        let acciones = `<button class="btn btn-sm btn-outline-primary" onclick="verDetalle(${p.Id})" title="Ver detalle"><i class="bi bi-eye"></i></button>`;
-        if (esAdmin && p.Estado === "Pendiente") {
-          acciones += ` <button class="btn btn-sm btn-outline-success" onclick="actualizarEstado(${p.Id}, 2, ${p.Total})" title="Marcar como recibido"><i class="bi bi-check-lg"></i></button>`;
-          acciones += ` <button class="btn btn-sm btn-outline-danger" onclick="actualizarEstado(${p.Id}, 3, ${p.Total})" title="Cancelar pedido"><i class="bi bi-x-lg"></i></button>`;
-        }
+        // Una accion visible por fila; el resto, en el menu
+        let acciones = `<button class="btn-ico" onclick="verDetalle(${p.Id})" title="Ver pedido"><i class="bi bi-eye"></i></button>`;
+        if (puedeRecibir && abierto)
+          acciones += ` <a class="btn-ico btn-recibir" href="RecepcionPedido.html?id=${p.Id}" title="Registrar lo que llegó"><i class="bi bi-box-arrow-in-down"></i><span class="txt">Recibir</span></a>`;
+
+        let menu = `<li><a class="dropdown-item" href="#" onclick="verDetalle(${p.Id});return false;"><i class="bi bi-eye"></i> Ver detalle</a></li>
+                    <li><a class="dropdown-item" href="RecepcionPedido.html?id=${p.Id}"><i class="bi bi-receipt"></i> Recepciones y facturas</a></li>`;
+        // Cancelar solo si no llego nada: si llego algo, lo que falta se cierra desde Recibir
+        if (esAdmin && e === "pendiente")
+          menu += `<li><hr class="dropdown-divider"></li>
+                   <li><a class="dropdown-item peligro" href="#" onclick="actualizarEstado(${p.Id}, 3, ${p.Total});return false;"><i class="bi bi-x-circle"></i> Cancelar pedido</a></li>`;
+        acciones += ` <div class="dropdown"><button class="btn-ico menu-acc" data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones"><i class="bi bi-three-dots-vertical"></i></button>
+                      <ul class="dropdown-menu dropdown-menu-end">${menu}</ul></div>`;
 
         html += `<tr>
-          <td><strong>#${p.Id}</strong></td>
-          <td>${new Date(p.Fecha).toLocaleString('es-AR')}</td>
-          <td>${escapeHtml(p.Proveedor)}</td>
-          <td class="text-end precio">$${Number(p.Total).toFixed(2)}</td>
-          <td class="text-center"><span class="badge-estado ${badge}"><i class="bi ${icon}"></i> ${p.Estado}</span></td>
-          <td class="text-center">${acciones}</td>
+          <td><span class="nro">${nroPedido(p.Id)}</span></td>
+          <td class="col-fecha"><div class="f1">${fecha1(p.Fecha)}</div><div class="f2 col-hora">${hora(p.Fecha)}</div></td>
+          <td><div class="prov-nom">${escapeHtml(p.Proveedor)}</div></td>
+          <td class="text-end"><span class="total">${moneda(p.Total)}</span></td>
+          <td>${badgeEstado(p)}</td>
+          <td><div class="acc">${acciones}</div></td>
         </tr>`;
       });
       tbody.innerHTML = html;
+
+      // El menu se posiciona fijo para que la tabla con scroll no lo recorte
+      tbody.querySelectorAll(".menu-acc").forEach(b =>
+        bootstrap.Dropdown.getOrCreateInstance(b, { popperConfig: d => Object.assign({}, d, { strategy: "fixed" }) }));
     }
 
+    /* ---------- Cancelar (Recibir ya no pasa por aca: es un documento aparte) ---------- */
     function actualizarEstado(id, nuevoEstado, total) {
-      const texto = nuevoEstado === 2 ? "recibir" : "cancelar";
-      const explicacion = nuevoEstado === 2
-        ? "Al marcar como recibido, el sistema sumará automáticamente las cantidades del detalle al stock."
-        : "El pedido quedará cancelado. El stock no se modifica.";
+      if (nuevoEstado === 2) { location.href = "RecepcionPedido.html?id=" + id; return; }
 
       Swal.fire({
-        title: "¿Confirmar " + texto + " pedido?",
-        text: explicacion,
-        icon: "question",
+        title: "¿Cancelar el pedido " + nroPedido(id) + "?",
+        text: "El pedido quedará cancelado. El stock no se modifica.",
+        icon: "warning",
         showCancelButton: true,
-        confirmButtonText: "Sí, " + texto,
-        cancelButtonText: "Cancelar"
+        confirmButtonText: "Sí, cancelar pedido",
+        cancelButtonText: "Volver",
+        confirmButtonColor: "#B42318"
       }).then(res => {
         if (!res.isConfirmed) return;
         fetchAuth(api + "Pedido/" + id, {
@@ -227,91 +397,92 @@
           body: JSON.stringify({ Id: id, IdEstado: nuevoEstado, Total: total })
         }).then(r => {
           if (r.ok) {
-            const msg = nuevoEstado === 2
-              ? "Pedido recibido. Stock actualizado automáticamente."
-              : "Pedido cancelado.";
-            Swal.fire("Éxito", msg, "success");
-            // Cerrar el modal si estaba abierto
-            const modalEl = document.getElementById("detalleModal");
-            const modalInst = bootstrap.Modal.getInstance(modalEl);
+            Swal.fire("Listo", "Pedido cancelado.", "success");
+            const modalInst = bootstrap.Modal.getInstance(document.getElementById("detalleModal"));
             if (modalInst) modalInst.hide();
             cargarPedidos();
           } else {
-            r.text().then(txt => Swal.fire("Error", txt || "No se pudo actualizar el estado.", "error"));
+            r.text().then(txt => {
+              let msg = txt; try { const j = JSON.parse(txt); msg = j.Message || j.message || txt; } catch {}
+              Swal.fire("No se pudo cancelar", msg || "No se pudo actualizar el estado.", "error");
+            });
           }
         }).catch(() => Swal.fire("Error", "No se pudo conectar con el servidor.", "error"));
       });
     }
 
+    /* ---------- Detalle ---------- */
     function verDetalle(id) {
-  fetchAuth(api + "Pedido/" + id).then(r => {
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.json();
-  }).then(data => {
-    if (!data || !data.Table || data.Table.length === 0) {
-      Swal.fire("Error", "El pedido no devolvió datos.", "error");
-      return;
-    }
+      fetchAuth(api + "Pedido/" + id).then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      }).then(data => {
+        if (!data || !data.Table || data.Table.length === 0) {
+          Swal.fire("Error", "El pedido no devolvió datos.", "error");
+          return;
+        }
 
-    const pedido = data.Table[0];
-    const detalle = data.Table1 || [];
-    pedidoActual = { pedido: pedido, detalle: detalle };
+        const pedido = data.Table[0];
+        const detalle = data.Table1 || [];
+        pedidoActual = { pedido: pedido, detalle: detalle };
 
-    document.getElementById("detalleInfo").innerHTML = `
-      <div class="row g-2">
-        <div class="col-md-6"><strong>Pedido:</strong> #${pedido.Id}</div>
-        <div class="col-md-6"><strong>Fecha:</strong> ${new Date(pedido.Fecha).toLocaleString('es-AR')}</div>
-        <div class="col-md-6"><strong>Proveedor:</strong> ${escapeHtml(pedido.Proveedor)}</div>
-        <div class="col-md-6"><strong>Estado:</strong> ${escapeHtml(pedido.Estado)}</div>
-      </div>`;
+        const enLista = pedidosGlobal.find(x => x.Id === pedido.Id) || pedido;
+        const e = estadoVisible(enLista);
+        const rr = resumenRecep[pedido.Id];
 
-    const tbody = document.getElementById("detalleTabla");
-    tbody.innerHTML = "";
-    let total = 0;
+        document.getElementById("detalleTitulo").textContent = "Pedido " + nroPedido(pedido.Id);
+        document.getElementById("detalleInfo").innerHTML =
+          `<div><div class="l">Proveedor</div><div class="v">${escapeHtml(pedido.Proveedor)}</div></div>
+           <div><div class="l">Fecha</div><div class="v">${fecha1(pedido.Fecha)} · ${hora(pedido.Fecha)}</div></div>
+           <div><div class="l">Estado</div><div class="v">${badgeEstado(enLista).split('<div')[0]}</div></div>
+           <div><div class="l">Recibido</div><div class="v">${rr ? rr.Recibidas + " de " + rr.Pedidas + " u." : "—"}</div></div>`;
 
-    if (detalle.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted p-3">Sin detalle.</td></tr>';
-    } else {
-      detalle.forEach(d => {
-        const subtotal = Number(d.Subtotal || 0);
-        const precio = Number(d.PrecioUnitario || 0);
-        tbody.innerHTML += `<tr>
-          <td>${escapeHtml(d.Repuesto)}</td>
-          <td class="text-center">${d.Cantidad}</td>
-          <td class="text-end precio">$${precio.toFixed(2)}</td>
-          <td class="text-end precio">$${subtotal.toFixed(2)}</td>
-        </tr>`;
-        total += subtotal;
+        const tbody = document.getElementById("detalleTabla");
+        let total = 0;
+        if (detalle.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted p-3">Sin detalle.</td></tr>';
+        } else {
+          tbody.innerHTML = detalle.map(d => {
+            const subtotal = Number(d.Subtotal || 0);
+            total += subtotal;
+            return `<tr>
+              <td>${escapeHtml(d.Repuesto)}</td>
+              <td class="text-center">${d.Cantidad}</td>
+              <td class="text-end">${moneda(d.PrecioUnitario || 0)}</td>
+              <td class="text-end">${moneda(subtotal)}</td>
+            </tr>`;
+          }).join("");
+        }
+        document.getElementById("detalleTotal").textContent = moneda(total).replace(/^\$\s?/, "");
+
+        const abierto = e === "pendiente" || e === "parcial";
+        document.getElementById("btnRecibir").style.display = (puedeRecibir && abierto) ? "inline-flex" : "none";
+        document.getElementById("btnCancelar").style.display = (esAdmin && e === "pendiente") ? "inline-flex" : "none";
+        // El PDF sirve en cualquier estado: para mandarlo al proveedor o archivarlo
+        document.getElementById("btnPDF").style.display = e !== "cancelado" ? "inline-flex" : "none";
+
+        new bootstrap.Modal(document.getElementById("detalleModal")).show();
+      }).catch(err => {
+        console.error("Error en verDetalle:", err);
+        Swal.fire("Error", "No se pudo cargar el detalle del pedido.", "error");
       });
     }
-    document.getElementById("detalleTotal").textContent = total.toFixed(2);
 
-    document.getElementById("btnRecibir").style.display = (esAdmin && pedido.Estado === "Pendiente") ? "inline-flex" : "none";
-    document.getElementById("btnCancelar").style.display = (esAdmin && pedido.Estado === "Pendiente") ? "inline-flex" : "none";
-    document.getElementById("btnPDF").style.display = pedido.Estado === "Recibido" ? "inline-flex" : "none";
-
-    new bootstrap.Modal(document.getElementById("detalleModal")).show();
-  }).catch(err => {
-    console.error("Error en verDetalle:", err);
-    Swal.fire("Error", "No se pudo cargar el detalle del pedido.", "error");
-  });
-}
     function exportarPDF() {
       if (!pedidoActual || !pedidoActual.pedido) return;
       const { pedido, detalle } = pedidoActual;
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      doc.setFontSize(16); doc.text("Daytona Inyección", 14, 15);
-      doc.setFontSize(12); doc.text("Detalle de Pedido", 14, 25);
-      doc.text("N°: " + pedido.Id, 14, 35);
-      doc.text("Proveedor: " + pedido.Proveedor, 14, 42);
-      doc.text("Fecha: " + new Date(pedido.Fecha).toLocaleString('es-AR'), 14, 49);
-      doc.text("Estado: " + pedido.Estado, 14, 56);
-      const filas = detalle.map(d => [d.Repuesto, d.Cantidad, "$" + Number(d.PrecioUnitario).toFixed(2), "$" + Number(d.Subtotal).toFixed(2)]);
-      doc.autoTable({ head: [["Repuesto", "Cantidad", "Precio Unit.", "Subtotal"]], body: filas, startY: 65 });
+      doc.setFontSize(16); doc.text("Daytona Repuestos Automotor", 14, 15);
+      doc.setFontSize(12); doc.text("Pedido de compra " + nroPedido(pedido.Id), 14, 25);
+      doc.text("Proveedor: " + pedido.Proveedor, 14, 35);
+      doc.text("Fecha: " + new Date(pedido.Fecha).toLocaleString('es-AR'), 14, 42);
+      doc.text("Estado: " + pedido.Estado, 14, 49);
+      const filas = detalle.map(d => [d.Repuesto, d.Cantidad, moneda(d.PrecioUnitario), moneda(d.Subtotal)]);
+      doc.autoTable({ head: [["Repuesto", "Cantidad", "Precio unit.", "Subtotal"]], body: filas, startY: 58 });
       const total = detalle.reduce((s, i) => s + Number(i.Subtotal || 0), 0);
-      doc.text("Total: $" + total.toFixed(2), 14, doc.lastAutoTable.finalY + 10);
-      doc.save("Pedido_" + pedido.Id + ".pdf");
+      doc.text("Total: " + moneda(total), 14, doc.lastAutoTable.finalY + 10);
+      doc.save("Pedido_" + String(pedido.Id).padStart(4, "0") + ".pdf");
     }
 
     function escapeHtml(s) {
@@ -323,16 +494,21 @@
       cargarPedidos();
       document.getElementById("filtroProveedor").addEventListener("change", aplicarFiltros);
       document.getElementById("filtroFecha").addEventListener("change", aplicarFiltros);
-      document.getElementById("btnLimpiar").addEventListener("click", () => {
-        document.getElementById("filtroProveedor").value = "";
-        document.getElementById("filtroFecha").value = "";
-        aplicarFiltros();
-      });
+      document.getElementById("filtroEstado").addEventListener("change", aplicarFiltros);
+      document.getElementById("filtroTexto").addEventListener("input", aplicarFiltros);
+      document.getElementById("btnLimpiar").addEventListener("click", limpiarFiltros);
 
-      // Listeners del modal (van DENTRO de onload, no antes - asi no rompen al cargar)
+      // Las tarjetas filtran; tocar la activa de nuevo saca el filtro
+      document.querySelectorAll(".kpi").forEach(k => k.addEventListener("click", () => {
+        const sel = document.getElementById("filtroEstado");
+        const e = k.getAttribute("data-estado");
+        sel.value = sel.value === e ? "" : e;
+        aplicarFiltros();
+      }));
+
+      // Recibir ya no cambia el estado: abre la recepcion con su factura
       document.getElementById("btnRecibir").onclick = () => {
-        if (pedidoActual && pedidoActual.pedido)
-          actualizarEstado(pedidoActual.pedido.Id, 2, pedidoActual.pedido.Total);
+        if (pedidoActual && pedidoActual.pedido) location.href = "RecepcionPedido.html?id=" + pedidoActual.pedido.Id;
       };
       document.getElementById("btnCancelar").onclick = () => {
         if (pedidoActual && pedidoActual.pedido)

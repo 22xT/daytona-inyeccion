@@ -9,6 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
+  <script src="precio.js"></script>
   <style>
     .saldo-card { background:linear-gradient(135deg,#1F3864 0%,#2E5496 100%); color:#fff; border-radius:14px; padding:22px 26px; }
     .saldo-num { font-size:2.6rem; font-weight:700; line-height:1; }
@@ -26,6 +27,49 @@
     .badge-auto { background:#e7f1ff; color:#0d6efd; padding:2px 7px; border-radius:8px; font-size:0.68rem; margin-left:6px; }
     .monto-ingreso { color:#1f7a1f; font-weight:600; }
     .monto-egreso { color:#c0392b; font-weight:600; }
+
+    /* Otras cuentas y cobrado por medio: lo que no pasa por el cajon */
+    .cuentas-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:12px; }
+    .cuenta-card { background:#fff; border:1px solid #e3e7ec; border-radius:12px; padding:14px 18px; }
+    .cuenta-card .nom { font-size:0.78rem; font-weight:700; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:7px; }
+    .cuenta-card .saldo { font-size:1.45rem; font-weight:800; color:#1F3864; margin-top:4px; }
+    .cuenta-card .det { font-size:0.78rem; color:#6c757d; margin-top:6px; display:flex; justify-content:space-between; }
+    .cuenta-card .det .com { color:#c0392b; }
+    .medios-tabla { width:100%; font-size:0.88rem; }
+    .medios-tabla th { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:#6c757d; font-weight:700; padding:8px 12px; border-bottom:1px solid #e3e7ec; }
+    .medios-tabla td { padding:9px 12px; border-bottom:1px solid #f0f1f3; }
+    .medios-tabla tr:last-child td { border-bottom:none; }
+    .medios-tabla tfoot td { font-weight:800; border-top:2px solid #e3e7ec; border-bottom:none; }
+    /* Sesion de caja */
+    .sesion { border-radius:14px; padding:16px 20px; margin-bottom:18px; display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+    .sesion.abierta { background:#eaf6ee; border:1px solid #cfe9d8; }
+    .sesion.cerrada { background:#fdf3f4; border:1px solid #f3d4d8; }
+    .sesion .estado-ico { font-size:2rem; }
+    .sesion.abierta .estado-ico { color:#146c43; }
+    .sesion.cerrada .estado-ico { color:#b02a37; }
+    .sesion .titulo { font-weight:800; font-size:1.05rem; color:#1F3864; }
+    .sesion .det { font-size:0.84rem; color:#5a6270; }
+    .sesion .cifras { display:flex; gap:22px; margin-left:auto; flex-wrap:wrap; }
+    .sesion .cifra .l { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6c757d; }
+    .sesion .cifra .v { font-size:1.05rem; font-weight:800; color:#1F3864; }
+    .sesion .aviso-dia { font-size:0.8rem; color:#8a6300; background:#fff4d6; border-radius:7px; padding:3px 9px; }
+    /* Conteo por billetes */
+    .conteo { display:grid; grid-template-columns:repeat(2, 1fr); gap:6px 14px; text-align:left; margin-top:6px; }
+    .conteo label { display:flex; align-items:center; gap:8px; font-size:0.86rem; }
+    .conteo label span { width:74px; text-align:right; color:#5a6270; }
+    .conteo input { width:80px; text-align:right; }
+    .arqueo-res { margin-top:12px; text-align:left; font-size:0.92rem; }
+    .arqueo-res .f { display:flex; justify-content:space-between; padding:3px 0; }
+    .arqueo-res .dif-ok { color:#146c43; font-weight:800; }
+    .arqueo-res .dif-mal { color:#b02a37; font-weight:800; }
+    .tabla-ses td, .tabla-ses th { font-size:0.85rem; vertical-align:middle; }
+    .tabla-ses th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#6c757d; }
+    .acceso-fin { display:flex; gap:14px; align-items:center; padding:14px 16px; border:1px solid #e3e7ec; border-radius:12px; text-decoration:none; color:inherit; transition:0.12s; }
+    .acceso-fin:hover { border-color:#2E5496; background:#f3f6fb; }
+    .acceso-fin i { font-size:1.6rem; color:#1F3864; }
+    .acceso-fin strong { display:block; color:#1F3864; }
+    .acceso-fin span { font-size:0.84rem; color:#6c757d; }
+    .nota-caja { font-size:0.78rem; color:#6c757d; margin-top:-6px; margin-bottom:14px; }
   </style>
 </head>
 
@@ -36,15 +80,21 @@
     <div class="header-bar">
       <div>
         <h2><i class="bi bi-cash-stack"></i> Caja</h2>
-        <span class="subtitle">Registro de ingresos y egresos con saldo acumulado.</span>
+        <span class="subtitle">Efectivo del cajón: se abre, se mueve y se cierra con arqueo.</span>
       </div>
+    </div>
+
+    <!-- Estado de la sesion: lo primero que se ve -->
+    <div class="sesion cerrada" id="bannerSesion">
+      <i class="bi bi-hourglass estado-ico"></i>
+      <div><div class="titulo">Cargando…</div></div>
     </div>
 
     <!-- Resumen -->
     <div class="row g-3 mb-4">
       <div class="col-md-6">
         <div class="saldo-card">
-          <div class="saldo-label">Saldo actual en caja</div>
+          <div class="saldo-label">Efectivo en caja</div>
           <div class="saldo-num" id="saldoActual">$ —</div>
         </div>
       </div>
@@ -62,63 +112,75 @@
       </div>
     </div>
 
-    <!-- Formulario de movimiento (solo Admin y Vendedor) -->
+    <div class="nota-caja">
+      <i class="bi bi-info-circle"></i> La caja cuenta solo el efectivo del cajón. Lo cobrado con
+      transferencia, QR o tarjeta va a su cuenta, con la comisión descontada.
+    </div>
+
+    <!-- Otras cuentas: banco y Mercado Pago -->
+    <div class="row g-3 mb-4">
+      <div class="col-lg-6">
+        <div class="panel h-100 mb-0">
+          <div class="panel-header"><i class="bi bi-bank"></i> Otras cuentas
+            <span class="ms-auto text-muted" style="font-size:0.75rem;font-weight:500;">mes en curso</span></div>
+          <div class="panel-body">
+            <div class="cuentas-grid" id="gridCuentas">
+              <div class="text-muted">Cargando…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="panel h-100 mb-0">
+          <div class="panel-header"><i class="bi bi-wallet2"></i> Cobrado por medio de pago
+            <span class="ms-auto text-muted" style="font-size:0.75rem;font-weight:500;">mes en curso</span></div>
+          <div class="panel-body" style="padding:0;">
+            <table class="medios-tabla">
+              <thead><tr><th>Medio</th><th class="text-end">Ventas</th><th class="text-end">Cobrado</th><th class="text-end">Comisión</th><th class="text-end">Neto</th></tr></thead>
+              <tbody id="tablaMedios"><tr><td colspan="5" class="text-muted text-center">Cargando…</td></tr></tbody>
+              <tfoot id="pieMedios"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ya no hay alta libre de ingresos y egresos: todo dinero que se
+         mueve a mano pasa por un gasto con comprobante o por un
+         movimiento especial de una lista cerrada. -->
     <div class="panel" id="panelForm">
-      <div class="panel-header"><span class="num">+</span> Registrar movimiento</div>
+      <div class="panel-header"><i class="bi bi-plus-circle"></i> Registrar un movimiento de dinero</div>
       <div class="panel-body">
-        <form id="formMov" novalidate>
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label">Tipo <span class="required">*</span></label>
-              <div class="tipo-toggle">
-                <div class="tipo-btn" id="btnIngreso" onclick="seleccionarTipo('Ingreso')">
-                  <i class="bi bi-arrow-down-circle"></i> Ingreso
-                </div>
-                <div class="tipo-btn" id="btnEgreso" onclick="seleccionarTipo('Egreso')">
-                  <i class="bi bi-arrow-up-circle"></i> Egreso
-                </div>
-              </div>
-              <input type="hidden" id="tipo" value="">
-            </div>
-            <div class="col-md-5">
-              <label class="form-label">Concepto <span class="required">*</span></label>
-              <select id="concepto" class="form-select" required>
-                <option value="">Seleccioná…</option>
-                <optgroup label="Ingresos" id="grpIngresos">
-                  <option value="Venta mostrador">Venta mostrador</option>
-                  <option value="Cobro de cuenta">Cobro de cuenta</option>
-                  <option value="Aporte de socio">Aporte de socio</option>
-                  <option value="Otro ingreso">Otro ingreso</option>
-                </optgroup>
-                <optgroup label="Egresos" id="grpEgresos">
-                  <option value="Pago a proveedor">Pago a proveedor</option>
-                  <option value="Gastos varios">Gastos varios</option>
-                  <option value="Servicios">Servicios (luz, agua, etc.)</option>
-                  <option value="Retiro de socio">Retiro de socio</option>
-                  <option value="Otro egreso">Otro egreso</option>
-                </optgroup>
-              </select>
-              <div class="invalid-feedback">Elegí un concepto.</div>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Monto <span class="required">*</span></label>
-              <div class="input-group">
-                <span class="input-group-text">$</span>
-                <input type="number" id="monto" class="form-control" min="0" step="0.01" required placeholder="0.00">
-              </div>
-              <div class="invalid-feedback" id="errMonto">Ingresá un monto válido.</div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Descripción (opcional)</label>
-              <input type="text" id="descripcion" class="form-control" maxlength="250" placeholder="Detalle del movimiento">
-            </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <a href="Gastos.html" class="acceso-fin">
+              <i class="bi bi-receipt"></i>
+              <div><strong>Gasto del negocio</strong>
+                <span>Luz, alquiler, fletes, reparaciones… con su comprobante adjunto.</span></div>
+            </a>
           </div>
-          <div class="actions mt-3">
-            <button type="submit" class="btn btn-primary" id="btnGuardar">
-              <i class="bi bi-check2-circle"></i> <span id="btnTexto">Registrar movimiento</span>
-            </button>
+          <div class="col-md-6">
+            <a href="MovimientosEspeciales.html" class="acceso-fin">
+              <i class="bi bi-arrow-left-right"></i>
+              <div><strong>Movimiento especial</strong>
+                <span>Aporte o retiro del dueño, transferencia entre cuentas, ajuste.</span></div>
+            </a>
           </div>
-        </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sesiones anteriores -->
+    <div class="panel" id="panelSesiones">
+      <div class="panel-header"><i class="bi bi-journal-check"></i> Cierres de caja
+        <span class="ms-auto text-muted" style="font-size:0.78rem;font-weight:500;" id="resumenDif"></span></div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table tabla-ses mb-0">
+            <thead><tr><th>Apertura</th><th class="text-end">Inicial</th><th>Cierre</th><th class="text-end">Teórico</th><th class="text-end">Contado</th><th class="text-end">Diferencia</th><th>Motivo</th></tr></thead>
+            <tbody id="tablaSesiones"><tr><td colspan="7" class="text-center text-muted p-3">Cargando…</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -154,10 +216,11 @@
     const apiCaja = API + "/api/MovimientoCaja";
 
     const usuario = Auth.getUsuario();
-    const rolesOperar = ["Administrador", "Vendedor"];
+    const rolesOperar = ["Dueño", "Administrador"];
+    const puedeSesion = ["Dueño", "Administrador", "Supervisor", "Vendedor"].indexOf((Auth.getUsuario() || {}).Rol) !== -1;
     const puedeOperar = usuario && rolesOperar.indexOf(usuario.Rol) !== -1;
 
-    // Si no puede operar (ej: Dueño), ocultamos el formulario
+    // Gastos y movimientos especiales los registran Dueño y Administrador
     if (!puedeOperar) {
       const pf = document.getElementById("panelForm");
       if (pf) pf.style.display = "none";
@@ -165,22 +228,6 @@
 
     function fmtMoneda(n) {
       return "$ " + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    // ---- Seleccionar tipo (toggle visual) ----
-    function seleccionarTipo(tipo) {
-      document.getElementById("tipo").value = tipo;
-      const bI = document.getElementById("btnIngreso");
-      const bE = document.getElementById("btnEgreso");
-      bI.classList.remove("activo-ingreso");
-      bE.classList.remove("activo-egreso");
-      if (tipo === "Ingreso") bI.classList.add("activo-ingreso");
-      else bE.classList.add("activo-egreso");
-
-      // Filtrar conceptos segun tipo
-      document.getElementById("grpIngresos").style.display = tipo === "Ingreso" ? "" : "none";
-      document.getElementById("grpEgresos").style.display = tipo === "Egreso" ? "" : "none";
-      document.getElementById("concepto").value = "";
     }
 
     // ---- Cargar saldo ----
@@ -232,30 +279,6 @@
       });
     }
 
-    // ---- Validar ----
-    function validar() {
-      let ok = true;
-      const tipo = document.getElementById("tipo").value;
-      const concepto = document.getElementById("concepto");
-      const monto = document.getElementById("monto");
-
-      concepto.classList.remove("is-invalid");
-      monto.classList.remove("is-invalid");
-
-      if (!tipo) {
-        Swal.fire("Falta el tipo", "Elegí si es Ingreso o Egreso.", "warning");
-        return false;
-      }
-      if (!concepto.value) { concepto.classList.add("is-invalid"); ok = false; }
-      const m = parseFloat(monto.value);
-      if (isNaN(m) || m <= 0) {
-        monto.classList.add("is-invalid");
-        document.getElementById("errMonto").textContent = "Ingresá un monto mayor a cero.";
-        ok = false;
-      }
-      return ok;
-    }
-
     function leerError(response) {
       return response.text().then(text => {
         try { const d = JSON.parse(text); return d.Message || d.message || text; }
@@ -263,46 +286,55 @@
       }).catch(() => "No se pudo completar la operación.");
     }
 
-    function setLoading(loading) {
-      document.getElementById("btnGuardar").disabled = loading;
-      document.getElementById("btnTexto").textContent = loading ? "Registrando…" : "Registrar movimiento";
-    }
-
-    // ---- Guardar ----
-    document.getElementById("formMov").addEventListener("submit", function (e) {
-      e.preventDefault();
-      if (!validar()) return;
-
-      const mov = {
-        Tipo: document.getElementById("tipo").value,
-        Concepto: document.getElementById("concepto").value,
-        Monto: parseFloat(document.getElementById("monto").value),
-        Descripcion: document.getElementById("descripcion").value.trim() || null
-      };
-
-      setLoading(true);
-      fetchAuth(apiCaja, { method: "POST", body: JSON.stringify(mov) })
-        .then(r => {
-          if (r.ok) {
-            Swal.fire({ title: "Movimiento registrado", icon: "success", timer: 1500, showConfirmButton: false });
-            document.getElementById("formMov").reset();
-            document.getElementById("tipo").value = "";
-            document.getElementById("btnIngreso").classList.remove("activo-ingreso");
-            document.getElementById("btnEgreso").classList.remove("activo-egreso");
-            cargarSaldo();
-            cargarHistorial();
-          } else {
-            leerError(r).then(msg => Swal.fire("No se pudo registrar", msg, "error"));
-          }
-        })
-        .catch(() => Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error"))
-        .then(() => setLoading(false));
-    });
-
     function fmtFecha(f) {
       if (!f) return "—";
       const d = new Date(f);
       return d.toLocaleDateString("es-AR") + " " + d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    const ICONO_CUENTA = { BANCO: "bi-bank", MP: "bi-qr-code" };
+
+    // Banco y Mercado Pago: saldo acumulado y movimiento del mes
+    function cargarCuentas() {
+      fetchAuth(API_BASE + "MedioPago/Cuentas").then(r => r.ok ? r.json() : []).then(data => {
+        const g = document.getElementById("gridCuentas");
+        if (!data || data.length === 0) { g.innerHTML = '<div class="text-muted">Sin cuentas configuradas.</div>'; return; }
+        g.innerHTML = data.map(c =>
+          '<div class="cuenta-card">' +
+            '<div class="nom"><i class="bi ' + (ICONO_CUENTA[c.Codigo] || "bi-wallet2") + '"></i>' + escapeHtml(c.Nombre) + '</div>' +
+            '<div class="saldo">' + fmtMoneda(c.Saldo) + '</div>' +
+            '<div class="det"><span>Ingresó ' + fmtMoneda(c.Ingresos) + '</span>' +
+              (Number(c.Comisiones) > 0 ? '<span class="com">−' + fmtMoneda(c.Comisiones) + ' comis.</span>' : '') + '</div>' +
+          '</div>'
+        ).join("");
+      }).catch(() => {
+        document.getElementById("gridCuentas").innerHTML = '<div class="text-muted">No se pudo cargar.</div>';
+      });
+    }
+
+    // Cuanto se cobro por cada medio: se ve de un vistazo cuanto se llevan las tarjetas
+    function cargarMedios() {
+      fetchAuth(API_BASE + "MedioPago/Resumen").then(r => r.ok ? r.json() : []).then(data => {
+        const t = document.getElementById("tablaMedios"), p = document.getElementById("pieMedios");
+        if (!data || data.length === 0) {
+          t.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Sin ventas este mes.</td></tr>';
+          p.innerHTML = ""; return;
+        }
+        let tot = { o: 0, c: 0, com: 0, n: 0 };
+        t.innerHTML = data.map(m => {
+          tot.o += m.Operaciones; tot.c += Number(m.Cobrado); tot.com += Number(m.Comisiones); tot.n += Number(m.Neto);
+          return '<tr><td>' + escapeHtml(m.Medio) + '</td>' +
+            '<td class="text-end">' + m.Operaciones + '</td>' +
+            '<td class="text-end">' + fmtMoneda(m.Cobrado) + '</td>' +
+            '<td class="text-end" style="color:#c0392b;">' + (Number(m.Comisiones) > 0 ? '−' + fmtMoneda(m.Comisiones) : '—') + '</td>' +
+            '<td class="text-end"><strong>' + fmtMoneda(m.Neto) + '</strong></td></tr>';
+        }).join("");
+        p.innerHTML = '<tr><td>Total</td><td class="text-end">' + tot.o + '</td><td class="text-end">' + fmtMoneda(tot.c) +
+          '</td><td class="text-end" style="color:#c0392b;">' + (tot.com > 0 ? '−' + fmtMoneda(tot.com) : '—') +
+          '</td><td class="text-end">' + fmtMoneda(tot.n) + '</td></tr>';
+      }).catch(() => {
+        document.getElementById("tablaMedios").innerHTML = '<tr><td colspan="5" class="text-muted text-center">No se pudo cargar.</td></tr>';
+      });
     }
 
     function escapeHtml(s) {
@@ -310,9 +342,215 @@
       return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
     }
 
+
+    /* ================= SESION DE CAJA =================
+       Sin caja abierta no entra ni sale efectivo: el sistema lo
+       rechaza. Este banner es lo primero que ve el vendedor. */
+
+    let sesion = null;
+
+    // Billetes y monedas en circulacion
+    const DENOMINACIONES = [20000, 10000, 2000, 1000, 500, 200, 100, 50, 20, 10];
+
+    const fmtHora = f => new Date(f).toLocaleString("es-AR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+
+    function cargarSesion() {
+      fetchAuth(API_BASE + "SesionCaja/Actual").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
+        sesion = (d && d[0]) || null;
+        pintarSesion();
+      }).catch(() => {
+        document.getElementById("bannerSesion").innerHTML =
+          '<i class="bi bi-exclamation-triangle estado-ico"></i><div><div class="titulo">No se pudo consultar la caja</div></div>';
+      });
+    }
+
+    function pintarSesion() {
+      const b = document.getElementById("bannerSesion");
+      if (!sesion || !sesion.Abierta) {
+        b.className = "sesion cerrada";
+        b.innerHTML =
+          '<i class="bi bi-lock-fill estado-ico"></i>' +
+          '<div><div class="titulo">Caja cerrada</div>' +
+          '<div class="det">No se pueden registrar cobros ni pagos en efectivo hasta abrirla.' +
+          (sesion && sesion.UltimoCierre ? ' Último cierre: ' + fmtHora(sesion.UltimoCierre) + '.' : '') + '</div></div>' +
+          '<div class="cifras"><div class="cifra"><div class="l">Quedó en el cajón</div><div class="v">' +
+            fmtMoneda(sesion ? sesion.SaldoSugerido : 0) + '</div></div></div>' +
+          (puedeSesion ? '<button class="btn btn-success" onclick="abrirCaja()"><i class="bi bi-unlock"></i> Abrir caja</button>' : '');
+        return;
+      }
+      b.className = "sesion abierta";
+      b.innerHTML =
+        '<i class="bi bi-unlock-fill estado-ico"></i>' +
+        '<div><div class="titulo">Caja abierta</div>' +
+        '<div class="det">Desde ' + fmtHora(sesion.FechaApertura) + ' · ' + escapeHtml(sesion.UsuarioApertura || "") +
+          ' · ' + sesion.Movimientos + ' movimiento' + (sesion.Movimientos === 1 ? '' : 's') + '</div>' +
+        (sesion.DeOtroDia ? '<span class="aviso-dia"><i class="bi bi-exclamation-circle"></i> Quedó abierta de otro día: cerrala con el conteo actual.</span>' : '') +
+        '</div>' +
+        '<div class="cifras">' +
+          '<div class="cifra"><div class="l">Inicial</div><div class="v">' + fmtMoneda(sesion.SaldoInicial) + '</div></div>' +
+          '<div class="cifra"><div class="l">Entró</div><div class="v" style="color:#146c43;">' + fmtMoneda(sesion.Ingresos) + '</div></div>' +
+          '<div class="cifra"><div class="l">Salió</div><div class="v" style="color:#b02a37;">' + fmtMoneda(sesion.Egresos) + '</div></div>' +
+          '<div class="cifra"><div class="l">Debería haber</div><div class="v">' + fmtMoneda(sesion.SaldoTeorico) + '</div></div>' +
+        '</div>' +
+        (puedeSesion ? '<button class="btn btn-outline-danger" onclick="cerrarCaja()"><i class="bi bi-lock"></i> Cerrar caja</button>' : '');
+    }
+
+    function htmlConteo() {
+      return '<div style="font-size:0.82rem;color:#6c757d;text-align:left;">Cantidad de billetes y monedas (opcional: también podés escribir el total abajo).</div>' +
+        '<div class="conteo">' + DENOMINACIONES.map(d =>
+          '<label><span>$ ' + d.toLocaleString("es-AR") + '</span><input type="number" min="0" class="form-control form-control-sm den" data-d="' + d + '" value=""></label>'
+        ).join("") + '</div>' +
+        '<div class="mt-3 text-start"><label class="form-label mb-1"><strong>Total contado</strong></label>' +
+        '<div class="input-group"><span class="input-group-text">$</span><input type="text" inputmode="decimal" id="totalContado" class="form-control text-end"></div></div>';
+    }
+
+    // Suma los billetes al total; si escriben el total a mano, manda el total
+    function engancharConteo(onCambio) {
+      document.querySelectorAll(".den").forEach(i => i.addEventListener("input", () => {
+        let t = 0;
+        document.querySelectorAll(".den").forEach(x => t += (parseInt(x.value, 10) || 0) * Number(x.getAttribute("data-d")));
+        document.getElementById("totalContado").value = numeroAPrecio(t);
+        onCambio();
+      }));
+      activarInputPrecio("totalContado");
+      document.getElementById("totalContado").addEventListener("input", onCambio);
+    }
+
+    function abrirCaja() {
+      const sugerido = Number(sesion ? sesion.SaldoSugerido : 0);
+      Swal.fire({
+        title: "Abrir caja", width: 560,
+        html: '<div class="text-start mb-2" style="font-size:0.9rem;">En el último cierre quedaron <strong>' + fmtMoneda(sugerido) +
+              '</strong>. Contá el cajón antes de empezar.</div>' + htmlConteo() +
+              '<div class="arqueo-res" id="resAper"></div>' +
+              '<input type="text" id="motivoAper" class="form-control mt-2" placeholder="Motivo de la diferencia" style="display:none;">',
+        showCancelButton: true, confirmButtonText: "Abrir caja", cancelButtonText: "Cancelar", confirmButtonColor: "#28a745",
+        didOpen: () => {
+          const pintar = () => {
+            const t = precioANumero(document.getElementById("totalContado").value) || 0;
+            const dif = Math.round((t - sugerido) * 100) / 100;
+            document.getElementById("motivoAper").style.display = dif !== 0 ? "" : "none";
+            document.getElementById("resAper").innerHTML = dif === 0
+              ? '<div class="f"><span>Coincide con el último cierre</span><span class="dif-ok">✓</span></div>'
+              : '<div class="f"><span>Diferencia con el último cierre</span><span class="dif-mal">' + (dif > 0 ? '+' : '−') + fmtMoneda(Math.abs(dif)) + '</span></div>';
+          };
+          engancharConteo(pintar);
+          document.getElementById("totalContado").value = numeroAPrecio(sugerido);
+          pintar();
+        },
+        preConfirm: () => {
+          const t = precioANumero(document.getElementById("totalContado").value);
+          if (t === null || isNaN(t) || t < 0) { Swal.showValidationMessage("Indicá el efectivo con que arranca la caja."); return false; }
+          const motivo = document.getElementById("motivoAper").value.trim();
+          if (Math.round((t - sugerido) * 100) !== 0 && motivo.length < 10) {
+            Swal.showValidationMessage("El efectivo no coincide con el último cierre: explicá el motivo (mínimo 10 caracteres)."); return false;
+          }
+          return { SaldoInicial: t, Motivo: motivo || null };
+        }
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API_BASE + "SesionCaja/Abrir", { method: "POST", body: JSON.stringify(r.value) }).then(x => {
+          if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo abrir", m, "error"));
+          Swal.fire({ icon: "success", title: "Caja abierta", timer: 1200, showConfirmButton: false });
+          refrescarTodo();
+        });
+      });
+    }
+
+    function cerrarCaja() {
+      // Se pide el teorico de nuevo: pudo entrar una venta desde que se abrio la pantalla
+      fetchAuth(API_BASE + "SesionCaja/Actual").then(r => r.json()).then(d => {
+        sesion = (d && d[0]) || null;
+        if (!sesion || !sesion.Abierta) { pintarSesion(); return; }
+        const teorico = Number(sesion.SaldoTeorico);
+
+        Swal.fire({
+          title: "Cerrar caja", width: 560,
+          html: '<div class="text-start mb-2" style="font-size:0.9rem;">Contá el efectivo del cajón <strong>sin mirar</strong> lo que dice el sistema, y cargalo acá.</div>' +
+                htmlConteo() +
+                '<div class="arqueo-res" id="resCierre"></div>' +
+                '<input type="text" id="motivoCierre" class="form-control mt-2" placeholder="Motivo de la diferencia (obligatorio)" style="display:none;">',
+          showCancelButton: true, confirmButtonText: "Cerrar caja", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
+          didOpen: () => {
+            // El teorico se muestra recien cuando hay un conteo: conteo ciego
+            const pintar = () => {
+              const raw = document.getElementById("totalContado").value;
+              const res = document.getElementById("resCierre");
+              if (!raw) { res.innerHTML = ""; document.getElementById("motivoCierre").style.display = "none"; return; }
+              const t = precioANumero(raw) || 0;
+              const dif = Math.round((t - teorico) * 100) / 100;
+              document.getElementById("motivoCierre").style.display = dif !== 0 ? "" : "none";
+              res.innerHTML =
+                '<div class="f"><span>Según el sistema</span><span>' + fmtMoneda(teorico) + '</span></div>' +
+                '<div class="f"><span>Contado</span><span>' + fmtMoneda(t) + '</span></div>' +
+                '<div class="f"><span>Diferencia</span>' + (dif === 0
+                  ? '<span class="dif-ok">Sin diferencia ✓</span>'
+                  : '<span class="dif-mal">' + (dif > 0 ? 'Sobran ' : 'Faltan ') + fmtMoneda(Math.abs(dif)) + '</span>') + '</div>';
+            };
+            engancharConteo(pintar);
+          },
+          preConfirm: () => {
+            const raw = document.getElementById("totalContado").value;
+            const t = precioANumero(raw);
+            if (!raw || t === null || isNaN(t) || t < 0) { Swal.showValidationMessage("Cargá el efectivo contado."); return false; }
+            const motivo = document.getElementById("motivoCierre").value.trim();
+            if (Math.round((t - teorico) * 100) !== 0 && motivo.length < 10) {
+              Swal.showValidationMessage("Hay diferencia: explicá el motivo (mínimo 10 caracteres)."); return false;
+            }
+            return { EfectivoContado: t, Motivo: motivo || null };
+          }
+        }).then(r => {
+          if (!r.isConfirmed) return;
+          fetchAuth(API_BASE + "SesionCaja/Cerrar", { method: "POST", body: JSON.stringify(r.value) }).then(x => {
+            if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo cerrar", m, "error"));
+            return x.json().then(res => {
+              const dif = Number((res && res[0] && res[0].Diferencia) || 0);
+              Swal.fire({ icon: dif === 0 ? "success" : "warning", title: "Caja cerrada",
+                text: dif === 0 ? "Sin diferencias." : "Se registró una diferencia de " + fmtMoneda(Math.abs(dif)) + (dif > 0 ? " a favor." : " en contra.") });
+              refrescarTodo();
+            });
+          });
+        });
+      });
+    }
+
+    function cargarSesiones() {
+      fetchAuth(API_BASE + "SesionCaja/Historial").then(r => r.ok ? r.json() : Promise.reject()).then(lista => {
+        const t = document.getElementById("tablaSesiones");
+        const cerradas = (lista || []).filter(x => x.Estado === "CERRADA");
+        if (cerradas.length === 0) { t.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-3">Todavía no hay cierres.</td></tr>'; return; }
+        t.innerHTML = cerradas.map(x => {
+          const dif = Number(x.Diferencia);
+          return '<tr><td>' + fmtHora(x.FechaApertura) + '<div class="text-muted" style="font-size:0.74rem;">' + escapeHtml(x.UsuarioApertura || "") + '</div></td>' +
+            '<td class="text-end">' + fmtMoneda(x.SaldoInicial) + '</td>' +
+            '<td>' + fmtHora(x.FechaCierre) + '<div class="text-muted" style="font-size:0.74rem;">' + escapeHtml(x.UsuarioCierre || "") + '</div></td>' +
+            '<td class="text-end">' + fmtMoneda(x.SaldoTeorico) + '</td>' +
+            '<td class="text-end">' + fmtMoneda(x.EfectivoContado) + '</td>' +
+            '<td class="text-end" style="font-weight:700;color:' + (dif === 0 ? '#146c43' : '#b02a37') + ';">' +
+              (dif === 0 ? '✓' : (dif > 0 ? '+' : '−') + fmtMoneda(Math.abs(dif))) + '</td>' +
+            '<td style="font-size:0.8rem;">' + escapeHtml(x.MotivoDiferencia || "") + '</td></tr>';
+        }).join("");
+      }).catch(() => { document.getElementById("panelSesiones").style.display = "none"; });
+
+      fetchAuth(API_BASE + "SesionCaja/Diferencias").then(r => r.ok ? r.json() : []).then(d => {
+        const x = (d || [])[0];
+        if (!x || !x.Cierres) return;
+        document.getElementById("resumenDif").textContent = "Este mes: " + x.Cierres + " cierres, " + x.ConDiferencia +
+          " con diferencia · neto " + (Number(x.Neto) >= 0 ? "+" : "−") + fmtMoneda(Math.abs(Number(x.Neto)));
+      }).catch(() => {});
+    }
+
+    function refrescarTodo() {
+      cargarSesion(); cargarSaldo(); cargarHistorial(); cargarSesiones();
+    }
+
     window.onload = function () {
+      cargarSesion();
+      cargarSesiones();
       cargarSaldo();
       cargarHistorial();
+      cargarCuentas();
+      cargarMedios();
     };
   </script>
 </body>

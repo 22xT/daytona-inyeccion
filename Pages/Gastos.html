@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gastos - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    .kpi { background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 18px; }
+    .kpi .lbl { font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+    .kpi .val { font-size:1.45rem; font-weight:800; color:var(--navy); margin-top:2px; }
+    .kpi .val.pend { color:#8a6300; }
+    .cats { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .cat { font-size:0.74rem; background:var(--bg); border-radius:14px; padding:2px 9px; color:var(--text-muted); }
+    .cat b { color:var(--navy); }
+
+    .filtros { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+    .chip { border:1px solid var(--border); background:#fff; color:var(--text-muted); border-radius:20px; padding:5px 13px; font-size:0.8rem; font-weight:600; cursor:pointer; }
+    .chip.activo { background:var(--navy); border-color:var(--navy); color:#fff; }
+
+    /* Formulario de alta */
+    #panelAlta { display:none; }
+    #panelAlta.abierto { display:block; }
+    .req-badge { font-size:0.7rem; font-weight:700; border-radius:7px; padding:2px 8px; margin-left:8px; }
+    .req-si { background:#fdecee; color:#b02a37; }
+    .req-no { background:var(--bg); color:var(--text-muted); }
+    .archivo-box { border:2px dashed var(--border); border-radius:10px; padding:14px; text-align:center; cursor:pointer; transition:0.12s; }
+    .archivo-box:hover { border-color:var(--nav-accent); background:var(--nav-accent-soft); }
+    .archivo-box.cargado { border-style:solid; border-color:#146c43; background:#eaf6ee; }
+    .archivo-box i { font-size:1.6rem; color:var(--text-muted); }
+    .archivo-box.cargado i { color:#146c43; }
+    .pagar-ahora { background:var(--bg-soft); border-radius:10px; padding:12px 14px; }
+
+    /* Tabla */
+    .tabla-gastos td, .tabla-gastos th { vertical-align:middle; font-size:0.88rem; }
+    .tabla-gastos th { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .estado { font-size:0.72rem; font-weight:700; border-radius:8px; padding:3px 9px; }
+    .e-PENDIENTE { background:#fff4d6; color:#8a6300; }
+    .e-PAGADO { background:#e3f4e9; color:#146c43; }
+    .e-ANULADO { background:var(--bg); color:var(--text-muted); text-decoration:line-through; }
+    .comp { font-size:0.78rem; color:var(--text-muted); }
+    .btn-ico { border:1px solid var(--border); background:#fff; border-radius:7px; padding:3px 8px; font-size:0.78rem; font-weight:600; color:var(--navy); }
+    .btn-ico:hover { border-color:var(--nav-accent); background:var(--nav-accent-soft); }
+    .btn-ico.peligro { color:#b02a37; }
+    tr.anulado td { opacity:0.55; }
+  </style>
+</head>
+
+<body data-page="gastos">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-receipt"></i> Gastos</h2>
+        <span class="subtitle">Cada gasto con su comprobante. Mueve dinero recién cuando se paga.</span>
+      </div>
+      <button class="btn btn-primary" id="btnNuevo"><i class="bi bi-plus-lg"></i> Registrar gasto</button>
+    </div>
+
+    <!-- Resumen del periodo -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-4"><div class="kpi"><div class="lbl">Pagado en el período</div><div class="val" id="kpiPagado">—</div></div></div>
+      <div class="col-md-4"><div class="kpi"><div class="lbl">Pendiente de pago</div><div class="val pend" id="kpiPendiente">—</div></div></div>
+      <div class="col-md-4"><div class="kpi"><div class="lbl">Por categoría</div><div class="cats" id="kpiCats"></div></div></div>
+    </div>
+
+    <!-- Alta -->
+    <div class="panel" id="panelAlta">
+      <div class="panel-header"><i class="bi bi-plus-circle"></i> Registrar gasto</div>
+      <div class="panel-body">
+        <div class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label">Tipo de gasto <span class="required">*</span></label>
+            <select id="tipo" class="form-select"></select>
+            <div class="form-text" id="tipoAyuda"></div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Emisor <span class="required" id="reqEmisor">*</span></label>
+            <select id="proveedor" class="form-select"></select>
+            <input type="text" id="emisor" class="form-control mt-2" maxlength="100" placeholder="O escribí el nombre (ej: EPEC)">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Fecha del comprobante <span class="required">*</span></label>
+            <input type="date" id="fecha" class="form-control">
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Comprobante <span class="required comp-req">*</span></label>
+            <select id="tipoComp" class="form-select">
+              <option value="">—</option>
+              <option>Factura A</option><option>Factura B</option><option>Factura C</option>
+              <option>Ticket</option><option>Recibo</option><option>Otro</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Número <span class="required comp-req">*</span></label>
+            <input type="text" id="numComp" class="form-control" maxlength="40" placeholder="0001-00012345">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Foto o PDF del comprobante <span class="required comp-req">*</span></label>
+            <div class="archivo-box" id="archivoBox">
+              <i class="bi bi-cloud-arrow-up"></i>
+              <div id="archivoTxt">Tocá para elegir un archivo · JPG, PNG o PDF · hasta 2 MB</div>
+            </div>
+            <input type="file" id="archivo" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
+          </div>
+
+          <div class="col-md-8">
+            <label class="form-label">Descripción <span class="required">*</span></label>
+            <input type="text" id="descripcion" class="form-control" maxlength="250" placeholder="Ej: Energía eléctrica del local, período agosto">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Importe <span class="required">*</span></label>
+            <div class="input-group"><span class="input-group-text">$</span>
+              <input type="text" inputmode="decimal" id="importe" class="form-control text-end"></div>
+          </div>
+
+          <div class="col-12">
+            <div class="pagar-ahora">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="pagarAhora">
+                <label class="form-check-label" for="pagarAhora"><strong>Ya está pagado</strong> — registrar el pago ahora</label>
+              </div>
+              <div class="mt-2" id="cuentaWrap" style="display:none; max-width:320px;">
+                <label class="form-label mb-1">Se pagó desde</label>
+                <select id="cuentaPago" class="form-select"></select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-primary" id="btnGuardar"><i class="bi bi-check2-circle"></i> Registrar gasto</button>
+          <button class="btn btn-outline-secondary" id="btnCancelar">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Listado -->
+    <div class="panel">
+      <div class="panel-header">
+        <i class="bi bi-list-ul"></i> Gastos
+        <div class="ms-auto filtros">
+          <div class="d-flex gap-1" id="chipsEstado">
+            <button class="chip activo" data-e="">Todos</button>
+            <button class="chip" data-e="PENDIENTE">Pendientes</button>
+            <button class="chip" data-e="PAGADO">Pagados</button>
+            <button class="chip" data-e="ANULADO">Anulados</button>
+          </div>
+          <input type="date" id="desde" class="form-control form-control-sm" style="width:150px;">
+          <input type="date" id="hasta" class="form-control form-control-sm" style="width:150px;">
+        </div>
+      </div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table tabla-gastos mb-0">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Emisor · comprobante</th><th>Descripción</th><th class="text-end">Importe</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
+            <tbody id="tabla"><tr><td colspan="7" class="text-center text-muted p-4">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const API = API_BASE + "Finanzas/";
+    const usuario = Auth.getUsuario() || {};
+    const puedeOperar = ["Dueño", "Administrador"].indexOf(usuario.Rol) !== -1;
+
+    let tipos = [], cuentas = [], estadoFiltro = "", archivoSel = null;
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    }
+    function leerError(r) {
+      return r.text().then(t => { try { const d = JSON.parse(t); return d.Message || d.message || t; } catch { return t; } })
+                     .catch(() => "No se pudo completar la operación.");
+    }
+    // Fecha local: toISOString() usa UTC y despues de las 21 hs en Argentina da el dia siguiente
+    const fechaLocal = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const hoy = () => fechaLocal(new Date());
+    const fmtFecha = f => f ? new Date(f).toLocaleDateString("es-AR") : "—";
+    const CAT = { Servicios:"Servicios", Operacion:"Operación", Mantenimiento:"Mantenimiento", Administracion:"Administración", Personal:"Personal" };
+
+    /* ================= CARGA INICIAL ================= */
+
+    function cargarTipos() {
+      return fetchAuth(API + "TiposGasto").then(r => r.json()).then(d => {
+        tipos = d || [];
+        // Agrupados por categoria
+        const grupos = {};
+        tipos.forEach(t => (grupos[t.Categoria] = grupos[t.Categoria] || []).push(t));
+        let html = '<option value="">Elegí el tipo…</option>';
+        Object.keys(grupos).forEach(g => {
+          html += '<optgroup label="' + (CAT[g] || g) + '">' +
+            grupos[g].map(t => '<option value="' + t.Id + '">' + escapeHtml(t.Nombre) + '</option>').join("") + '</optgroup>';
+        });
+        document.getElementById("tipo").innerHTML = html;
+      });
+    }
+
+    function cargarProveedores() {
+      return fetchAuth(API_BASE + "Proveedor").then(r => r.ok ? r.json() : []).then(d => {
+        const lista = (d || []).filter(p => p.Activo !== false && p.Activo !== 0);
+        document.getElementById("proveedor").innerHTML = '<option value="">Proveedor del sistema (opcional)</option>' +
+          lista.map(p => '<option value="' + p.Id + '">' + escapeHtml(p.RazonSocial) + '</option>').join("");
+      }).catch(() => {});
+    }
+
+    function cargarCuentas() {
+      return fetchAuth(API + "Cuentas").then(r => r.ok ? r.json() : []).then(d => {
+        cuentas = d || [];
+        document.getElementById("cuentaPago").innerHTML =
+          cuentas.map(c => '<option value="' + c.Id + '">' + escapeHtml(c.Nombre) + '</option>').join("");
+      }).catch(() => {});
+    }
+
+    /* ================= LISTADO ================= */
+
+    function qs() {
+      return "?desde=" + document.getElementById("desde").value + "&hasta=" + document.getElementById("hasta").value;
+    }
+
+    function cargar() {
+      fetchAuth(API + "Gastos" + qs() + (estadoFiltro ? "&estado=" + estadoFiltro : ""))
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(pintarTabla)
+        .catch(() => document.getElementById("tabla").innerHTML =
+          '<tr><td colspan="7" class="text-center text-danger p-4">No se pudieron cargar los gastos.</td></tr>');
+
+      fetchAuth(API + "Gastos/Resumen" + qs()).then(r => r.ok ? r.json() : []).then(d => {
+        let pag = 0, pen = 0;
+        (d || []).forEach(c => { pag += Number(c.Pagado); pen += Number(c.Pendiente); });
+        document.getElementById("kpiPagado").textContent = formatearMoneda(pag);
+        document.getElementById("kpiPendiente").textContent = formatearMoneda(pen);
+        document.getElementById("kpiCats").innerHTML = (d || []).length
+          ? d.map(c => '<span class="cat">' + (CAT[c.Categoria] || c.Categoria) + ' <b>' +
+                formatearMoneda(Number(c.Pagado) + Number(c.Pendiente)) + '</b></span>').join("")
+          : '<span class="cat">Sin gastos</span>';
+      }).catch(() => {});
+    }
+
+    function pintarTabla(lista) {
+      const t = document.getElementById("tabla");
+      if (!lista || lista.length === 0) {
+        t.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">No hay gastos en el período.</td></tr>';
+        return;
+      }
+      t.innerHTML = lista.map(g => {
+        const comp = g.NumeroComprobante
+          ? escapeHtml((g.TipoComprobante || "") + " " + g.NumeroComprobante)
+          : '<em>sin comprobante</em>';
+        let acc = "";
+        if (g.TieneAdjunto) acc += '<button class="btn-ico" onclick="verAdjunto(' + g.IdAdjunto + ')" title="Ver comprobante"><i class="bi bi-paperclip"></i></button> ';
+        if (puedeOperar && g.Estado === "PENDIENTE")
+          acc += '<button class="btn-ico" onclick="pagar(' + g.Id + ')"><i class="bi bi-cash"></i> Pagar</button> ' +
+                 '<button class="btn-ico peligro" onclick="anular(' + g.Id + ')" title="Anular gasto"><i class="bi bi-x-lg"></i></button>';
+        if (puedeOperar && g.Estado === "PAGADO")
+          acc += '<button class="btn-ico peligro" onclick="anularPago(' + g.Id + ')" title="Anular el pago">Anular pago</button>';
+
+        const pagoInfo = g.Estado === "PAGADO" ? '<div class="comp">' + escapeHtml(g.CuentaPago || "") + ' · ' + fmtFecha(g.FechaPago) + '</div>' : "";
+        const anulInfo = g.Estado === "ANULADO" && g.MotivoAnulacion ? '<div class="comp">' + escapeHtml(g.MotivoAnulacion) + '</div>' : "";
+
+        return '<tr class="' + (g.Estado === "ANULADO" ? "anulado" : "") + '">' +
+          '<td>' + fmtFecha(g.Fecha) + '</td>' +
+          '<td>' + escapeHtml(g.TipoGasto) + '<div class="comp">' + (CAT[g.Categoria] || g.Categoria) + '</div></td>' +
+          '<td>' + escapeHtml(g.Emisor) + '<div class="comp">' + comp + '</div></td>' +
+          '<td>' + escapeHtml(g.Descripcion) + '</td>' +
+          '<td class="text-end"><strong>' + formatearMoneda(g.Importe) + '</strong></td>' +
+          '<td><span class="estado e-' + g.Estado + '">' + g.Estado + '</span>' + pagoInfo + anulInfo + '</td>' +
+          '<td class="text-end" style="white-space:nowrap;">' + acc + '</td>' +
+        '</tr>';
+      }).join("");
+    }
+
+    /* ================= ALTA ================= */
+
+    function tipoElegido() {
+      const id = parseInt(document.getElementById("tipo").value, 10);
+      return tipos.find(t => t.Id === id);
+    }
+
+    // Lo obligatorio cambia segun el tipo: con comprobante o sin
+    function actualizarRequisitos() {
+      const t = tipoElegido();
+      const req = !t || t.RequiereComprobante;
+      document.querySelectorAll(".comp-req").forEach(e => e.style.display = req ? "" : "none");
+      document.getElementById("reqEmisor").style.display = req ? "" : "none";
+      document.getElementById("tipoAyuda").innerHTML = !t ? "" : (t.RequiereComprobante
+        ? '<span class="req-badge req-si">Exige comprobante</span> tipo, número, emisor y archivo'
+        : '<span class="req-badge req-no">Sin comprobante</span> la descripción tiene que explicar el gasto');
+    }
+
+    /* Una foto de celular suele pesar 3 a 5 MB. Si la imagen supera 1,5 MB
+       se achica en el navegador antes de subirla: el comprobante sigue
+       legible y entra en el limite. Los PDF se suben tal cual. */
+    function prepararArchivo(file) {
+      return new Promise((resolve, reject) => {
+        const leer = f => { const fr = new FileReader(); fr.onload = () => resolve({ nombre: file.name, mime: f.type || file.type, base64: fr.result, tam: f.size }); fr.onerror = reject; fr.readAsDataURL(f); };
+        if (!file.type.startsWith("image/") || file.size <= 1.5 * 1024 * 1024) { leer(file); return; }
+        const img = new Image();
+        img.onload = () => {
+          const max = 1800, k = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(b => { URL.revokeObjectURL(img.src); leer(new File([b], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" })); }, "image/jpeg", 0.82);
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    document.getElementById("archivoBox").addEventListener("click", () => document.getElementById("archivo").click());
+    document.getElementById("archivo").addEventListener("change", e => {
+      const f = e.target.files[0];
+      const box = document.getElementById("archivoBox"), txt = document.getElementById("archivoTxt");
+      archivoSel = null; box.classList.remove("cargado");
+      if (!f) { txt.textContent = "Tocá para elegir un archivo · JPG, PNG o PDF · hasta 2 MB"; return; }
+      txt.textContent = "Preparando…";
+      prepararArchivo(f).then(a => {
+        if (a.tam > 2 * 1024 * 1024) {
+          txt.textContent = "El archivo supera los 2 MB. Probá con una foto con menos resolución.";
+          return;
+        }
+        archivoSel = a; box.classList.add("cargado");
+        txt.textContent = a.nombre + " · " + (a.tam / 1024).toFixed(0) + " KB";
+      }).catch(() => txt.textContent = "No se pudo leer el archivo.");
+    });
+
+    document.getElementById("pagarAhora").addEventListener("change", e =>
+      document.getElementById("cuentaWrap").style.display = e.target.checked ? "" : "none");
+
+    function limpiarAlta() {
+      ["tipo", "proveedor", "emisor", "tipoComp", "numComp", "descripcion", "importe"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("fecha").value = hoy();
+      document.getElementById("archivo").value = "";
+      document.getElementById("archivoBox").classList.remove("cargado");
+      document.getElementById("archivoTxt").textContent = "Tocá para elegir un archivo · JPG, PNG o PDF · hasta 2 MB";
+      document.getElementById("pagarAhora").checked = false;
+      document.getElementById("cuentaWrap").style.display = "none";
+      archivoSel = null;
+      actualizarRequisitos();
+    }
+
+    function validarAlta() {
+      const t = tipoElegido();
+      if (!t) return "Elegí el tipo de gasto.";
+      const importe = precioANumero(document.getElementById("importe").value);
+      if (!(importe > 0)) return "El importe debe ser mayor a cero.";
+      if (!document.getElementById("fecha").value) return "Indicá la fecha del comprobante.";
+      if (document.getElementById("fecha").value > hoy()) return "La fecha no puede ser futura.";
+      if (document.getElementById("descripcion").value.trim().length < 10) return "Describí el gasto con al menos 10 caracteres.";
+      if (t.RequiereComprobante) {
+        if (!document.getElementById("tipoComp").value || !document.getElementById("numComp").value.trim())
+          return "Este tipo de gasto exige el tipo y el número del comprobante.";
+        if (!document.getElementById("proveedor").value && !document.getElementById("emisor").value.trim())
+          return "Indicá quién emitió el comprobante.";
+        if (!archivoSel) return "Adjuntá la foto o el PDF del comprobante.";
+      }
+      return null;
+    }
+
+    function guardar() {
+      const err = validarAlta();
+      if (err) { Swal.fire("Falta un dato", err, "warning"); return; }
+
+      const btn = document.getElementById("btnGuardar");
+      btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando…';
+
+      // Primero el archivo, despues el gasto que lo referencia
+      const subir = archivoSel
+        ? fetchAuth(API + "Adjunto", { method: "POST", body: JSON.stringify({
+            NombreArchivo: archivoSel.nombre, TipoMime: archivoSel.mime, ContenidoBase64: archivoSel.base64 }) })
+            .then(r => r.ok ? r.json() : leerError(r).then(m => Promise.reject(m)))
+            .then(d => d.IdAdjunto)
+        : Promise.resolve(null);
+
+      subir.then(idAdjunto => {
+        const pagar = document.getElementById("pagarAhora").checked;
+        const gasto = {
+          IdTipoGasto: parseInt(document.getElementById("tipo").value, 10),
+          IdProveedor: parseInt(document.getElementById("proveedor").value, 10) || null,
+          Emisor: document.getElementById("emisor").value.trim() || null,
+          Fecha: document.getElementById("fecha").value,
+          Descripcion: document.getElementById("descripcion").value.trim(),
+          Importe: precioANumero(document.getElementById("importe").value),
+          TipoComprobante: document.getElementById("tipoComp").value || null,
+          NumeroComprobante: document.getElementById("numComp").value.trim() || null,
+          IdAdjunto: idAdjunto,
+          IdCuentaPago: pagar ? parseInt(document.getElementById("cuentaPago").value, 10) : null
+        };
+        return fetchAuth(API + "Gastos", { method: "POST", body: JSON.stringify(gasto) })
+          .then(r => r.ok ? r.json() : leerError(r).then(m => Promise.reject(m)));
+      }).then(res => {
+        Swal.fire({ icon: "success", title: "Gasto registrado",
+          text: res.Estado === "PAGADO" ? "Quedó pagado y el dinero salió de la cuenta elegida." : "Quedó pendiente de pago.",
+          timer: 1800, showConfirmButton: false });
+        limpiarAlta();
+        document.getElementById("panelAlta").classList.remove("abierto");
+        cargar();
+      }).catch(msg => Swal.fire("No se pudo registrar", typeof msg === "string" ? msg : "Error de conexión.", "error"))
+        .then(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2-circle"></i> Registrar gasto'; });
+    }
+
+    /* ================= ACCIONES ================= */
+
+    function verAdjunto(id) {
+      fetchAuth(API + "Adjunto/" + id).then(r => r.ok ? r.blob() : Promise.reject())
+        .then(b => window.open(URL.createObjectURL(b), "_blank"))
+        .catch(() => Swal.fire("No se pudo abrir", "El comprobante no está disponible.", "error"));
+    }
+
+    function pagar(id) {
+      Swal.fire({
+        title: "Pagar gasto",
+        input: "select",
+        inputOptions: Object.fromEntries(cuentas.map(c => [c.Id, c.Nombre])),
+        inputLabel: "¿Desde qué cuenta sale el dinero?",
+        showCancelButton: true, confirmButtonText: "Registrar pago", cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28a745"
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Gastos/" + id + "/Pagar", { method: "POST", body: JSON.stringify({ IdCuentaFinanciera: parseInt(r.value, 10) }) })
+          .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo pagar", m, "error")));
+      });
+    }
+
+    function pedirMotivo(titulo, texto) {
+      return Swal.fire({
+        title: titulo, text: texto, input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)",
+        showCancelButton: true, confirmButtonText: "Confirmar", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
+        inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null
+      });
+    }
+
+    function anular(id) {
+      pedirMotivo("Anular gasto", "El gasto queda registrado como anulado, con tu usuario y el motivo.").then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Gastos/" + id + "/Anular", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
+          .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo anular", m, "error")));
+      });
+    }
+
+    function anularPago(id) {
+      pedirMotivo("Anular el pago", "El dinero vuelve a la cuenta y el gasto queda pendiente. El movimiento original no se borra.").then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Gastos/" + id + "/AnularPago", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
+          .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo anular", m, "error")));
+      });
+    }
+
+    /* ================= INICIO ================= */
+
+    window.onload = function () {
+      const d = new Date();
+      document.getElementById("desde").value = fechaLocal(new Date(d.getFullYear(), d.getMonth(), 1));
+      document.getElementById("hasta").value = hoy();
+      document.getElementById("fecha").value = hoy();
+      activarInputPrecio("importe");
+
+      if (!puedeOperar) document.getElementById("btnNuevo").style.display = "none";
+      document.getElementById("btnNuevo").addEventListener("click", () => {
+        document.getElementById("panelAlta").classList.toggle("abierto");
+        document.getElementById("tipo").focus();
+      });
+      document.getElementById("btnCancelar").addEventListener("click", () => {
+        limpiarAlta(); document.getElementById("panelAlta").classList.remove("abierto");
+      });
+      document.getElementById("btnGuardar").addEventListener("click", guardar);
+      document.getElementById("tipo").addEventListener("change", actualizarRequisitos);
+      document.getElementById("desde").addEventListener("change", cargar);
+      document.getElementById("hasta").addEventListener("change", cargar);
+      document.querySelectorAll("#chipsEstado .chip").forEach(b => b.addEventListener("click", () => {
+        document.querySelectorAll("#chipsEstado .chip").forEach(x => x.classList.remove("activo"));
+        b.classList.add("activo"); estadoFiltro = b.getAttribute("data-e"); cargar();
+      }));
+
+      Promise.all([cargarTipos(), cargarProveedores(), cargarCuentas()]).then(actualizarRequisitos);
+      cargar();
+    };
+  </script>
+</body>
+</html>

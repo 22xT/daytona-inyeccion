@@ -45,6 +45,11 @@ namespace WebApi.Models
         // Lista de items que llega del front al guardar
         public List<DetalleVenta> Detalle { get; set; }
 
+        // Formas de pago: uno o varios medios (pago mixto). Si viene vacia,
+        // el SP usa FormaPago y Entrega como antes.
+        public List<VentaPagoItem> Pagos { get; set; }
+        public decimal Comision { get; set; }   // total de comisiones, lo devuelve el SP
+
         // Lo devuelve el SP: total menos entrega. Es lo que quedo debiendo.
         public decimal SaldoGenerado { get; set; }
 
@@ -156,6 +161,18 @@ namespace WebApi.Models
             pDetalle.SqlDbType = SqlDbType.Structured;
             pDetalle.TypeName = "dbo.DetalleVentaType";
 
+            // TVP con los pagos. Vacio = comportamiento anterior.
+            DataTable tablaPagos = new DataTable();
+            tablaPagos.Columns.Add("IdMedioPago", typeof(int));
+            tablaPagos.Columns.Add("Monto", typeof(decimal));
+            if (Pagos != null)
+                foreach (VentaPagoItem p in Pagos)
+                    tablaPagos.Rows.Add(p.IdMedioPago, p.Monto);
+
+            SqlParameter pPagos = sqlCom.Parameters.AddWithValue("@Pagos", tablaPagos);
+            pPagos.SqlDbType = SqlDbType.Structured;
+            pPagos.TypeName = "dbo.VentaPagoType";
+
             // El SP devuelve IdVenta, Total, Descuento, Entrega y SaldoGenerado.
             // Se leen todos: el saldo generado es lo que hay que informarle
             // al vendedor cuando la venta fue a cuenta corriente.
@@ -168,6 +185,7 @@ namespace WebApi.Models
                 Descuento = Convert.ToDecimal(dr["Descuento"]);
                 Entrega   = Convert.ToDecimal(dr["Entrega"]);
                 SaldoGenerado = Convert.ToDecimal(dr["SaldoGenerado"]);
+                Comision  = dr["Comision"] != DBNull.Value ? Convert.ToDecimal(dr["Comision"]) : 0;
             }
             dr.Close();
             sqlCnn.Close();
@@ -237,5 +255,12 @@ namespace WebApi.Models
             sqlCom.ExecuteNonQuery();
             sqlCnn.Close();
         }
+    }
+
+    // Un pago dentro de una venta: medio y monto
+    public class VentaPagoItem
+    {
+        public int IdMedioPago { get; set; }
+        public decimal Monto { get; set; }
     }
 }

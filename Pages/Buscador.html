@@ -11,134 +11,132 @@
   <script src="auth.js"></script>
   <script src="precio.js"></script>
   <style>
-    body[data-page="buscador"] { overflow: hidden; }
+    /* ================= LAYOUT =================
+       Una sola columna: Daytona primero, ocupando solo lo que necesita;
+       proveedores debajo. Con 2 propios y 15 externos no se desperdicia
+       media pantalla en cada lado. */
+    .busc-main { padding: 14px 20px 24px !important; max-width: 1400px; }
 
-    .busc-main {
-      height: calc(100vh - 70px);
-      display: flex; flex-direction: column; gap: 10px;
-      padding: 12px 16px 14px !important;
-    }
+    .codigo { font-family: 'Courier New', monospace; font-weight: 700; color: #2c3e50; letter-spacing: 0.4px; font-size: 0.82rem; }
 
-    .codigo-repuesto {
-      font-family: 'Courier New', monospace; font-weight: 700;
-      color: #2c3e50; letter-spacing: 0.5px;
+    /* ================= BUSCADOR ================= */
+    .busc-hero { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px 12px; margin-bottom: 14px; }
+    .busc-fila { display: flex; gap: 10px; align-items: stretch; }
+    .busc-input { position: relative; flex: 1; }
+    .busc-input i.lupa { position: absolute; left: 17px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.25rem; pointer-events: none; }
+    .busc-input input {
+      width: 100%; height: 54px; font-size: 1.12rem; padding: 0 44px 0 50px;
+      border: 2px solid var(--border); border-radius: 11px; background: var(--bg-soft);
+      transition: border-color 0.12s, background 0.12s;
     }
+    .busc-input input:focus { outline: none; border-color: var(--nav-accent); background: #fff; box-shadow: 0 0 0 3px rgba(18,102,209,0.10); }
+    .busc-limpiar { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: none; color: var(--text-muted); font-size: 1.15rem; display: none; padding: 4px; }
+    .busc-limpiar.visible { display: block; }
+    .btn-buscar {
+      min-width: 118px; border: none; border-radius: 11px; background: var(--navy); color: #fff;
+      font-weight: 700; font-size: 0.95rem; letter-spacing: 0.3px; display: flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .btn-buscar:hover { background: #0b2c55; }
+    .busc-pie { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+    .busc-ejemplo { font-size: 0.78rem; color: var(--text-muted); }
+    .busc-ejemplo kbd { font-size: 0.7rem; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; }
 
-    /* ---- Buscador ---- */
-    .zona-busqueda { flex-shrink: 0; }
-    .buscador-grande { position: relative; }
-    .buscador-grande i.lupa {
-      position: absolute; left: 17px; top: 50%; transform: translateY(-50%);
-      color: var(--text-muted); font-size: 1.3rem; pointer-events: none;
+    /* Chips de fuente: escalables. Los proveedores que no entran van al "+ N" */
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .chip {
+      border: 1px solid var(--border); background: #fff; color: var(--text-muted);
+      border-radius: 20px; padding: 5px 13px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px; transition: 0.12s; white-space: nowrap;
     }
-    .buscador-grande input {
-      height: 58px; font-size: 1.15rem; padding-left: 50px;
-      border: 2px solid var(--border); border-radius: 11px;
+    .chip:hover { border-color: #b9d3f2; color: var(--navy); }
+    .chip.activo { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .chip.activo.propio { background: #157347; border-color: #157347; }
+    .chip .punto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+    .chip-mas { position: relative; }
+    .chip-menu {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 200px; display: none;
+      background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.10); padding: 6px;
     }
-    .buscador-grande input:focus {
-      border-color: var(--nav-accent);
-      box-shadow: 0 0 0 0.2rem rgba(18,102,209,0.12);
-    }
+    .chip-menu.abierto { display: block; }
+    .chip-menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 7px 10px; border-radius: 6px; font-size: 0.85rem; color: var(--text); }
+    .chip-menu button:hover, .chip-menu button.activo { background: var(--nav-accent-soft); color: var(--nav-accent-dark); }
 
-    .prov-botones { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 9px; align-items: center; }
-    .btn-prov {
-      background: #fff; border: 2px solid var(--border); border-radius: 8px;
-      padding: 4px 13px; font-size: 0.8rem; font-weight: 600;
-      color: var(--text-muted); cursor: pointer; transition: 0.12s;
-    }
-    .btn-prov.activo {
-      background: var(--nav-accent-soft); border-color: var(--nav-accent);
-      color: var(--nav-accent-dark);
-    }
+    /* ================= SECCIONES ================= */
+    .seccion { background: #fff; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+    .seccion-head { display: flex; align-items: center; gap: 10px; padding: 11px 16px; font-weight: 700; font-size: 0.86rem; letter-spacing: 0.4px; text-transform: uppercase; }
+    .seccion-head .cont { margin-left: auto; font-weight: 600; font-size: 0.78rem; text-transform: none; letter-spacing: 0; opacity: 0.85; }
+    .seccion.propio .seccion-head { background: #eaf6ee; color: #146c43; border-bottom: 1px solid #cfe9d8; }
+    .seccion.externo .seccion-head { background: #f3f6fb; color: var(--navy); border-bottom: 1px solid var(--border); }
 
-    /* ---- Dos columnas ---- */
-    .busc-body { display: flex; gap: 12px; flex: 1; min-height: 0; }
-    .col-tengo { flex: 0 0 48%; display: flex; flex-direction: column; min-height: 0; }
-    .col-consigo { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    /* Filas en grilla: se leen como tabla, se ven como lista moderna */
+    .fila, .cabecera { display: grid; align-items: center; gap: 14px; padding: 9px 16px; }
+    .propio .fila, .propio .cabecera { grid-template-columns: minmax(0, 1fr) 150px 120px 140px 96px; }
+    .externo .fila, .externo .cabecera { grid-template-columns: minmax(0, 1fr) 150px 120px 120px 116px; }
+    .cabecera { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding-top: 7px; padding-bottom: 7px; border-bottom: 1px solid var(--border); background: #fcfcfd; }
+    .fila { border-bottom: 1px solid #f0f1f3; transition: background 0.1s; }
+    .fila:last-child { border-bottom: none; }
+    .fila:hover { background: #fafbfd; }
+    .fila:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
+    .der { text-align: right; }
 
-    .caja {
-      background: #fff; border: 1px solid var(--border); border-radius: 12px;
-      display: flex; flex-direction: column; min-height: 0; flex: 1;
-    }
-    .caja-head {
-      padding: 10px 14px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 8px;
-      font-weight: 700; font-size: 0.92rem; flex-shrink: 0;
-    }
-    .caja-head.tengo { color: #155724; background: var(--green-soft);
-                       border-radius: 12px 12px 0 0; }
-    .caja-head.consigo { color: var(--nav-accent-dark); background: var(--nav-accent-soft);
-                         border-radius: 12px 12px 0 0; }
-    .caja-head .cont { margin-left: auto; font-weight: 500; font-size: 0.8rem; opacity: 0.8; }
+    .prod-desc { font-size: 0.9rem; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .prod-meta { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .marca { font-weight: 700; color: var(--navy); font-size: 0.8rem; }
 
-    .caja-lista { overflow-y: auto; flex: 1; min-height: 0; }
+    .stock { display: inline-flex; align-items: center; gap: 6px; border-radius: 20px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700; }
+    .stock .punto { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .stock.ok { background: #e3f4e9; color: #146c43; }
+    .stock.critico { background: #fff4d6; color: #8a6300; }
+    .stock.sin { background: #fdecee; color: #b02a37; }
 
-    /* ---- Filas ---- */
-    .item {
-      padding: 10px 13px; border-bottom: 1px solid var(--border);
-    }
-    .item:last-child { border-bottom: none; }
-    .item:hover { background: var(--bg-soft); }
-    .item-l1 { display: flex; align-items: start; gap: 10px; }
-    .item-desc { flex: 1; min-width: 0; font-size: 0.88rem; line-height: 1.3; }
-    .item-meta { font-size: 0.73rem; color: var(--text-muted); margin-top: 3px; }
-    .item-precio { text-align: right; white-space: nowrap; flex-shrink: 0; }
-    .item-precio .venta { font-size: 1.05rem; font-weight: 700; color: var(--navy); }
-    .item-precio .costo { font-size: 0.72rem; color: var(--text-muted); }
+    .precio { font-size: 1.02rem; font-weight: 800; color: var(--navy); }
+    .precio-sub { font-size: 0.7rem; color: var(--text-muted); }
+    .costo { font-size: 0.98rem; font-weight: 800; color: var(--navy); }
 
-    .btn-vincular {
-      background: #fff; border: 1px solid var(--border); border-radius: 7px;
-      padding: 3px 9px; font-size: 0.7rem; font-weight: 600;
-      color: var(--nav-accent-dark); cursor: pointer; margin-top: 5px;
-      white-space: nowrap;
-    }
-    .btn-vincular:hover { border-color: var(--nav-accent); background: var(--nav-accent-soft); }
+    .prov { font-weight: 700; font-size: 0.84rem; color: var(--navy); }
+    .badge-rel { display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; font-weight: 700; border-radius: 7px; padding: 2px 7px; white-space: nowrap; }
+    .rel-mejor { background: #fff4d6; color: #8a6300; }
+    .rel-comp { background: var(--nav-accent-soft); color: var(--nav-accent-dark); }
+    .rel-sin { background: var(--bg); color: var(--text-muted); }
+    .rel-tengo { background: #e3f4e9; color: #146c43; }
 
-    .stock-pill {
-      display: inline-flex; align-items: center; gap: 4px;
-      border-radius: 20px; padding: 2px 10px; font-size: 0.75rem; font-weight: 700;
+    .btn-accion {
+      border: 1px solid var(--border); background: #fff; color: var(--nav-accent-dark);
+      border-radius: 8px; padding: 5px 10px; font-size: 0.76rem; font-weight: 700; white-space: nowrap;
     }
-    .stock-ok { background: var(--green-soft); color: #155724; }
-    .stock-critico { background: #fff3cd; color: #856404; }
-    .stock-sin { background: var(--red-soft); color: #721c24; }
+    .btn-accion:hover { border-color: var(--nav-accent); background: var(--nav-accent-soft); }
 
-    .badge-comp {
-      background: var(--nav-accent-soft); color: var(--nav-accent-dark);
-      border: 1px solid #b9d3f2; border-radius: 8px;
-      font-size: 0.66rem; padding: 1px 7px; font-weight: 700;
-    }
-    .badge-nocomp {
-      background: var(--bg); color: var(--text-muted); border: 1px solid var(--border);
-      border-radius: 8px; font-size: 0.66rem; padding: 1px 7px; font-weight: 600;
-    }
-    .badge-mejor {
-      background: #fff8e1; color: #8a6d00; border: 1px solid #ffe08a;
-      border-radius: 8px; font-size: 0.66rem; padding: 1px 7px; font-weight: 700;
-    }
-    .badge-encat {
-      background: var(--green-soft); color: #155724; border: 1px solid #badbcc;
-      border-radius: 8px; font-size: 0.66rem; padding: 1px 7px; font-weight: 700;
-    }
+    /* Grupo: el mismo repuesto confirmado en varios proveedores. Solo se
+       agrupa lo que tiene vinculo; lo demas va suelto. */
+    .grupo { border-bottom: 1px solid var(--border); }
+    .grupo-head { padding: 8px 16px 2px; font-size: 0.72rem; font-weight: 700; color: var(--nav-accent-dark); display: flex; align-items: center; gap: 6px; }
+    .grupo .fila { border-bottom: none; padding-top: 6px; padding-bottom: 6px; }
+    .grupo .fila:first-of-type { padding-top: 4px; }
+    .grupo .fila .prod-desc { font-size: 0.84rem; color: var(--text-muted); }
+    .grupo .fila.mejor { background: #fffbef; }
 
-    .aviso {
-      display: flex; flex-direction: column; align-items: center;
-      justify-content: center; padding: 45px 20px; color: var(--text-muted);
-      text-align: center; font-size: 0.88rem;
-    }
-    .aviso i { font-size: 2.4rem; opacity: 0.3; color: var(--navy); margin-bottom: 10px; }
+    /* Aviso compacto cuando Daytona no lo tiene: una linea, no una caja vacia */
+    .sin-propio { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px dashed var(--border); border-radius: 12px; padding: 10px 16px; margin-bottom: 14px; font-size: 0.88rem; color: var(--text-muted); }
+    .sin-propio i { color: #b02a37; font-size: 1.1rem; }
 
-    .nota-comparacion {
-      font-size: 0.72rem; color: var(--text-muted);
-      padding: 7px 13px; border-top: 1px solid var(--border);
-      background: var(--bg-soft); flex-shrink: 0;
-    }
+    /* ================= ESTADOS ================= */
+    .estado { text-align: center; padding: 56px 20px; color: var(--text-muted); }
+    .estado i.grande { font-size: 2.6rem; color: #c8d3e3; display: block; margin-bottom: 12px; }
+    .estado h5 { color: var(--navy); font-weight: 700; margin-bottom: 6px; }
+    .estado p { margin: 0 auto; max-width: 460px; font-size: 0.9rem; }
+    .estado ul { list-style: none; padding: 0; margin: 14px auto 0; max-width: 340px; text-align: left; font-size: 0.86rem; }
+    .estado ul li { padding: 3px 0; }
+    .estado ul li::before { content: "›"; color: var(--nav-accent); font-weight: 700; margin-right: 8px; }
+    .cargando { padding: 22px; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+
+    .nota { font-size: 0.74rem; color: var(--text-muted); padding: 8px 16px; background: #fcfcfd; border-top: 1px solid var(--border); }
 
     @media (max-width: 991px) {
-      body[data-page="buscador"] { overflow: auto; }
-      .busc-main { height: auto; }
-      .busc-body { flex-direction: column; }
-      .col-tengo, .col-consigo { flex: 1 1 auto; }
-      .caja-lista { max-height: 45vh; }
+      .busc-fila { flex-direction: column; }
+      .btn-buscar { height: 46px; }
+      .cabecera { display: none; }
+      .propio .fila, .externo .fila { grid-template-columns: 1fr auto; row-gap: 6px; }
+      .fila > .col-prod { grid-column: 1 / -1; }
     }
   </style>
 </head>
@@ -148,55 +146,71 @@
 
   <div class="main-content busc-main">
 
-    <div class="zona-busqueda">
-      <div class="buscador-grande">
-        <i class="bi bi-search lupa"></i>
-        <input type="text" id="buscar" class="form-control"
-               placeholder="¿Qué está buscando el cliente? Ej: bomba agua suran"
-               autocomplete="off">
+    <!-- ================= BUSCADOR ================= -->
+    <div class="busc-hero">
+      <form class="busc-fila" id="formBuscar" autocomplete="off">
+        <div class="busc-input">
+          <i class="bi bi-search lupa"></i>
+          <input type="text" id="buscar" placeholder="¿Qué repuesto está buscando el cliente?"
+                 aria-label="Buscar repuesto" autocomplete="off">
+          <button type="button" class="busc-limpiar" id="btnLimpiar" title="Limpiar (Esc)" aria-label="Limpiar búsqueda">
+            <i class="bi bi-x-circle-fill"></i>
+          </button>
+        </div>
+        <button type="submit" class="btn-buscar"><i class="bi bi-search"></i> Buscar</button>
+      </form>
+      <div class="busc-pie">
+        <div class="busc-ejemplo">
+          Ej.: <em>bomba de agua Suran</em>, <em>6PK1070</em>, <em>tensor Partner HDI</em>
+          · <kbd>Enter</kbd> buscar · <kbd>Esc</kbd> limpiar · <kbd>/</kbd> ir al buscador
+        </div>
+        <div class="chips" id="botonesProveedor"></div>
       </div>
-      <div class="prov-botones" id="botonesProveedor"></div>
     </div>
 
-    <div class="busc-body">
+    <!-- ================= RESULTADOS ================= -->
+    <div id="zonaResultados">
+      <div class="estado" id="estadoInicial">
+        <i class="bi bi-search grande"></i>
+        <h5>Buscá el repuesto que necesita el cliente</h5>
+        <p>Consultamos a la vez el stock de Daytona y los catálogos de los proveedores.</p>
+      </div>
 
-      <!-- Lo que hay en el depósito -->
-      <div class="col-tengo">
-        <div class="caja">
-          <div class="caja-head tengo">
-            <i class="bi bi-box-seam"></i> Lo tenemos
-            <span class="cont" id="contTengo"></span>
-          </div>
-          <div class="caja-lista" id="listaTengo">
-            <div class="aviso">
-              <i class="bi bi-search"></i>
-              <div>Escribí lo que busca el cliente.</div>
-            </div>
-          </div>
+      <!-- Daytona -->
+      <div class="seccion propio" id="secPropio" style="display:none;">
+        <div class="seccion-head">
+          <i class="bi bi-check-circle-fill"></i> Disponible en Daytona
+          <span class="cont" id="contTengo"></span>
+        </div>
+        <div class="cabecera">
+          <span>Producto</span><span>Stock</span><span class="der">Precio</span><span>Proveedor más barato</span><span></span>
+        </div>
+        <div id="listaTengo"></div>
+      </div>
+
+      <div class="sin-propio" id="sinPropio" style="display:none;">
+        <i class="bi bi-x-circle"></i>
+        <span><strong>No lo tenemos en el local.</strong> Abajo, quién lo ofrece.</span>
+      </div>
+
+      <!-- Proveedores -->
+      <div class="seccion externo" id="secExterno" style="display:none;">
+        <div class="seccion-head">
+          <i class="bi bi-truck"></i> También lo podés conseguir
+          <span class="cont" id="contConsigo"></span>
+        </div>
+        <div class="cabecera">
+          <span>Producto</span><span>Proveedor</span><span>Código</span><span class="der">Costo</span><span class="der">Venta sugerida</span>
+        </div>
+        <div id="listaConsigo"></div>
+        <div class="nota">
+          <i class="bi bi-info-circle"></i>
+          Solo se agrupan y comparan los artículos confirmados como el mismo repuesto.
+          Los marcados <em>sin confirmar</em> pueden ser otra marca o calidad.
         </div>
       </div>
 
-      <!-- Lo que ofrecen los proveedores -->
-      <div class="col-consigo">
-        <div class="caja">
-          <div class="caja-head consigo">
-            <i class="bi bi-truck"></i> Lo podemos conseguir
-            <span class="cont" id="contConsigo"></span>
-          </div>
-          <div class="caja-lista" id="listaConsigo">
-            <div class="aviso">
-              <i class="bi bi-truck"></i>
-              <div>Acá aparece lo que ofrecen los proveedores.</div>
-            </div>
-          </div>
-          <div class="nota-comparacion">
-            <i class="bi bi-info-circle"></i>
-            Solo se comparan precios entre artículos confirmados como el mismo
-            repuesto. Los demás pueden ser otra marca o calidad.
-          </div>
-        </div>
-      </div>
-
+      <div class="estado" id="estadoVacio" style="display:none;"></div>
     </div>
   </div>
 
@@ -206,8 +220,10 @@
 
     var api = API_BASE;
     var proveedores = [];
-    var provActivo = 0;
+    var provActivo = 0;          // 0 = todos, -1 = solo Daytona, >0 = un proveedor
     var temporizador = null;
+    var ultimoTexto = "";
+    var MAX_CHIPS = 4;           // proveedores visibles antes del "+ N"
 
     function escapeHtml(s) {
       if (s === null || s === undefined) return "";
@@ -231,7 +247,7 @@
       return { propios: [], externos: [] };
     }
 
-    /* ================= PROVEEDORES ================= */
+    /* ================= CHIPS ================= */
 
     function cargarProveedores() {
       fetchAuth(api + "Proveedor")
@@ -242,180 +258,232 @@
           });
           pintarBotones();
         })
-        .catch(function () {});
+        .catch(function () { pintarBotones(); });
     }
 
     function pintarBotones() {
-      if (proveedores.length === 0) return;
+      var html = '<button type="button" class="chip' + (provActivo === 0 ? ' activo' : '') +
+                 '" onclick="filtrarProv(0)">Todos</button>' +
+                 '<button type="button" class="chip propio' + (provActivo === -1 ? ' activo propio' : '') +
+                 '" onclick="filtrarProv(-1)"><span class="punto"></span>Daytona</button>';
 
-      var html = '<span class="text-muted" style="font-size:0.78rem;">Proveedor:</span>' +
-                 '<button type="button" class="btn-prov' + (provActivo === 0 ? ' activo' : '') +
-                 '" onclick="filtrarProv(0)">Todos</button>';
+      var visibles = proveedores.slice(0, MAX_CHIPS);
+      var resto = proveedores.slice(MAX_CHIPS);
 
-      proveedores.forEach(function (p) {
-        html += '<button type="button" class="btn-prov' +
-                (provActivo === p.Id ? ' activo' : '') +
-                '" onclick="filtrarProv(' + p.Id + ')">' +
-                escapeHtml(p.RazonSocial) + '</button>';
+      visibles.forEach(function (p) {
+        html += '<button type="button" class="chip' + (provActivo === p.Id ? ' activo' : '') +
+                '" onclick="filtrarProv(' + p.Id + ')">' + escapeHtml(p.RazonSocial) + '</button>';
       });
+
+      if (resto.length > 0) {
+        var activoEnResto = resto.some(function (p) { return p.Id === provActivo; });
+        html += '<div class="chip-mas">' +
+          '<button type="button" class="chip' + (activoEnResto ? ' activo' : '') + '" onclick="toggleMenuProv(event)">' +
+            '+ ' + resto.length + ' proveedor' + (resto.length === 1 ? '' : 'es') + ' <i class="bi bi-chevron-down"></i></button>' +
+          '<div class="chip-menu" id="menuProv">' +
+            resto.map(function (p) {
+              return '<button type="button" class="' + (provActivo === p.Id ? 'activo' : '') +
+                     '" onclick="filtrarProv(' + p.Id + ')">' + escapeHtml(p.RazonSocial) + '</button>';
+            }).join("") +
+          '</div></div>';
+      }
 
       document.getElementById("botonesProveedor").innerHTML = html;
     }
 
+    function toggleMenuProv(ev) {
+      ev.stopPropagation();
+      var m = document.getElementById("menuProv");
+      if (m) m.classList.toggle("abierto");
+    }
+    document.addEventListener("click", function () {
+      var m = document.getElementById("menuProv");
+      if (m) m.classList.remove("abierto");
+    });
+
     function filtrarProv(id) {
       provActivo = id;
       pintarBotones();
-      buscar();
+      if (ultimoTexto.length >= 3) buscar(true);
     }
 
     /* ================= BÚSQUEDA ================= */
 
-    function buscar() {
+    function mostrar(id, si) { document.getElementById(id).style.display = si ? "" : "none"; }
+
+    function estadoInicial() {
+      ["secPropio", "secExterno", "sinPropio", "estadoVacio"].forEach(function (id) { mostrar(id, false); });
+      mostrar("estadoInicial", true);
+      document.getElementById("contTengo").textContent = "";
+      document.getElementById("contConsigo").textContent = "";
+      ultimoTexto = "";
+    }
+
+    function buscar(forzar) {
       var texto = document.getElementById("buscar").value.trim();
+      document.getElementById("btnLimpiar").classList.toggle("visible", texto.length > 0);
 
       if (texto.length < 3) {
-        document.getElementById("listaTengo").innerHTML =
-          '<div class="aviso"><i class="bi bi-search"></i>' +
-          '<div>Escribí al menos 3 letras.</div></div>';
-        document.getElementById("listaConsigo").innerHTML =
-          '<div class="aviso"><i class="bi bi-truck"></i>' +
-          '<div>Acá aparece lo que ofrecen los proveedores.</div></div>';
-        document.getElementById("contTengo").textContent = "";
-        document.getElementById("contConsigo").textContent = "";
+        if (texto.length === 0) estadoInicial();
         return;
       }
+      if (!forzar && texto === ultimoTexto) return;
+      ultimoTexto = texto;
 
+      // El filtro de proveedor viaja a la API; "solo Daytona" se resuelve aca
       var url = api + "Busqueda?texto=" + encodeURIComponent(texto) +
                 (provActivo > 0 ? "&idProveedor=" + provActivo : "");
 
+      mostrar("estadoInicial", false);
+      mostrar("estadoVacio", false);
+      mostrar("secPropio", true);
       document.getElementById("listaTengo").innerHTML =
-        '<div class="aviso"><span class="spinner-border spinner-border-sm"></span></div>';
-      document.getElementById("listaConsigo").innerHTML =
-        '<div class="aviso"><span class="spinner-border spinner-border-sm"></span></div>';
+        '<div class="cargando"><span class="spinner-border spinner-border-sm"></span> Buscando en Daytona' +
+        (provActivo === -1 ? '' : ' y proveedores') + '…</div>';
+      mostrar("secExterno", false);
+      mostrar("sinPropio", false);
 
       fetchAuth(url).then(function (r) {
         if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
         return r.json();
       }).then(function (ds) {
+        if (texto !== document.getElementById("buscar").value.trim()) return; // llego tarde
         var d = partirDataSet(ds);
-        pintarPropios(d.propios);
-        pintarExternos(d.externos);
+        var externos = provActivo === -1 ? [] : d.externos;
+        pintarResultado(texto, d.propios, externos);
       }).catch(function (err) {
-        document.getElementById("listaTengo").innerHTML =
-          '<div class="aviso text-danger">' + escapeHtml(err.message) + '</div>';
-        document.getElementById("listaConsigo").innerHTML = "";
+        mostrar("secPropio", false); mostrar("secExterno", false); mostrar("sinPropio", false);
+        var v = document.getElementById("estadoVacio");
+        v.innerHTML = '<i class="bi bi-wifi-off grande"></i><h5>No pudimos completar la búsqueda</h5>' +
+                      '<p>' + escapeHtml(err.message || "Revisá la conexión e intentá de nuevo.") + '</p>';
+        mostrar("estadoVacio", true);
       });
+    }
+
+    function pintarResultado(texto, propios, externos) {
+      if (propios.length === 0 && externos.length === 0) {
+        mostrar("secPropio", false); mostrar("secExterno", false); mostrar("sinPropio", false);
+        var v = document.getElementById("estadoVacio");
+        v.innerHTML = '<i class="bi bi-search grande"></i>' +
+          '<h5>No encontramos coincidencias para “' + escapeHtml(texto) + '”</h5>' +
+          '<ul><li>Probá con otra descripción o menos palabras</li>' +
+          '<li>Buscá por código del repuesto o del fabricante</li>' +
+          '<li>Quitá la marca o el modelo del vehículo</li>' +
+          (provActivo !== 0 ? '<li>Volvé a mirar en <a href="#" onclick="filtrarProv(0);return false;">todas las fuentes</a></li>' : '') +
+          '</ul>';
+        mostrar("estadoVacio", true);
+        return;
+      }
+
+      if (propios.length > 0) { mostrar("secPropio", true); mostrar("sinPropio", false); pintarPropios(propios); }
+      else { mostrar("secPropio", false); mostrar("sinPropio", provActivo !== -1); }
+
+      if (externos.length > 0) { mostrar("secExterno", true); pintarExternos(externos); }
+      else mostrar("secExterno", false);
     }
 
     function pintarPropios(lista) {
       var cont = document.getElementById("listaTengo");
       var conStock = lista.filter(function (r) { return r.Stock > 0; }).length;
-
       document.getElementById("contTengo").textContent =
-        lista.length === 0 ? "" : conStock + " con stock de " + lista.length;
-
-      if (lista.length === 0) {
-        cont.innerHTML = '<div class="aviso"><i class="bi bi-x-circle"></i>' +
-          '<div>No tenemos nada así en el catálogo.<br>' +
-          '<small>Mirá la columna de la derecha.</small></div></div>';
-        return;
-      }
+        conStock + " con stock · " + lista.length + " resultado" + (lista.length === 1 ? "" : "s");
 
       var html = "";
       lista.forEach(function (r) {
-        var pill = r.EstadoStock === "SinStock"
-          ? '<span class="stock-pill stock-sin"><i class="bi bi-x-circle"></i> Sin stock</span>'
-          : (r.EstadoStock === "Critico"
-              ? '<span class="stock-pill stock-critico"><i class="bi bi-exclamation-triangle"></i> Queda ' + r.Stock + '</span>'
-              : '<span class="stock-pill stock-ok"><i class="bi bi-check-circle"></i> ' + r.Stock + ' en stock</span>');
+        var stock = r.EstadoStock === "SinStock"
+          ? '<span class="stock sin"><span class="punto"></span>Sin stock</span>'
+          : r.EstadoStock === "Critico"
+            ? '<span class="stock critico"><span class="punto"></span>Quedan ' + r.Stock + '</span>'
+            : '<span class="stock ok"><span class="punto"></span>En stock · ' + r.Stock + '</span>';
 
-        html += '<div class="item">' +
-          '<div class="item-l1">' +
-            '<div class="item-desc">' +
-              '<span class="codigo-repuesto">' + escapeHtml(r.Codigo || "-") + '</span> ' +
-              escapeHtml(r.Descripcion) +
-              '<div class="item-meta">' +
-                (r.MarcaFabricante ? escapeHtml(r.MarcaFabricante) + ' · ' : '') +
-                escapeHtml(r.Rubro) +
-                (r.ProveedoresDisponibles > 0
-                  ? ' · ' + r.ProveedoresDisponibles + ' proveedor' +
-                    (r.ProveedoresDisponibles === 1 ? '' : 'es')
-                  : '') +
-              '</div>' +
-              '<div style="margin-top:6px;">' + pill + '</div>' +
+        html += '<div class="fila" tabindex="0">' +
+          '<div class="col-prod">' +
+            '<div class="prod-desc">' + escapeHtml(r.Descripcion) + '</div>' +
+            '<div class="prod-meta">' +
+              (r.MarcaFabricante ? '<span class="marca">' + escapeHtml(r.MarcaFabricante) + '</span> · ' : '') +
+              '<span class="codigo">' + escapeHtml(r.Codigo || "-") + '</span>' +
+              (r.Rubro && r.Rubro !== "-" ? ' · ' + escapeHtml(r.Rubro) : '') +
             '</div>' +
-            '<div class="item-precio">' +
-              '<div class="venta">' + formatearMoneda(r.PrecioDeVenta) + '</div>' +
-              (r.MejorCosto
-                ? '<div class="costo">mejor costo ' + formatearMoneda(r.MejorCosto) + '</div>'
-                : '') +
-              '<button class="btn-vincular" onclick="abrirVinculacion(' + r.Id + ', \'' +
-                escapeHtml(String(r.Codigo || '')).replace(/'/g, "") + '\')" ' +
-                'title="Buscar esta pieza en otras listas">' +
-                '<i class="bi bi-link-45deg"></i> Vincular</button>' +
-            '</div>' +
+          '</div>' +
+          '<div>' + stock + '</div>' +
+          '<div class="der"><div class="precio">' + formatearMoneda(r.PrecioDeVenta) + '</div></div>' +
+          '<div>' +
+            (r.MejorCosto
+              ? '<div class="prov" style="font-size:0.8rem;">' + escapeHtml(r.MejorProveedor || "") + '</div>' +
+                '<div class="precio-sub">costo ' + formatearMoneda(r.MejorCosto) +
+                (r.ProveedoresDisponibles > 1 ? ' · ' + r.ProveedoresDisponibles + ' prov.' : '') + '</div>'
+              : '<span class="precio-sub">Sin proveedor vinculado</span>') +
+          '</div>' +
+          '<div class="der">' +
+            '<button class="btn-accion" onclick="abrirVinculacion(' + r.Id + ', \'' +
+              escapeHtml(String(r.Codigo || '')).replace(/'/g, "") + '\')" title="Buscar esta pieza en las listas de proveedores">' +
+              '<i class="bi bi-link-45deg"></i> Vincular</button>' +
           '</div>' +
         '</div>';
       });
       cont.innerHTML = html;
     }
 
+    /* Proveedores: primero los grupos de ofertas confirmadas del mismo
+       repuesto (comparables, con el mas barato marcado), despues las
+       coincidencias sueltas sin confirmar. No se agrupa nada por
+       parecido de texto. */
     function pintarExternos(lista) {
       var cont = document.getElementById("listaConsigo");
+      var provs = {};
+      lista.forEach(function (r) { provs[r.Proveedor] = 1; });
+      var nProv = Object.keys(provs).length;
       document.getElementById("contConsigo").textContent =
-        lista.length === 0 ? "" : lista.length + " resultado" + (lista.length === 1 ? "" : "s");
+        lista.length + " oferta" + (lista.length === 1 ? "" : "s") + " · " + nProv + " proveedor" + (nProv === 1 ? "" : "es");
 
-      if (lista.length === 0) {
-        cont.innerHTML = '<div class="aviso"><i class="bi bi-search"></i>' +
-          '<div>Ningún proveedor lo tiene con ese nombre.<br>' +
-          '<small>Probá con otras palabras.</small></div></div>';
-        return;
+      var grupos = {}, ordenGrupos = [], sueltos = [];
+      lista.forEach(function (r) {
+        if (r.IdRepuesto) {
+          if (!grupos[r.IdRepuesto]) { grupos[r.IdRepuesto] = []; ordenGrupos.push(r.IdRepuesto); }
+          grupos[r.IdRepuesto].push(r);
+        } else sueltos.push(r);
+      });
+
+      function filaExterna(r, enGrupo) {
+        var rel = !r.IdRepuesto
+          ? '<span class="badge-rel rel-sin">sin confirmar</span>'
+          : (enGrupo && r.RankingCosto === 1
+              ? '<span class="badge-rel rel-mejor"><i class="bi bi-star-fill"></i> más barato</span>'
+              : '<span class="badge-rel rel-comp">comparable</span>');
+        return '<div class="fila' + (enGrupo && r.RankingCosto === 1 ? ' mejor' : '') + '" tabindex="0">' +
+          '<div class="col-prod">' +
+            '<div class="prod-desc">' + escapeHtml(r.Descripcion) + '</div>' +
+            '<div class="prod-meta">' +
+              (r.Articulo ? 'fab <span class="codigo">' + escapeHtml(r.Articulo) + '</span> · ' : '') +
+              escapeHtml(r.Rubro || r.RubroTexto || '') + ' ' + rel +
+            '</div>' +
+          '</div>' +
+          '<div class="prov">' + escapeHtml(r.Proveedor) + '</div>' +
+          '<div class="codigo">' + escapeHtml(r.CodigoProveedor) + '</div>' +
+          '<div class="der"><div class="costo">' + formatearMoneda(r.PrecioCompra) + '</div>' +
+            '<div class="precio-sub">costo</div></div>' +
+          '<div class="der"><div class="precio" style="font-size:0.92rem;">' + formatearMoneda(r.PrecioSugerido) + '</div>' +
+            '<div class="precio-sub">con tu margen</div></div>' +
+        '</div>';
       }
 
       var html = "";
-      lista.forEach(function (r) {
-        // La distinción que importa: comparable significa que se
-        // confirmó que es el mismo repuesto. Lo demás es coincidencia
-        // de texto y puede ser otra marca.
-        var etiqueta = r.Comparable === 1
-          ? (r.RankingCosto === 1
-              ? '<span class="badge-mejor">★ Más barato</span>'
-              : '<span class="badge-comp">Comparable</span>')
-          : '<span class="badge-nocomp">Sin confirmar</span>';
-
-        html += '<div class="item">' +
-          '<div class="item-l1">' +
-            '<div class="item-desc">' +
-              '<span class="codigo-repuesto">' + escapeHtml(r.CodigoProveedor) + '</span> ' +
-              escapeHtml(r.Descripcion) +
-              '<div class="item-meta">' +
-                '<strong>' + escapeHtml(r.Proveedor) + '</strong>' +
-                (r.Articulo ? ' · fab ' + escapeHtml(r.Articulo) : '') +
-                ' · ' + escapeHtml(r.Rubro || '-') +
-              '</div>' +
-              '<div style="margin-top:6px;">' + etiqueta +
-                (r.CodigoPropio
-                  ? ' <span class="badge-encat">En catálogo: ' +
-                    escapeHtml(r.CodigoPropio) + ' · stock ' + r.StockPropio + '</span>'
-                  : '') +
-              '</div>' +
-            '</div>' +
-            '<div class="item-precio">' +
-              '<div class="venta">' + formatearMoneda(r.PrecioSugerido) + '</div>' +
-              '<div class="costo">costo ' + formatearMoneda(r.PrecioCompra) + '</div>' +
-            '</div>' +
+      ordenGrupos.forEach(function (id) {
+        var g = grupos[id].slice().sort(function (a, b) { return a.PrecioCompra - b.PrecioCompra; });
+        var r0 = g[0];
+        html += '<div class="grupo">' +
+          '<div class="grupo-head"><i class="bi bi-collection"></i> ' +
+            (r0.CodigoPropio ? '<span class="badge-rel rel-tengo">tu código ' + escapeHtml(r0.CodigoPropio) +
+              ' · stock ' + r0.StockPropio + '</span> ' : '') +
+            'Mismo repuesto en ' + g.length + ' proveedor' + (g.length === 1 ? '' : 'es') +
           '</div>' +
+          g.map(function (r) { return filaExterna(r, true); }).join("") +
         '</div>';
       });
+      sueltos.forEach(function (r) { html += filaExterna(r, false); });
       cont.innerHTML = html;
     }
 
-    /* ================= VINCULACION MANUAL ================= */
-
-    /* Se puede vincular sin incorporar nada. El matcheo automatico
-       solo agarra cuando coincide el codigo de fabricante; el resto
-       de los casos los reconoce una persona que conoce el rubro, y
-       se van construyendo de a poco. */
     function abrirVinculacion(idRepuesto, codigo) {
       Swal.fire({
         title: "Vincular con otras listas",
@@ -536,15 +604,46 @@
 
     /* ================= INICIO ================= */
 
+    function limpiar() {
+      var inp = document.getElementById("buscar");
+      inp.value = "";
+      estadoInicial();
+      document.getElementById("btnLimpiar").classList.remove("visible");
+      inp.focus();
+    }
+
     window.onload = function () {
       cargarProveedores();
+      pintarBotones();
 
-      document.getElementById("buscar").addEventListener("input", function () {
+      var inp = document.getElementById("buscar");
+
+      // Mientras escribe: busca solo, con una pausa corta
+      inp.addEventListener("input", function () {
+        document.getElementById("btnLimpiar").classList.toggle("visible", inp.value.length > 0);
         clearTimeout(temporizador);
-        temporizador = setTimeout(buscar, 320);
+        temporizador = setTimeout(function () { buscar(false); }, 320);
       });
 
-      document.getElementById("buscar").focus();
+      // Enter o el boton: busca ya, sin esperar
+      document.getElementById("formBuscar").addEventListener("submit", function (e) {
+        e.preventDefault();
+        clearTimeout(temporizador);
+        buscar(true);
+      });
+
+      document.getElementById("btnLimpiar").addEventListener("click", limpiar);
+
+      // Esc limpia; "/" vuelve al buscador desde cualquier lado
+      document.addEventListener("keydown", function (e) {
+        var enCampo = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+        if (e.key === "Escape" && document.activeElement === inp) { limpiar(); }
+        if (e.key === "/" && !enCampo && !document.querySelector(".swal2-container")) {
+          e.preventDefault(); inp.focus(); inp.select();
+        }
+      });
+
+      inp.focus();
     };
   </script>
 </body>

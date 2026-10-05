@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cuenta de proveedores - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    .layout { display:grid; grid-template-columns: 340px 1fr; gap:16px; align-items:start; }
+    @media (max-width: 991px) { .layout { grid-template-columns: 1fr; } }
+    .prov { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; border-bottom:1px solid #f0f1f3; cursor:pointer; }
+    .prov:hover { background:#fafbfd; }
+    .prov.activo { background:var(--nav-accent-soft); border-left:3px solid var(--nav-accent); }
+    .prov .nom { font-weight:600; color:var(--navy); font-size:0.9rem; }
+    .prov .sub { font-size:0.74rem; color:var(--text-muted); }
+    .prov .saldo { font-weight:800; font-size:0.95rem; }
+    .debe { color:#b02a37; } .favor { color:#146c43; } .cero { color:var(--text-muted); }
+    .total-deuda { background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 18px; margin-bottom:14px; }
+    .total-deuda .l { font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+    .total-deuda .v { font-size:1.5rem; font-weight:800; color:#b02a37; }
+    .cab-prov { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .cab-prov .saldo-grande { font-size:1.6rem; font-weight:800; }
+    .mov td { font-size:0.85rem; vertical-align:middle; }
+    .mov th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .tipo { font-size:0.7rem; font-weight:700; border-radius:7px; padding:2px 8px; }
+    .t-COMPRA { background:#fdecee; color:#b02a37; } .t-PAGO { background:#e3f4e9; color:#146c43; }
+    .t-AJUSTE { background:#fff4d6; color:#8a6300; } .t-ANULACION, .t-NC, .t-ND { background:var(--bg); color:var(--text-muted); }
+    .vacio { padding:40px; text-align:center; color:var(--text-muted); }
+  </style>
+</head>
+
+<body data-page="cuenta-proveedores">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-journal-text"></i> Cuenta de proveedores</h2>
+        <span class="subtitle">Lo que se le debe a cada proveedor: sube con cada recepción, baja con cada pago.</span>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="total-deuda"><div class="l">Deuda total con proveedores</div><div class="v" id="totalDeuda">—</div></div>
+        <div class="panel mb-0">
+          <div class="panel-header"><i class="bi bi-truck"></i> Proveedores</div>
+          <div id="listaProv"><div class="vacio">Cargando…</div></div>
+        </div>
+      </div>
+
+      <div class="panel mb-0" id="panelDetalle">
+        <div class="vacio"><i class="bi bi-arrow-left"></i> Elegí un proveedor</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const API = API_BASE + "Compras/";
+    const usuario = Auth.getUsuario() || {};
+    const puedePagar = ["Dueño", "Administrador"].indexOf(usuario.Rol) !== -1;
+    let proveedores = [], cuentas = [], actual = null;
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    }
+    function leerError(r) {
+      return r.text().then(t => { try { const d = JSON.parse(t); return d.Message || d.message || t; } catch { return t; } })
+                     .catch(() => "No se pudo completar la operación.");
+    }
+    const fmtFecha = f => new Date(f).toLocaleDateString("es-AR");
+    const claseSaldo = s => s > 0.005 ? "debe" : (s < -0.005 ? "favor" : "cero");
+    const textoSaldo = s => s > 0.005 ? formatearMoneda(s) : (s < -0.005 ? formatearMoneda(-s) + " a favor" : "Al día");
+
+    function cargarSaldos(seleccionar) {
+      fetchAuth(API + "CuentasProveedor").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
+        proveedores = d || [];
+        const total = proveedores.reduce((a, p) => a + Math.max(0, Number(p.Saldo)), 0);
+        document.getElementById("totalDeuda").textContent = formatearMoneda(total);
+        document.getElementById("listaProv").innerHTML = proveedores.length ? proveedores.map(p =>
+          '<div class="prov' + (actual === p.Id ? ' activo' : '') + '" onclick="elegir(' + p.Id + ')">' +
+            '<div><div class="nom">' + escapeHtml(p.RazonSocial) + '</div>' +
+            '<div class="sub">' + (p.PedidosPendientes ? p.PedidosPendientes + ' pedido(s) en camino · ' : '') +
+              (p.UltimoMovimiento ? 'último mov. ' + fmtFecha(p.UltimoMovimiento) : 'sin movimientos') + '</div></div>' +
+            '<div class="saldo ' + claseSaldo(Number(p.Saldo)) + '">' + textoSaldo(Number(p.Saldo)) + '</div>' +
+          '</div>').join("") : '<div class="vacio">No hay proveedores activos.</div>';
+        if (seleccionar) elegir(seleccionar);
+      }).catch(() => document.getElementById("listaProv").innerHTML = '<div class="vacio">No se pudieron cargar.</div>');
+    }
+
+    function elegir(id) {
+      actual = id;
+      document.querySelectorAll(".prov").forEach(x => x.classList.remove("activo"));
+      const p = proveedores.find(x => x.Id === id);
+      if (!p) return;
+      document.querySelectorAll(".prov")[proveedores.indexOf(p)].classList.add("activo");
+
+      fetchAuth(API + "CuentasProveedor/" + id).then(r => r.ok ? r.json() : Promise.reject()).then(movs => {
+        const saldo = Number(p.Saldo);
+        let html =
+          '<div class="panel-body"><div class="cab-prov">' +
+            '<div><div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">' + escapeHtml(p.RazonSocial) + '</div>' +
+            '<div class="saldo-grande ' + claseSaldo(saldo) + '">' + textoSaldo(saldo) + '</div></div>' +
+            '<div class="d-flex gap-2">' +
+              (puedePagar ? '<button class="btn btn-success" onclick="pagar()"><i class="bi bi-cash-coin"></i> Registrar pago</button>' +
+                            '<button class="btn btn-outline-secondary" onclick="ajuste()" title="Saldo inicial o corrección">Ajuste</button>' : '') +
+            '</div>' +
+          '</div></div>';
+
+        if (!movs || !movs.length) {
+          html += '<div class="vacio">Sin movimientos. Las recepciones de mercadería van a aparecer acá como deuda.</div>';
+        } else {
+          html += '<div class="table-responsive"><table class="table mov mb-0"><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th>' +
+                  '<th class="text-end">Debe</th><th class="text-end">Pagado</th><th class="text-end">Saldo</th><th></th></tr></thead><tbody>' +
+            movs.map(m => {
+              const monto = Number(m.Monto);
+              return '<tr><td>' + fmtFecha(m.Fecha) + '</td>' +
+                '<td><span class="tipo t-' + m.Tipo + '">' + m.Tipo + '</span></td>' +
+                '<td>' + escapeHtml(m.Descripcion) + '<div style="font-size:0.72rem;color:var(--text-muted);">' + escapeHtml(m.Usuario || "") + '</div></td>' +
+                '<td class="text-end">' + (monto > 0 ? formatearMoneda(monto) : '') + '</td>' +
+                '<td class="text-end">' + (monto < 0 ? formatearMoneda(-monto) : '') + '</td>' +
+                '<td class="text-end"><strong>' + formatearMoneda(m.SaldoAcumulado) + '</strong></td>' +
+                '<td class="text-end" style="white-space:nowrap;">' +
+                  (m.IdAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + m.IdAdjunto + ')" title="Ver factura"><i class="bi bi-paperclip"></i></button> ' : '') +
+                  (puedePagar && m.Tipo === "PAGO" && m.IdPagoProveedor ? '<button class="btn btn-sm btn-outline-danger" onclick="anularPago(' + m.IdPagoProveedor + ')">Anular</button>' : '') +
+                '</td></tr>';
+            }).join("") + '</tbody></table></div>';
+        }
+        document.getElementById("panelDetalle").innerHTML = html;
+      });
+    }
+
+    function pagar() {
+      const p = proveedores.find(x => x.Id === actual);
+      const saldo = Math.max(0, Number(p.Saldo));
+      Swal.fire({
+        title: "Pago a " + p.RazonSocial,
+        html:
+          '<div class="text-start">' +
+          '<label class="form-label">Importe</label>' +
+          '<div class="input-group mb-3"><span class="input-group-text">$</span><input type="text" inputmode="decimal" id="pImporte" class="form-control text-end"></div>' +
+          '<label class="form-label">Sale de</label>' +
+          '<select id="pCuenta" class="form-select mb-3">' + cuentas.map(c => '<option value="' + c.Id + '">' + escapeHtml(c.Nombre) + '</option>').join("") + '</select>' +
+          '<label class="form-label">Referencia (opcional)</label>' +
+          '<input type="text" id="pRef" class="form-control" maxlength="100" placeholder="N° de transferencia o recibo">' +
+          '<div class="mt-2" style="font-size:0.8rem;color:#6c757d;">Deuda actual: ' + formatearMoneda(saldo) + '</div></div>',
+        showCancelButton: true, confirmButtonText: "Registrar pago", cancelButtonText: "Cancelar", confirmButtonColor: "#28a745",
+        didOpen: () => {
+          activarInputPrecio("pImporte");
+          if (saldo > 0) document.getElementById("pImporte").value = numeroAPrecio(saldo);
+          // Por defecto Mercado Pago: es por donde sale casi todo
+          const mp = cuentas.find(c => !c.EsCaja);
+          if (mp) document.getElementById("pCuenta").value = mp.Id;
+        },
+        preConfirm: () => {
+          const imp = precioANumero(document.getElementById("pImporte").value);
+          if (!(imp > 0)) { Swal.showValidationMessage("Ingresá un importe mayor a cero."); return false; }
+          return { IdProveedor: actual, IdCuentaFinanciera: parseInt(document.getElementById("pCuenta").value, 10),
+                   Importe: imp, Referencia: document.getElementById("pRef").value.trim() || null };
+        }
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Pagos", { method: "POST", body: JSON.stringify(r.value) }).then(x => {
+          if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo pagar", m, "error"));
+          Swal.fire({ icon: "success", title: "Pago registrado", timer: 1400, showConfirmButton: false });
+          cargarSaldos(actual);
+        });
+      });
+    }
+
+    function ajuste() {
+      const p = proveedores.find(x => x.Id === actual);
+      Swal.fire({
+        title: "Ajuste de cuenta",
+        html: '<div class="text-start" style="font-size:0.88rem;">Para cargar lo que ya se le debía antes de usar el sistema, o corregir un error. Queda auditado.</div>' +
+              '<select id="aSentido" class="form-select mt-3"><option value="1">Le debemos más</option><option value="-1">Le debemos menos</option></select>' +
+              '<div class="input-group mt-2"><span class="input-group-text">$</span><input type="text" inputmode="decimal" id="aImporte" class="form-control text-end"></div>' +
+              '<input type="text" id="aMotivo" class="form-control mt-2" placeholder="Motivo (ej: saldo al 05/10 según resumen del proveedor)">',
+        showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar",
+        didOpen: () => activarInputPrecio("aImporte"),
+        preConfirm: () => {
+          const imp = precioANumero(document.getElementById("aImporte").value);
+          const mot = document.getElementById("aMotivo").value.trim();
+          if (!(imp > 0)) { Swal.showValidationMessage("Ingresá un importe."); return false; }
+          if (mot.length < 10) { Swal.showValidationMessage("El motivo necesita al menos 10 caracteres."); return false; }
+          return { Monto: imp * parseInt(document.getElementById("aSentido").value, 10), Motivo: mot };
+        }
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "CuentasProveedor/" + actual + "/Ajuste", { method: "POST", body: JSON.stringify(r.value) })
+          .then(x => x.ok ? cargarSaldos(actual) : leerError(x).then(m => Swal.fire("No se pudo registrar", m, "error")));
+      });
+    }
+
+    function anularPago(id) {
+      Swal.fire({
+        title: "Anular pago", text: "El dinero vuelve a la cuenta y la deuda sube de nuevo. El pago original no se borra.",
+        input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)", showCancelButton: true,
+        confirmButtonText: "Anular", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
+        inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Pagos/" + id + "/Anular", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
+          .then(x => x.ok ? cargarSaldos(actual) : leerError(x).then(m => Swal.fire("No se pudo anular", m, "error")));
+      });
+    }
+
+    function verAdjunto(id) {
+      fetchAuth(API_BASE + "Finanzas/Adjunto/" + id).then(r => r.ok ? r.blob() : Promise.reject())
+        .then(b => window.open(URL.createObjectURL(b), "_blank"))
+        .catch(() => Swal.fire("No se pudo abrir", "La factura no está disponible.", "error"));
+    }
+
+    window.onload = function () {
+      fetchAuth(API_BASE + "Finanzas/Cuentas").then(r => r.ok ? r.json() : []).then(c => cuentas = c || []);
+      const id = parseInt(new URLSearchParams(location.search).get("id"), 10);
+      cargarSaldos(id || null);
+    };
+  </script>
+</body>
+</html>

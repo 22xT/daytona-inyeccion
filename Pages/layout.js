@@ -58,6 +58,8 @@
           roles: ['Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'pedidos', label: 'Listado de Pedidos', icon: 'bi-clipboard-data', href: 'ListadoPedido.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
+        { key: 'cuenta-proveedores', label: 'Cuenta de proveedores', icon: 'bi-journal-text', href: 'CuentaProveedores.html',
+          roles: ['Dueño', 'Administrador', 'Analista'] },
         { key: 'proveedores', label: 'Proveedores', icon: 'bi-shop', href: 'ProveedoresListado.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'catalogo-prov', label: 'Catálogo de Proveedores', icon: 'bi-search', href: 'CatalogoProveedores.html',
@@ -69,7 +71,11 @@
       icon: 'bi-cash-stack',
       items: [
         { key: 'caja', label: 'Caja', icon: 'bi-cash-stack', href: 'Caja.html',
-          roles: ['Dueño', 'Administrador', 'Vendedor'] }
+          roles: ['Dueño', 'Administrador', 'Vendedor'] },
+        { key: 'gastos', label: 'Gastos', icon: 'bi-receipt', href: 'Gastos.html',
+          roles: ['Dueño', 'Administrador', 'Analista'] },
+        { key: 'movimientos-especiales', label: 'Movimientos especiales', icon: 'bi-arrow-left-right', href: 'MovimientosEspeciales.html',
+          roles: ['Dueño', 'Administrador', 'Analista'] }
       ]
     },
     {

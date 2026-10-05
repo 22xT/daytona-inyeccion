@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Movimientos especiales - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    .tipos { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; }
+    .tipo { border:2px solid var(--border); background:#fff; border-radius:12px; padding:14px; cursor:pointer; text-align:left; transition:0.12s; }
+    .tipo:hover:not(:disabled) { border-color:var(--nav-accent); background:var(--nav-accent-soft); }
+    .tipo.activo { border-color:var(--navy); background:#eef3fa; }
+    .tipo:disabled { opacity:0.45; cursor:not-allowed; }
+    .tipo i { font-size:1.4rem; color:var(--navy); }
+    .tipo strong { display:block; color:var(--navy); margin-top:4px; }
+    .tipo span { font-size:0.8rem; color:var(--text-muted); }
+    .tipo .solo { font-size:0.68rem; font-weight:700; color:#b02a37; display:block; margin-top:4px; }
+    #form { display:none; }
+    #form.visible { display:block; }
+    .flecha { font-size:1.4rem; color:var(--text-muted); text-align:center; padding-top:30px; }
+    .aviso { font-size:0.84rem; background:#fff4d6; color:#6b4d00; border-radius:8px; padding:9px 12px; }
+
+    .tabla td, .tabla th { vertical-align:middle; font-size:0.88rem; }
+    .tabla th { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .t-tipo { font-size:0.72rem; font-weight:700; border-radius:8px; padding:3px 9px; }
+    .t-APORTE { background:#e3f4e9; color:#146c43; }
+    .t-RETIRO { background:#fdecee; color:#b02a37; }
+    .t-TRANSFERENCIA { background:var(--nav-accent-soft); color:var(--nav-accent-dark); }
+    .t-AJUSTE { background:#fff4d6; color:#8a6300; }
+    .t-RENDIMIENTO { background:#e8f1ff; color:#0b3f85; }
+    tr.anulado td { opacity:0.5; }
+    tr.anulado .imp { text-decoration:line-through; }
+    .sub { font-size:0.76rem; color:var(--text-muted); }
+  </style>
+</head>
+
+<body data-page="movimientos-especiales">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-arrow-left-right"></i> Movimientos especiales</h2>
+        <span class="subtitle">Dinero que no viene de una venta, una compra ni un gasto. Solo estos cinco tipos, siempre con motivo.</span>
+      </div>
+    </div>
+
+    <div class="panel" id="panelAlta">
+      <div class="panel-header"><i class="bi bi-plus-circle"></i> Registrar</div>
+      <div class="panel-body">
+        <div class="tipos">
+          <button class="tipo" data-t="APORTE"><i class="bi bi-box-arrow-in-down"></i><strong>Aporte del propietario</strong>
+            <span>El dueño pone dinero en una cuenta: cambio para la caja, capital.</span><span class="solo">Solo Dueño</span></button>
+          <button class="tipo" data-t="RETIRO"><i class="bi bi-box-arrow-up"></i><strong>Retiro del propietario</strong>
+            <span>El dueño saca dinero para uso personal. No es un gasto del negocio.</span><span class="solo">Solo Dueño</span></button>
+          <button class="tipo" data-t="TRANSFERENCIA"><i class="bi bi-arrow-left-right"></i><strong>Transferencia</strong>
+            <span>Mover dinero entre cuentas: depositar el efectivo, pasar de Mercado Pago al banco.</span></button>
+          <button class="tipo" data-t="AJUSTE"><i class="bi bi-sliders"></i><strong>Ajuste</strong>
+            <span>Corregir un saldo que no coincide con la realidad. Queda auditado.</span></button>
+          <button class="tipo" data-t="RENDIMIENTO"><i class="bi bi-graph-up-arrow"></i><strong>Rendimiento</strong>
+            <span>Intereses que paga Mercado Pago por el saldo en cuenta, según su reporte.</span></button>
+        </div>
+
+        <div id="form" class="mt-4">
+          <div class="row g-3 align-items-start">
+            <div class="col-md-3" id="colOrigen">
+              <label class="form-label" id="lblOrigen">Sale de</label>
+              <select id="origen" class="form-select"></select>
+            </div>
+            <div class="col-md-1 flecha" id="colFlecha"><i class="bi bi-arrow-right"></i></div>
+            <div class="col-md-3" id="colDestino">
+              <label class="form-label" id="lblDestino">Entra en</label>
+              <select id="destino" class="form-select"></select>
+            </div>
+            <div class="col-md-3" id="colSentido" style="display:none;">
+              <label class="form-label">El saldo real es</label>
+              <select id="sentido" class="form-select">
+                <option value="S">Menor que el del sistema (sale)</option>
+                <option value="E">Mayor que el del sistema (entra)</option>
+              </select>
+            </div>
+            <div class="col-md-3" id="colCuentaAjuste" style="display:none;">
+              <label class="form-label">Cuenta</label>
+              <select id="cuentaAjuste" class="form-select"></select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Importe <span class="required">*</span></label>
+              <div class="input-group"><span class="input-group-text">$</span>
+                <input type="text" inputmode="decimal" id="importe" class="form-control text-end"></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Motivo <span class="required">*</span></label>
+              <input type="text" id="motivo" class="form-control" maxlength="250" placeholder="Explicá por qué. Mínimo 10 caracteres.">
+            </div>
+            <div class="col-12" id="avisoWrap"></div>
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" id="btnGuardar"><i class="bi bi-check2-circle"></i> Registrar</button>
+            <button class="btn btn-outline-secondary" id="btnCancelar">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><i class="bi bi-list-ul"></i> Registrados
+        <div class="ms-auto d-flex gap-2">
+          <input type="date" id="desde" class="form-control form-control-sm" style="width:150px;">
+          <input type="date" id="hasta" class="form-control form-control-sm" style="width:150px;">
+        </div>
+      </div>
+      <div class="panel-body p-0">
+        <div class="table-responsive">
+          <table class="table tabla mb-0">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Cuentas</th><th class="text-end">Importe</th><th>Motivo</th><th>Usuario</th><th></th></tr></thead>
+            <tbody id="tabla"><tr><td colspan="7" class="text-center text-muted p-4">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    const API = API_BASE + "Finanzas/";
+    const usuario = Auth.getUsuario() || {};
+    const esDueno = usuario.Rol === "Dueño";
+    const puedeOperar = esDueno || usuario.Rol === "Administrador";
+    let cuentas = [], tipo = null;
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+    }
+    function leerError(r) {
+      return r.text().then(t => { try { const d = JSON.parse(t); return d.Message || d.message || t; } catch { return t; } })
+                     .catch(() => "No se pudo completar la operación.");
+    }
+    const fechaLocal = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const fmtFecha = f => { const d = new Date(f); return d.toLocaleDateString("es-AR") + " " + d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }); };
+    const mostrar = (id, si) => document.getElementById(id).style.display = si ? "" : "none";
+
+    function opciones(sel) {
+      return cuentas.map(c => '<option value="' + c.Id + '"' + (c.Id === sel ? ' selected' : '') + '>' + escapeHtml(c.Nombre) + '</option>').join("");
+    }
+
+    /* El formulario muestra solo las cuentas que el tipo necesita.
+       La base valida lo mismo con un CHECK: aca es para no dejar
+       equivocarse, alla es para que no se pueda. */
+    function elegirTipo(t) {
+      tipo = t;
+      document.querySelectorAll(".tipo").forEach(b => b.classList.toggle("activo", b.getAttribute("data-t") === t));
+      document.getElementById("form").classList.add("visible");
+      const caja = (cuentas.find(c => c.EsCaja) || cuentas[0] || {}).Id;
+      const otra = (cuentas.find(c => !c.EsCaja) || {}).Id;
+
+      mostrar("colOrigen", t === "RETIRO" || t === "TRANSFERENCIA");
+      mostrar("colDestino", t === "APORTE" || t === "TRANSFERENCIA" || t === "RENDIMIENTO");
+      mostrar("colFlecha", t === "TRANSFERENCIA");
+      mostrar("colSentido", t === "AJUSTE");
+      mostrar("colCuentaAjuste", t === "AJUSTE");
+
+      document.getElementById("origen").innerHTML = opciones(caja);
+      // Transferencia y rendimiento proponen la cuenta electronica; el resto, la caja
+      document.getElementById("destino").innerHTML = opciones(t === "TRANSFERENCIA" || t === "RENDIMIENTO" ? (otra || caja) : caja);
+      document.getElementById("cuentaAjuste").innerHTML = opciones(caja);
+      document.getElementById("lblOrigen").textContent = t === "RETIRO" ? "Sale de" : "Desde";
+      document.getElementById("lblDestino").textContent = t === "TRANSFERENCIA" ? "Hacia" : "Entra en";
+
+      const avisos = {
+        RETIRO: "Un retiro no es un gasto: no aparece en los gastos del negocio ni en el punto de equilibrio.",
+        AJUSTE: "Usalo solo para corregir diferencias reales. Si es por el arqueo de caja, se registra al cerrar la caja.",
+        RENDIMIENTO: "Cargá el total del período que figura en el reporte de Mercado Pago, e indicá el período en el motivo."
+      };
+      document.getElementById("avisoWrap").innerHTML = avisos[t] ? '<div class="aviso"><i class="bi bi-info-circle"></i> ' + avisos[t] + '</div>' : "";
+      document.getElementById("importe").focus();
+    }
+
+    function limpiar() {
+      tipo = null;
+      document.querySelectorAll(".tipo").forEach(b => b.classList.remove("activo"));
+      document.getElementById("form").classList.remove("visible");
+      document.getElementById("importe").value = "";
+      document.getElementById("motivo").value = "";
+    }
+
+    function guardar() {
+      if (!tipo) return;
+      const importe = precioANumero(document.getElementById("importe").value);
+      const motivo = document.getElementById("motivo").value.trim();
+      if (!(importe > 0)) { Swal.fire("Falta el importe", "Ingresá un importe mayor a cero.", "warning"); return; }
+      if (motivo.length < 10) { Swal.fire("Falta el motivo", "Explicá el motivo con al menos 10 caracteres.", "warning"); return; }
+
+      const v = id => parseInt(document.getElementById(id).value, 10) || null;
+      let origen = null, destino = null;
+      if (tipo === "APORTE" || tipo === "RENDIMIENTO") destino = v("destino");
+      if (tipo === "RETIRO") origen = v("origen");
+      if (tipo === "TRANSFERENCIA") { origen = v("origen"); destino = v("destino"); }
+      if (tipo === "AJUSTE") { if (document.getElementById("sentido").value === "S") origen = v("cuentaAjuste"); else destino = v("cuentaAjuste"); }
+
+      if (tipo === "TRANSFERENCIA" && origen === destino) {
+        Swal.fire("Cuentas iguales", "La cuenta de origen y la de destino tienen que ser distintas.", "warning"); return;
+      }
+
+      const nombre = id => (cuentas.find(c => c.Id === id) || {}).Nombre || "";
+      const resumen = {
+        APORTE: "Entran " + formatearMoneda(importe) + " en " + nombre(destino),
+        RENDIMIENTO: "Entran " + formatearMoneda(importe) + " de rendimiento en " + nombre(destino),
+        RETIRO: "Salen " + formatearMoneda(importe) + " de " + nombre(origen),
+        TRANSFERENCIA: formatearMoneda(importe) + " de " + nombre(origen) + " a " + nombre(destino),
+        AJUSTE: (origen ? "Salen " : "Entran ") + formatearMoneda(importe) + (origen ? " de " + nombre(origen) : " en " + nombre(destino))
+      }[tipo];
+
+      Swal.fire({
+        title: "¿Confirmar?", html: resumen + "<br><small class='text-muted'>" + escapeHtml(motivo) + "</small>",
+        icon: "question", showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar", confirmButtonColor: "#28a745"
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "MovimientosEspeciales", { method: "POST", body: JSON.stringify({
+          Tipo: tipo, IdCuentaOrigen: origen, IdCuentaDestino: destino, Importe: importe, Motivo: motivo }) })
+          .then(x => {
+            if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo registrar", m, "error"));
+            Swal.fire({ icon: "success", title: "Registrado", timer: 1400, showConfirmButton: false });
+            limpiar(); cargar();
+          }).catch(() => Swal.fire("Error de conexión", "No se pudo contactar al servidor.", "error"));
+      });
+    }
+
+    function cargar() {
+      const qs = "?desde=" + document.getElementById("desde").value + "&hasta=" + document.getElementById("hasta").value;
+      fetchAuth(API + "MovimientosEspeciales" + qs).then(r => r.ok ? r.json() : Promise.reject()).then(lista => {
+        const t = document.getElementById("tabla");
+        if (!lista || lista.length === 0) {
+          t.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">No hay movimientos en el período.</td></tr>'; return;
+        }
+        const NOM = { APORTE: "Aporte", RETIRO: "Retiro", TRANSFERENCIA: "Transferencia", AJUSTE: "Ajuste", RENDIMIENTO: "Rendimiento" };
+        t.innerHTML = lista.map(m => {
+          const cuentasTxt = m.CuentaOrigen && m.CuentaDestino
+            ? escapeHtml(m.CuentaOrigen) + ' <i class="bi bi-arrow-right"></i> ' + escapeHtml(m.CuentaDestino)
+            : (m.CuentaOrigen ? 'sale de ' + escapeHtml(m.CuentaOrigen) : 'entra en ' + escapeHtml(m.CuentaDestino));
+          const anulado = m.Estado === "ANULADO";
+          return '<tr class="' + (anulado ? "anulado" : "") + '">' +
+            '<td>' + fmtFecha(m.Fecha) + '</td>' +
+            '<td><span class="t-tipo t-' + m.Tipo + '">' + NOM[m.Tipo] + '</span></td>' +
+            '<td>' + cuentasTxt + '</td>' +
+            '<td class="text-end imp"><strong>' + formatearMoneda(m.Importe) + '</strong></td>' +
+            '<td>' + escapeHtml(m.Motivo) + (anulado ? '<div class="sub">Anulado: ' + escapeHtml(m.MotivoAnulacion) + '</div>' : '') + '</td>' +
+            '<td class="sub">' + escapeHtml(m.Usuario) + '</td>' +
+            '<td class="text-end">' + (esDueno && !anulado
+              ? '<button class="btn btn-sm btn-outline-danger" onclick="anular(' + m.Id + ')">Anular</button>' : '') + '</td>' +
+          '</tr>';
+        }).join("");
+      }).catch(() => document.getElementById("tabla").innerHTML =
+        '<tr><td colspan="7" class="text-center text-danger p-4">No se pudieron cargar los movimientos.</td></tr>');
+    }
+
+    function anular(id) {
+      Swal.fire({
+        title: "Anular movimiento", text: "Se registra el movimiento inverso. El original no se borra.",
+        input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)", showCancelButton: true,
+        confirmButtonText: "Anular", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
+        inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "MovimientosEspeciales/" + id + "/Anular", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
+          .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo anular", m, "error")));
+      });
+    }
+
+    window.onload = function () {
+      const d = new Date();
+      document.getElementById("desde").value = fechaLocal(new Date(d.getFullYear(), d.getMonth(), 1));
+      document.getElementById("hasta").value = fechaLocal(d);
+      document.getElementById("desde").addEventListener("change", cargar);
+      document.getElementById("hasta").addEventListener("change", cargar);
+      activarInputPrecio("importe");
+
+      if (!puedeOperar) document.getElementById("panelAlta").style.display = "none";
+      document.querySelectorAll(".tipo").forEach(b => {
+        const t = b.getAttribute("data-t");
+        // Aportes y retiros son plata del dueño
+        if ((t === "APORTE" || t === "RETIRO") && !esDueno) b.disabled = true;
+        b.addEventListener("click", () => elegirTipo(t));
+      });
+      document.getElementById("btnGuardar").addEventListener("click", guardar);
+      document.getElementById("btnCancelar").addEventListener("click", limpiar);
+
+      fetchAuth(API + "Cuentas").then(r => r.ok ? r.json() : []).then(c => { cuentas = c || []; });
+      cargar();
+    };
+  </script>
+</body>
+</html>
