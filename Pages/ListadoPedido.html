@@ -240,7 +240,7 @@
     const usuario = Auth.getUsuario();
     const esAdmin = usuario && usuario.Rol === "Administrador";
     // Recibir lo hacen quienes reciben la mercaderia en el local
-    const puedeRecibir = usuario && ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
+    const puedeRecibir = usuario && ["Dueño", "Administrador", "Supervisor", "Vendedor"].indexOf(usuario.Rol) !== -1;
     let resumenRecep = {};   // IdPedido -> { Pedidas, Recibidas, Cerradas }
 
     /* ---------- Presentacion ---------- */

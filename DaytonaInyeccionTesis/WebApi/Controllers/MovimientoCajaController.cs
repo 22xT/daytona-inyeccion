@@ -34,6 +34,7 @@ namespace WebApi.Controllers
         [AuthorizeJwt(Roles = "Administrador,Vendedor")]
         public IHttpActionResult Post([FromBody] MovimientoCaja mov)
         {
+            return BadRequest("Los movimientos manuales se registran como gasto o como movimiento especial.");
             string error = Validar(mov);
             if (error != "")
                 return BadRequest(error);

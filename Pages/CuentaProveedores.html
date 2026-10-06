@@ -11,26 +11,44 @@
   <script src="auth.js"></script>
   <script src="precio.js"></script>
   <style>
-    .layout { display:grid; grid-template-columns: 340px 1fr; gap:16px; align-items:start; }
-    @media (max-width: 991px) { .layout { grid-template-columns: 1fr; } }
-    .prov { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; border-bottom:1px solid #f0f1f3; cursor:pointer; }
+    .kpis { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+    .kpi { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; }
+    .kpi .l { font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+    .kpi .v { font-size:1.4rem; font-weight:800; color:var(--navy); }
+    .kpi.rojo .v { color:#B42318; } .kpi.amarillo .v { color:#92400E; }
+    .layout { display:grid; grid-template-columns: 330px 1fr; gap:16px; align-items:start; }
+    @media (max-width: 991px) { .layout, .kpis { grid-template-columns: 1fr; } }
+    .prov { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid #f0f1f3; cursor:pointer; }
     .prov:hover { background:#fafbfd; }
     .prov.activo { background:var(--nav-accent-soft); border-left:3px solid var(--nav-accent); }
     .prov .nom { font-weight:600; color:var(--navy); font-size:0.9rem; }
-    .prov .sub { font-size:0.74rem; color:var(--text-muted); }
-    .prov .saldo { font-weight:800; font-size:0.95rem; }
+    .prov .sub, .sub { font-size:0.74rem; color:var(--text-muted); }
+    .prov .saldo { font-weight:800; font-size:0.92rem; text-align:right; white-space:nowrap; }
     .debe { color:#b02a37; } .favor { color:#146c43; } .cero { color:var(--text-muted); }
-    .total-deuda { background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 18px; margin-bottom:14px; }
-    .total-deuda .l { font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
-    .total-deuda .v { font-size:1.5rem; font-weight:800; color:#b02a37; }
-    .cab-prov { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .chip { font-size:0.68rem; font-weight:700; border-radius:7px; padding:1px 7px; display:inline-block; margin-top:2px; }
+    .ch-venc { background:#FEE2E2; color:#991B1B; } .ch-semana { background:#FEF3C7; color:#92400E; } .ch-rec { background:#F3E8FF; color:#6B21A8; }
+
+    .cab-prov { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
     .cab-prov .saldo-grande { font-size:1.6rem; font-weight:800; }
-    .mov td { font-size:0.85rem; vertical-align:middle; }
-    .mov th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .plazo { font-size:0.8rem; color:var(--text-muted); }
+    .plazo a { font-weight:600; }
+    .tabs-p { display:flex; gap:4px; border-bottom:1px solid var(--border); padding:0 16px; }
+    .tab-p { border:none; background:none; padding:10px 14px; font-weight:700; font-size:0.85rem; color:var(--text-muted); border-bottom:2px solid transparent; }
+    .tab-p.activo { color:var(--navy); border-bottom-color:var(--navy); }
+    .tab-p .cnt { font-size:0.7rem; background:var(--bg); border-radius:8px; padding:1px 6px; margin-left:4px; }
+    .tabla td { font-size:0.85rem; vertical-align:middle; }
+    .tabla th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .venc { font-size:0.72rem; font-weight:700; border-radius:7px; padding:2px 8px; white-space:nowrap; }
+    .v-vencida { background:#FEE2E2; color:#991B1B; } .v-pronto { background:#FEF3C7; color:#92400E; } .v-ok { background:#F3F4F6; color:#374151; }
+    .tipo-inc { font-size:0.7rem; font-weight:700; border-radius:7px; padding:2px 8px; white-space:nowrap; }
+    .ti-FACTURADO_NO_RECIBIDO { background:#FEE2E2; color:#991B1B; } .ti-DANADO { background:#FEF3C7; color:#92400E; }
+    .ti-RECIBIDO_NO_FACTURADO { background:#E0EAFF; color:#1E40AF; } .ti-NO_PEDIDO { background:#F3E8FF; color:#6B21A8; }
+    .est-inc { font-size:0.7rem; font-weight:700; }
+    .barra-acc { display:flex; gap:8px; flex-wrap:wrap; padding:12px 16px; border-bottom:1px solid var(--border); background:#fcfcfd; align-items:center; }
     .tipo { font-size:0.7rem; font-weight:700; border-radius:7px; padding:2px 8px; }
-    .t-COMPRA { background:#fdecee; color:#b02a37; } .t-PAGO { background:#e3f4e9; color:#146c43; }
-    .t-AJUSTE { background:#fff4d6; color:#8a6300; } .t-ANULACION, .t-NC, .t-ND { background:var(--bg); color:var(--text-muted); }
-    .vacio { padding:40px; text-align:center; color:var(--text-muted); }
+    .t-COMPRA, .t-ND { background:#fdecee; color:#b02a37; } .t-PAGO, .t-NC { background:#e3f4e9; color:#146c43; }
+    .t-AJUSTE { background:#fff4d6; color:#8a6300; } .t-ANULACION { background:var(--bg); color:var(--text-muted); }
+    .vacio { padding:36px; text-align:center; color:var(--text-muted); }
   </style>
 </head>
 
@@ -41,22 +59,22 @@
     <div class="header-bar">
       <div>
         <h2><i class="bi bi-journal-text"></i> Cuenta de proveedores</h2>
-        <span class="subtitle">Lo que se le debe a cada proveedor: sube con cada recepción, baja con cada pago.</span>
+        <span class="subtitle">Facturas a pagar, reclamos abiertos y movimientos de cada proveedor.</span>
       </div>
     </div>
 
-    <div class="layout">
-      <div>
-        <div class="total-deuda"><div class="l">Deuda total con proveedores</div><div class="v" id="totalDeuda">—</div></div>
-        <div class="panel mb-0">
-          <div class="panel-header"><i class="bi bi-truck"></i> Proveedores</div>
-          <div id="listaProv"><div class="vacio">Cargando…</div></div>
-        </div>
-      </div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">Deuda total</div><div class="v" id="kDeuda">—</div></div>
+      <div class="kpi rojo"><div class="l">Vencido</div><div class="v" id="kVencido">—</div></div>
+      <div class="kpi amarillo"><div class="l">Vence esta semana</div><div class="v" id="kSemana">—</div></div>
+    </div>
 
-      <div class="panel mb-0" id="panelDetalle">
-        <div class="vacio"><i class="bi bi-arrow-left"></i> Elegí un proveedor</div>
+    <div class="layout">
+      <div class="panel mb-0">
+        <div class="panel-header"><i class="bi bi-truck"></i> Proveedores</div>
+        <div id="listaProv"><div class="vacio">Cargando…</div></div>
       </div>
+      <div class="panel mb-0" id="panelDetalle"><div class="vacio"><i class="bi bi-arrow-left"></i> Elegí un proveedor</div></div>
     </div>
   </div>
 
@@ -66,8 +84,11 @@
 
     const API = API_BASE + "Compras/";
     const usuario = Auth.getUsuario() || {};
-    const puedePagar = ["Dueño", "Administrador"].indexOf(usuario.Rol) !== -1;
-    let proveedores = [], cuentas = [], actual = null;
+    const esPlata = ["Dueño", "Administrador"].indexOf(usuario.Rol) !== -1;
+    const puedeReclamar = ["Dueño", "Administrador", "Supervisor", "Vendedor"].indexOf(usuario.Rol) !== -1;
+    const puedeResolver = ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
+    let proveedores = [], cuentas = [], actual = null, tab = "facturas";
+    let facturas = [], incidencias = [], movimientos = [];
 
     function escapeHtml(s) {
       if (s === null || s === undefined) return "";
@@ -77,20 +98,29 @@
       return r.text().then(t => { try { const d = JSON.parse(t); return d.Message || d.message || t; } catch { return t; } })
                      .catch(() => "No se pudo completar la operación.");
     }
-    const fmtFecha = f => new Date(f).toLocaleDateString("es-AR");
+    const fmtFecha = f => f ? new Date(f).toLocaleDateString("es-AR") : "—";
+    const fechaLocal = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     const claseSaldo = s => s > 0.005 ? "debe" : (s < -0.005 ? "favor" : "cero");
     const textoSaldo = s => s > 0.005 ? formatearMoneda(s) : (s < -0.005 ? formatearMoneda(-s) + " a favor" : "Al día");
+    const TIPO_INC = { FACTURADO_NO_RECIBIDO: "Facturado, no llegó", DANADO: "En mal estado",
+                       RECIBIDO_NO_FACTURADO: "Llegó sin facturar", NO_PEDIDO: "No estaba pedido" };
+    const prov = () => proveedores.find(x => x.Id === actual);
+
+    /* ================= LISTA ================= */
 
     function cargarSaldos(seleccionar) {
       fetchAuth(API + "CuentasProveedor").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
         proveedores = d || [];
-        const total = proveedores.reduce((a, p) => a + Math.max(0, Number(p.Saldo)), 0);
-        document.getElementById("totalDeuda").textContent = formatearMoneda(total);
+        const sum = k => proveedores.reduce((a, p) => a + Math.max(0, Number(p[k] || 0)), 0);
+        document.getElementById("kDeuda").textContent = formatearMoneda(sum("Saldo"));
+        document.getElementById("kVencido").textContent = formatearMoneda(sum("Vencido"));
+        document.getElementById("kSemana").textContent = formatearMoneda(sum("VenceEstaSemana"));
         document.getElementById("listaProv").innerHTML = proveedores.length ? proveedores.map(p =>
           '<div class="prov' + (actual === p.Id ? ' activo' : '') + '" onclick="elegir(' + p.Id + ')">' +
             '<div><div class="nom">' + escapeHtml(p.RazonSocial) + '</div>' +
-            '<div class="sub">' + (p.PedidosPendientes ? p.PedidosPendientes + ' pedido(s) en camino · ' : '') +
-              (p.UltimoMovimiento ? 'último mov. ' + fmtFecha(p.UltimoMovimiento) : 'sin movimientos') + '</div></div>' +
+              '<div>' + (Number(p.Vencido) > 0 ? '<span class="chip ch-venc">Vencido ' + formatearMoneda(p.Vencido) + '</span> ' : '') +
+                (Number(p.VenceEstaSemana) > 0 ? '<span class="chip ch-semana">Vence esta semana</span> ' : '') +
+                (p.Incidencias ? '<span class="chip ch-rec">' + p.Incidencias + ' reclamo(s)</span>' : '') + '</div></div>' +
             '<div class="saldo ' + claseSaldo(Number(p.Saldo)) + '">' + textoSaldo(Number(p.Saldo)) + '</div>' +
           '</div>').join("") : '<div class="vacio">No hay proveedores activos.</div>';
         if (seleccionar) elegir(seleccionar);
@@ -99,97 +129,335 @@
 
     function elegir(id) {
       actual = id;
-      document.querySelectorAll(".prov").forEach(x => x.classList.remove("activo"));
-      const p = proveedores.find(x => x.Id === id);
-      if (!p) return;
-      document.querySelectorAll(".prov")[proveedores.indexOf(p)].classList.add("activo");
+      document.querySelectorAll(".prov").forEach((x, i) => x.classList.toggle("activo", proveedores[i] && proveedores[i].Id === id));
+      Promise.all([
+        fetchAuth(API + "Facturas?idProveedor=" + id).then(r => r.ok ? r.json() : []),
+        fetchAuth(API + "Incidencias?idProveedor=" + id).then(r => r.ok ? r.json() : []),
+        fetchAuth(API + "CuentasProveedor/" + id).then(r => r.ok ? r.json() : [])
+      ]).then(([f, i, m]) => { facturas = f || []; incidencias = i || []; movimientos = m || []; pintarDetalle(); });
+    }
 
-      fetchAuth(API + "CuentasProveedor/" + id).then(r => r.ok ? r.json() : Promise.reject()).then(movs => {
-        const saldo = Number(p.Saldo);
-        let html =
-          '<div class="panel-body"><div class="cab-prov">' +
-            '<div><div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">' + escapeHtml(p.RazonSocial) + '</div>' +
-            '<div class="saldo-grande ' + claseSaldo(saldo) + '">' + textoSaldo(saldo) + '</div></div>' +
-            '<div class="d-flex gap-2">' +
-              (puedePagar ? '<button class="btn btn-success" onclick="pagar()"><i class="bi bi-cash-coin"></i> Registrar pago</button>' +
-                            '<button class="btn btn-outline-secondary" onclick="ajuste()" title="Saldo inicial o corrección">Ajuste</button>' : '') +
-            '</div>' +
-          '</div></div>';
+    /* ================= DETALLE ================= */
 
-        if (!movs || !movs.length) {
-          html += '<div class="vacio">Sin movimientos. Las recepciones de mercadería van a aparecer acá como deuda.</div>';
-        } else {
-          html += '<div class="table-responsive"><table class="table mov mb-0"><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th>' +
-                  '<th class="text-end">Debe</th><th class="text-end">Pagado</th><th class="text-end">Saldo</th><th></th></tr></thead><tbody>' +
-            movs.map(m => {
-              const monto = Number(m.Monto);
-              return '<tr><td>' + fmtFecha(m.Fecha) + '</td>' +
-                '<td><span class="tipo t-' + m.Tipo + '">' + m.Tipo + '</span></td>' +
-                '<td>' + escapeHtml(m.Descripcion) + '<div style="font-size:0.72rem;color:var(--text-muted);">' + escapeHtml(m.Usuario || "") + '</div></td>' +
-                '<td class="text-end">' + (monto > 0 ? formatearMoneda(monto) : '') + '</td>' +
-                '<td class="text-end">' + (monto < 0 ? formatearMoneda(-monto) : '') + '</td>' +
-                '<td class="text-end"><strong>' + formatearMoneda(m.SaldoAcumulado) + '</strong></td>' +
-                '<td class="text-end" style="white-space:nowrap;">' +
-                  (m.IdAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + m.IdAdjunto + ')" title="Ver factura"><i class="bi bi-paperclip"></i></button> ' : '') +
-                  (puedePagar && m.Tipo === "PAGO" && m.IdPagoProveedor ? '<button class="btn btn-sm btn-outline-danger" onclick="anularPago(' + m.IdPagoProveedor + ')">Anular</button>' : '') +
-                '</td></tr>';
-            }).join("") + '</tbody></table></div>';
+    function pintarDetalle() {
+      const p = prov(); if (!p) return;
+      const saldo = Number(p.Saldo);
+      let html =
+        '<div class="panel-body"><div class="cab-prov">' +
+          '<div><div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;">' + escapeHtml(p.RazonSocial) + '</div>' +
+            '<div class="saldo-grande ' + claseSaldo(saldo) + '">' + textoSaldo(saldo) + '</div>' +
+            '<div class="plazo">Paga a ' + p.DiasPago + ' días de la factura' + (esPlata ? ' · <a href="#" onclick="cambiarPlazo();return false;">cambiar</a>' : '') +
+              (Number(p.ImporteAReclamar) > 0 ? ' · ' + formatearMoneda(p.ImporteAReclamar) + ' a acreditar por reclamos' : '') + '</div></div>' +
+          '<div class="d-flex gap-2 flex-wrap">' +
+            (esPlata ? '<button class="btn btn-success" onclick="pagar()"><i class="bi bi-cash-coin"></i> Pagar</button>' +
+                       '<button class="btn btn-outline-primary" onclick="notaCredito()"><i class="bi bi-receipt-cutoff"></i> Nota de crédito</button>' +
+                       '<button class="btn btn-outline-secondary" onclick="saldoInicial()" title="Cargar lo que ya se debía, desde el resumen del proveedor">Saldo inicial</button>' +
+                       '<button class="btn btn-outline-secondary" onclick="ajuste()" title="Corrección puntual">Ajuste</button>' : '') +
+          '</div></div></div>' +
+        '<div class="tabs-p">' +
+          tabBtn("facturas", "Facturas a pagar", facturas.length) +
+          tabBtn("reclamos", "Reclamos", incidencias.length) +
+          tabBtn("movimientos", "Movimientos", movimientos.length) +
+        '</div><div id="tabCuerpo"></div>';
+      document.getElementById("panelDetalle").innerHTML = html;
+      pintarTab();
+    }
+
+    function tabBtn(k, t, n) {
+      return '<button class="tab-p' + (tab === k ? ' activo' : '') + '" onclick="tab=\'' + k + '\';pintarDetalle()">' + t + '<span class="cnt">' + n + '</span></button>';
+    }
+
+    function pintarTab() {
+      const c = document.getElementById("tabCuerpo");
+      if (tab === "facturas") {
+        if (!facturas.length) { c.innerHTML = '<div class="vacio">No hay facturas impagas.</div>'; return; }
+        c.innerHTML = '<div class="table-responsive"><table class="table tabla mb-0"><thead><tr><th>Comprobante</th><th>Fecha</th><th class="text-center">Días</th><th>Vence</th><th class="text-end">Importe</th><th class="text-end">Abonado</th><th class="text-end">Falta pagar</th><th></th></tr></thead><tbody>' +
+          facturas.map(f => {
+            const d = f.DiasParaVencer;
+            const v = d < 0 ? '<span class="venc v-vencida">Vencida hace ' + (-d) + ' día(s)</span>'
+                    : d <= 7 ? '<span class="venc v-pronto">' + (d === 0 ? 'Vence hoy' : 'En ' + d + ' día(s)') + '</span>'
+                    : '<span class="venc v-ok">En ' + d + ' días</span>';
+            return '<tr><td>' + escapeHtml(f.Documento) + (f.IdPedido ? '<div class="sub">Pedido #' + String(f.IdPedido).padStart(4, "0") + '</div>' : '') + '</td>' +
+              '<td>' + fmtFecha(f.FechaDoc) + '</td>' +
+              '<td class="text-center">' + Math.max(0, prov().DiasPago - d) + '</td>' +
+              '<td>' + fmtFecha(f.Vencimiento) + '<div>' + v + '</div></td>' +
+              '<td class="text-end">' + formatearMoneda(f.Importe) + '</td>' +
+              '<td class="text-end" style="color:#146c43;">' + (Number(f.Importe) - Number(f.Pendiente) > 0.005 ? formatearMoneda(Number(f.Importe) - Number(f.Pendiente)) : '') + '</td>' +
+              '<td class="text-end"><strong>' + formatearMoneda(f.Pendiente) + '</strong></td>' +
+              '<td class="text-end">' + (f.IdAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + f.IdAdjunto + ')" title="Ver factura"><i class="bi bi-paperclip"></i></button>' : '') + '</td></tr>';
+          }).join("") + '</tbody></table></div>' +
+          '<div class="sub p-3"><i class="bi bi-info-circle"></i> Los pagos cancelan primero las facturas más viejas. Los reclamos no se descuentan: la nota de crédito se toma cuando llega.</div>';
+        return;
+      }
+      if (tab === "reclamos") {
+        if (!incidencias.length) { c.innerHTML = '<div class="vacio">No hay reclamos abiertos con este proveedor.</div>'; return; }
+        const hayAbiertas = incidencias.some(i => i.Estado === "ABIERTA");
+        c.innerHTML =
+          '<div class="barra-acc">' +
+            (puedeReclamar && hayAbiertas ? '<button class="btn btn-sm btn-primary" onclick="entregarViajante()"><i class="bi bi-person-badge"></i> Entregar al viajante</button>' : '') +
+            (esPlata ? '<button class="btn btn-sm btn-outline-primary" onclick="notaCredito()"><i class="bi bi-receipt-cutoff"></i> Llegó la nota de crédito</button>' : '') +
+            '<span class="sub ms-auto">Marcá los reclamos y elegí qué pasó</span></div>' +
+          '<div class="table-responsive"><table class="table tabla mb-0"><thead><tr><th style="width:30px;"><input type="checkbox" id="chkTodos"></th><th>Qué pasó</th><th>Repuesto</th><th class="text-center">Cant.</th><th class="text-end">Importe</th><th>Estado</th><th></th></tr></thead><tbody>' +
+          incidencias.map(i =>
+            '<tr><td><input type="checkbox" class="chk-inc" value="' + i.Id + '"></td>' +
+              '<td><span class="tipo-inc ti-' + i.Tipo + '">' + TIPO_INC[i.Tipo] + '</span><div class="sub">' + escapeHtml(i.Comprobante) + ' · ' + fmtFecha(i.Fecha) + '</div></td>' +
+              '<td>' + (i.Codigo ? '<strong>' + escapeHtml(i.Codigo) + '</strong> ' : '') + escapeHtml(i.Descripcion) + '</td>' +
+              '<td class="text-center">' + i.Cantidad + '</td>' +
+              '<td class="text-end">' + formatearMoneda(i.Importe) + '</td>' +
+              '<td><span class="est-inc" style="color:' + (i.Estado === "EN_RECLAMO" ? '#6B21A8' : '#92400E') + ';">' +
+                (i.Estado === "EN_RECLAMO" ? 'En reclamo<div class="sub">Recibo ' + escapeHtml(i.NumeroConstancia) + ' · ' + fmtFecha(i.FechaReclamo) + '</div>'
+                                           : (i.Tipo === "DANADO" ? 'Apartado en el local' : 'Abierto')) + '</span></td>' +
+              '<td class="text-end">' + (puedeResolver ? '<div class="dropdown"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Resolver</button><ul class="dropdown-menu dropdown-menu-end">' + opcionesResolver(i) + '</ul></div>' : '') + '</td></tr>'
+          ).join("") + '</tbody></table></div>';
+        const t = document.getElementById("chkTodos");
+        if (t) t.addEventListener("change", () => document.querySelectorAll(".chk-inc").forEach(x => x.checked = t.checked));
+        return;
+      }
+      // Movimientos
+      if (!movimientos.length) { c.innerHTML = '<div class="vacio">Sin movimientos.</div>'; return; }
+      c.innerHTML = '<div class="table-responsive"><table class="table tabla mb-0"><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="text-end">Debe</th><th class="text-end">Haber</th><th class="text-end">Saldo</th><th></th></tr></thead><tbody>' +
+        movimientos.map(m => {
+          const monto = Number(m.Monto);
+          return '<tr><td>' + fmtFecha(m.Fecha) + '</td><td><span class="tipo t-' + m.Tipo + '">' + m.Tipo + '</span></td>' +
+            '<td>' + escapeHtml(m.Descripcion) + '<div class="sub">' + escapeHtml(m.Usuario || "") + '</div></td>' +
+            '<td class="text-end">' + (monto > 0 ? formatearMoneda(monto) : '') + '</td>' +
+            '<td class="text-end">' + (monto < 0 ? formatearMoneda(-monto) : '') + '</td>' +
+            '<td class="text-end"><strong>' + formatearMoneda(m.SaldoAcumulado) + '</strong></td>' +
+            '<td class="text-end" style="white-space:nowrap;">' +
+              (m.IdAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + m.IdAdjunto + ')"><i class="bi bi-paperclip"></i></button> ' : '') +
+              (esPlata && m.Tipo === "PAGO" && m.IdPagoProveedor ? '<button class="btn btn-sm btn-outline-danger" onclick="anularPago(' + m.IdPagoProveedor + ')">Anular</button>' : '') +
+            '</td></tr>';
+        }).join("") + '</tbody></table></div>';
+    }
+
+    function opcionesResolver(i) {
+      const op = (accion, txt) => '<li><a class="dropdown-item" href="#" onclick="resolver(' + i.Id + ',\'' + accion + '\');return false;">' + txt + '</a></li>';
+      let h = "";
+      if (i.Tipo === "FACTURADO_NO_RECIBIDO") h += op("LLEGO_DESPUES", "Llegó en otra entrega");
+      if (i.Tipo === "DANADO") h += op("LLEGO_DESPUES", "Llegó el reemplazo");
+      if (i.Tipo === "RECIBIDO_NO_FACTURADO" || i.Tipo === "NO_PEDIDO") {
+        if (esPlata) h += op("FACTURADO", "Llegó la factura");
+        h += op("DEVUELTO", "Se devolvió");
+      }
+      if (i.Tipo === "NO_PEDIDO") h += op("ACEPTADO", "Nos lo quedamos");
+      h += '<li><hr class="dropdown-divider"></li>' + op("RECHAZADO", "El proveedor lo rechazó");
+      return h;
+    }
+
+    function marcadas() { return Array.from(document.querySelectorAll(".chk-inc:checked")).map(x => parseInt(x.value, 10)); }
+
+    /* ================= ACCIONES ================= */
+
+    function entregarViajante() {
+      let ids = marcadas().filter(id => (incidencias.find(i => i.Id === id) || {}).Estado === "ABIERTA");
+      if (!ids.length) ids = incidencias.filter(i => i.Estado === "ABIERTA").map(i => i.Id);
+      const lista = incidencias.filter(i => ids.includes(i.Id));
+      Swal.fire({
+        title: "Entregar al viajante",
+        html: '<div class="text-start" style="font-size:0.88rem;">' + lista.map(i => '• ' + i.Cantidad + ' × ' + escapeHtml(i.Descripcion) + ' <small class="text-muted">(' + TIPO_INC[i.Tipo] + ')</small>').join("<br>") +
+              '<div class="mt-3">Número del recibo que deja el viajante:</div></div>',
+        input: "text", inputPlaceholder: "N° de recibo", showCancelButton: true,
+        confirmButtonText: "Registrar entrega", cancelButtonText: "Cancelar",
+        inputValidator: v => (!v || !v.trim()) ? "Cargá el número del recibo." : null
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Incidencias/Reclamar", { method: "POST", body: JSON.stringify({ Ids: ids, NumeroConstancia: r.value.trim() }) })
+          .then(x => x.ok ? (Swal.fire({ icon: "success", title: "Reclamo iniciado", text: "Queda en reclamo hasta que llegue la nota de crédito.", timer: 2200, showConfirmButton: false }), cargarSaldos(actual))
+                          : leerError(x).then(m => Swal.fire("No se pudo", m, "error")));
+      });
+    }
+
+    function notaCredito() {
+      tab = "reclamos";
+      const sel = marcadas();
+      const candidatos = incidencias.filter(i => i.Tipo === "FACTURADO_NO_RECIBIDO" || i.Tipo === "DANADO");
+      const preMarcadas = sel.length ? sel : candidatos.filter(i => i.Estado === "EN_RECLAMO").map(i => i.Id);
+      Swal.fire({
+        title: "Nota de crédito de " + prov().RazonSocial, width: 620,
+        html: '<div class="text-start">' +
+          '<div class="row g-2"><div class="col-6"><label class="form-label mb-1">Número</label><input id="ncNum" class="form-control"></div>' +
+          '<div class="col-6"><label class="form-label mb-1">Fecha</label><input type="date" id="ncFecha" class="form-control" value="' + fechaLocal(new Date()) + '"></div>' +
+          '<div class="col-12"><label class="form-label mb-1">Importe</label><div class="input-group"><span class="input-group-text">$</span><input id="ncImp" inputmode="decimal" class="form-control text-end"></div></div></div>' +
+          (candidatos.length ? '<div class="mt-3" style="font-size:0.85rem;"><strong>¿Qué reclamos cubre?</strong>' + candidatos.map(i =>
+            '<div class="form-check"><input class="form-check-input nc-inc" type="checkbox" value="' + i.Id + '" id="nc' + i.Id + '"' + (preMarcadas.includes(i.Id) ? ' checked' : '') + '>' +
+            '<label class="form-check-label" for="nc' + i.Id + '">' + i.Cantidad + ' × ' + escapeHtml(i.Descripcion) + ' · ' + formatearMoneda(i.Importe) + '</label></div>').join("") + '</div>' : '') +
+          '<div class="sub mt-2">Se registra el importe que dice la nota, aunque no coincida con lo reclamado.</div></div>',
+        showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar",
+        didOpen: () => {
+          activarInputPrecio("ncImp");
+          const sumar = () => { const t = Array.from(document.querySelectorAll(".nc-inc:checked")).reduce((a, x) => a + Number((incidencias.find(i => i.Id == x.value) || {}).Importe || 0), 0); if (t) document.getElementById("ncImp").value = numeroAPrecio(t); };
+          document.querySelectorAll(".nc-inc").forEach(x => x.addEventListener("change", sumar)); sumar();
+        },
+        preConfirm: () => {
+          const num = document.getElementById("ncNum").value.trim(), imp = precioANumero(document.getElementById("ncImp").value);
+          if (!num) { Swal.showValidationMessage("Cargá el número."); return false; }
+          if (!(imp > 0)) { Swal.showValidationMessage("Cargá el importe."); return false; }
+          return { IdProveedor: actual, Numero: num, Fecha: document.getElementById("ncFecha").value, Importe: imp,
+                   Incidencias: Array.from(document.querySelectorAll(".nc-inc:checked")).map(x => parseInt(x.value, 10)) };
         }
-        document.getElementById("panelDetalle").innerHTML = html;
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "NotasCredito", { method: "POST", body: JSON.stringify(r.value) })
+          .then(x => x.ok ? (Swal.fire({ icon: "success", title: "Nota de crédito registrada", timer: 1500, showConfirmButton: false }), cargarSaldos(actual))
+                          : leerError(x).then(m => Swal.fire("No se pudo", m, "error")));
+      });
+    }
+
+    function resolver(id, accion) {
+      const i = incidencias.find(x => x.Id === id);
+      const textos = {
+        LLEGO_DESPUES: ["¿Llegó?", i.Cantidad + " × " + i.Descripcion + " suman al stock, sin deuda nueva: ya estaban facturados."],
+        DEVUELTO: ["¿Se devolvió?", i.Cantidad + " × " + i.Descripcion + " salen del stock."],
+        ACEPTADO: ["¿Nos lo quedamos?", "Queda en stock. Si el proveedor lo factura, va a llegar como una factura más."]
+      };
+      let p;
+      if (accion === "FACTURADO")
+        p = Swal.fire({ title: "Llegó la factura", html: '<input id="fNum" class="form-control mb-2" placeholder="Número de factura"><div class="input-group"><span class="input-group-text">$</span><input id="fImp" inputmode="decimal" class="form-control text-end" value="' + numeroAPrecio(i.Importe) + '"></div>',
+          showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar", didOpen: () => activarInputPrecio("fImp"),
+          preConfirm: () => { const n = document.getElementById("fNum").value.trim(), m = precioANumero(document.getElementById("fImp").value);
+            if (!n || !(m > 0)) { Swal.showValidationMessage("Cargá número e importe."); return false; } return { Numero: n, Importe: m }; } });
+      else if (accion === "RECHAZADO")
+        p = Swal.fire({ title: "El proveedor lo rechazó", input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)", showCancelButton: true,
+          confirmButtonText: "Registrar", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
+          inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null })
+          .then(r => r.isConfirmed ? { isConfirmed: true, value: { Motivo: r.value.trim() } } : r);
+      else
+        p = Swal.fire({ title: textos[accion][0], text: textos[accion][1], icon: "question", showCancelButton: true, confirmButtonText: "Sí", cancelButtonText: "Cancelar" })
+          .then(r => r.isConfirmed ? { isConfirmed: true, value: {} } : r);
+
+      p.then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Incidencias/" + id + "/Resolver", { method: "POST", body: JSON.stringify(Object.assign({ Accion: accion }, r.value)) })
+          .then(x => x.ok ? cargarSaldos(actual) : leerError(x).then(m => Swal.fire("No se pudo", m, "error")));
       });
     }
 
     function pagar() {
-      const p = proveedores.find(x => x.Id === actual);
+      const p = prov();
+      const venc = facturas.filter(f => f.DiasParaVencer <= 7).reduce((a, f) => a + Number(f.Pendiente), 0);
       const saldo = Math.max(0, Number(p.Saldo));
       Swal.fire({
         title: "Pago a " + p.RazonSocial,
-        html:
-          '<div class="text-start">' +
-          '<label class="form-label">Importe</label>' +
-          '<div class="input-group mb-3"><span class="input-group-text">$</span><input type="text" inputmode="decimal" id="pImporte" class="form-control text-end"></div>' +
-          '<label class="form-label">Sale de</label>' +
-          '<select id="pCuenta" class="form-select mb-3">' + cuentas.map(c => '<option value="' + c.Id + '">' + escapeHtml(c.Nombre) + '</option>').join("") + '</select>' +
-          '<label class="form-label">Referencia (opcional)</label>' +
-          '<input type="text" id="pRef" class="form-control" maxlength="100" placeholder="N° de transferencia o recibo">' +
-          '<div class="mt-2" style="font-size:0.8rem;color:#6c757d;">Deuda actual: ' + formatearMoneda(saldo) + '</div></div>',
+        html: '<div class="text-start">' +
+          (venc > 0 ? '<div class="sub mb-2">Vencido o por vencer esta semana: <strong>' + formatearMoneda(venc) + '</strong></div>' : '') +
+          '<label class="form-label">Importe</label><div class="input-group mb-3"><span class="input-group-text">$</span><input type="text" inputmode="decimal" id="pImporte" class="form-control text-end"></div>' +
+          '<label class="form-label">Sale de</label><select id="pCuenta" class="form-select mb-3">' + cuentas.map(c => '<option value="' + c.Id + '">' + escapeHtml(c.Nombre) + '</option>').join("") + '</select>' +
+          '<label class="form-label">Referencia (opcional)</label><input type="text" id="pRef" class="form-control" maxlength="100" placeholder="N° de transferencia o recibo"></div>',
         showCancelButton: true, confirmButtonText: "Registrar pago", cancelButtonText: "Cancelar", confirmButtonColor: "#28a745",
         didOpen: () => {
           activarInputPrecio("pImporte");
-          if (saldo > 0) document.getElementById("pImporte").value = numeroAPrecio(saldo);
-          // Por defecto Mercado Pago: es por donde sale casi todo
-          const mp = cuentas.find(c => !c.EsCaja);
-          if (mp) document.getElementById("pCuenta").value = mp.Id;
+          document.getElementById("pImporte").value = numeroAPrecio(venc > 0 ? venc : saldo);
+          const mp = cuentas.find(c => !c.EsCaja); if (mp) document.getElementById("pCuenta").value = mp.Id;
         },
         preConfirm: () => {
           const imp = precioANumero(document.getElementById("pImporte").value);
           if (!(imp > 0)) { Swal.showValidationMessage("Ingresá un importe mayor a cero."); return false; }
-          return { IdProveedor: actual, IdCuentaFinanciera: parseInt(document.getElementById("pCuenta").value, 10),
-                   Importe: imp, Referencia: document.getElementById("pRef").value.trim() || null };
+          return { IdProveedor: actual, IdCuentaFinanciera: parseInt(document.getElementById("pCuenta").value, 10), Importe: imp, Referencia: document.getElementById("pRef").value.trim() || null };
         }
       }).then(r => {
         if (!r.isConfirmed) return;
-        fetchAuth(API + "Pagos", { method: "POST", body: JSON.stringify(r.value) }).then(x => {
-          if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo pagar", m, "error"));
-          Swal.fire({ icon: "success", title: "Pago registrado", timer: 1400, showConfirmButton: false });
-          cargarSaldos(actual);
-        });
+        fetchAuth(API + "Pagos", { method: "POST", body: JSON.stringify(r.value) })
+          .then(x => x.ok ? (Swal.fire({ icon: "success", title: "Pago registrado", timer: 1400, showConfirmButton: false }), cargarSaldos(actual))
+                          : leerError(x).then(m => Swal.fire("No se pudo pagar", m, "error")));
+      });
+    }
+
+    function cambiarPlazo() {
+      Swal.fire({ title: "Plazo de pago", input: "number", inputValue: prov().DiasPago, inputLabel: "Días desde la fecha de la factura",
+        showCancelButton: true, confirmButtonText: "Guardar", cancelButtonText: "Cancelar",
+        inputValidator: v => (v === "" || v < 0 || v > 180) ? "Entre 0 y 180 días." : null
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Proveedor/" + actual + "/DiasPago", { method: "POST", body: JSON.stringify({ DiasPago: parseInt(r.value, 10) }) })
+          .then(x => x.ok ? cargarSaldos(actual) : leerError(x).then(m => Swal.fire("No se pudo", m, "error")));
+      });
+    }
+
+    /* ================= SALDO INICIAL =================
+       Se pega el resumen de cuenta que manda el proveedor. Se toma de
+       cada renglon la fecha, el comprobante y lo PENDIENTE: lo que ya
+       abonaste no se vuelve a cargar. */
+
+    function aNumero(t) {
+      if (!t) return null;
+      let s = String(t).replace(/\$/g, "").replace(/\s/g, "");
+      const neg = s.indexOf("-") !== -1;
+      s = s.replace(/-/g, "");
+      if (s.indexOf(",") !== -1) s = s.replace(/\./g, "").replace(",", ".");
+      const n = parseFloat(s);
+      return isNaN(n) ? null : (neg ? -n : n);
+    }
+
+    function interpretarResumen(texto) {
+      const filas = [];
+      texto.split(/\r?\n/).forEach(linea => {
+        const m = linea.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})/);
+        if (!m) return;                                   // encabezados, totales, lineas vacias
+        const fecha = m[3] + "-" + m[2] + "-" + m[1];
+        let comprobante, pendiente;
+        const celdas = linea.split("\t").map(c => c.trim()).filter(c => c !== "");
+        if (celdas.length >= 5) {
+          // Fecha | Comprobante | Total | Abonado | Pendiente | Acumulado | Dias
+          comprobante = celdas[1]; pendiente = aNumero(celdas[4]);
+        } else {
+          // Sin tabulaciones: el texto entre la fecha y el primer importe, y el tercer importe
+          const montos = linea.match(/-?\$?\s?-?[\d.]+,\d{2}/g) || [];
+          const sinFecha = linea.replace(/^\s*\d{2}\/\d{2}\/\d{4}(\s+\d{2}:\d{2})?/, "");
+          const iniMonto = sinFecha.search(/-?\$?\s?-?[\d.]+,\d{2}/);
+          comprobante = (iniMonto > 0 ? sinFecha.slice(0, iniMonto) : sinFecha).trim();
+          pendiente = aNumero(montos.length >= 3 ? montos[2] : montos[montos.length - 1]);
+        }
+        if (comprobante && pendiente) filas.push({ Fecha: fecha, Comprobante: comprobante, Importe: pendiente });
+      });
+      return filas;
+    }
+
+    function saldoInicial() {
+      const p = prov();
+      Swal.fire({
+        title: "Saldo inicial de " + p.RazonSocial, width: 760,
+        html: '<div class="text-start" style="font-size:0.86rem;">Copiá el resumen de cuenta que manda el proveedor —desde la fecha hasta el último comprobante— y pegalo acá. ' +
+              'Se carga lo <strong>pendiente</strong> de cada comprobante, con su fecha, para que cada uno venza cuando corresponde.</div>' +
+              '<textarea id="siTexto" class="form-control mt-2" rows="7" style="font-family:monospace;font-size:0.75rem;" placeholder="07/09/2026 00:00\tPRESUPUESTO 00042112\t$283.293,13\t-$144.301,00\t$138.992,13 …"></textarea>' +
+              '<div id="siVista" class="mt-2" style="max-height:260px;overflow:auto;"></div>',
+        showCancelButton: true, confirmButtonText: "Cargar", cancelButtonText: "Cancelar",
+        didOpen: () => {
+          const ta = document.getElementById("siTexto");
+          ta.addEventListener("input", () => {
+            const f = interpretarResumen(ta.value);
+            const tot = f.reduce((a, x) => a + x.Importe, 0);
+            document.getElementById("siVista").innerHTML = !f.length ? '' :
+              '<table class="table table-sm mb-0" style="font-size:0.78rem;"><thead><tr><th>Fecha</th><th>Comprobante</th><th class="text-end">Pendiente</th></tr></thead><tbody>' +
+              f.map(x => '<tr><td>' + x.Fecha.split("-").reverse().join("/") + '</td><td>' + escapeHtml(x.Comprobante) + '</td><td class="text-end"' +
+                         (x.Importe < 0 ? ' style="color:#146c43;"' : '') + '>' + formatearMoneda(x.Importe) + '</td></tr>').join("") +
+              '</tbody><tfoot><tr><th colspan="2">' + f.length + ' comprobantes</th><th class="text-end">' + formatearMoneda(tot) + '</th></tr></tfoot></table>';
+          });
+        },
+        preConfirm: () => {
+          const f = interpretarResumen(document.getElementById("siTexto").value);
+          if (!f.length) { Swal.showValidationMessage("No se encontraron renglones con fecha e importe."); return false; }
+          return f;
+        }
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "CuentasProveedor/" + actual + "/SaldoInicial", { method: "POST", body: JSON.stringify(r.value) })
+          .then(x => x.ok ? x.json().then(d => { Swal.fire({ icon: "success", title: "Saldo inicial cargado",
+                              text: d.Cargados + " comprobantes por " + formatearMoneda(d.Total) + "." }); tab = "facturas"; cargarSaldos(actual); })
+                          : leerError(x).then(m => Swal.fire("No se pudo cargar", m, "error")));
       });
     }
 
     function ajuste() {
-      const p = proveedores.find(x => x.Id === actual);
       Swal.fire({
         title: "Ajuste de cuenta",
         html: '<div class="text-start" style="font-size:0.88rem;">Para cargar lo que ya se le debía antes de usar el sistema, o corregir un error. Queda auditado.</div>' +
               '<select id="aSentido" class="form-select mt-3"><option value="1">Le debemos más</option><option value="-1">Le debemos menos</option></select>' +
               '<div class="input-group mt-2"><span class="input-group-text">$</span><input type="text" inputmode="decimal" id="aImporte" class="form-control text-end"></div>' +
-              '<input type="text" id="aMotivo" class="form-control mt-2" placeholder="Motivo (ej: saldo al 05/10 según resumen del proveedor)">',
+              '<input type="text" id="aMotivo" class="form-control mt-2" placeholder="Motivo (ej: saldo al 06/10 según resumen del proveedor)">',
         showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar",
         didOpen: () => activarInputPrecio("aImporte"),
         preConfirm: () => {
-          const imp = precioANumero(document.getElementById("aImporte").value);
-          const mot = document.getElementById("aMotivo").value.trim();
+          const imp = precioANumero(document.getElementById("aImporte").value), mot = document.getElementById("aMotivo").value.trim();
           if (!(imp > 0)) { Swal.showValidationMessage("Ingresá un importe."); return false; }
           if (mot.length < 10) { Swal.showValidationMessage("El motivo necesita al menos 10 caracteres."); return false; }
           return { Monto: imp * parseInt(document.getElementById("aSentido").value, 10), Motivo: mot };
@@ -202,8 +470,7 @@
     }
 
     function anularPago(id) {
-      Swal.fire({
-        title: "Anular pago", text: "El dinero vuelve a la cuenta y la deuda sube de nuevo. El pago original no se borra.",
+      Swal.fire({ title: "Anular pago", text: "El dinero vuelve a la cuenta y la deuda sube de nuevo. El pago original no se borra.",
         input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)", showCancelButton: true,
         confirmButtonText: "Anular", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
         inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null
@@ -217,14 +484,15 @@
     function verAdjunto(id) {
       fetchAuth(API_BASE + "Finanzas/Adjunto/" + id).then(r => r.ok ? r.blob() : Promise.reject())
         .then(b => window.open(URL.createObjectURL(b), "_blank"))
-        .catch(() => Swal.fire("No se pudo abrir", "La factura no está disponible.", "error"));
+        .catch(() => Swal.fire("No se pudo abrir", "El comprobante no está disponible.", "error"));
     }
 
     window.onload = function () {
-      fetchAuth(API_BASE + "Finanzas/Cuentas").then(r => r.ok ? r.json() : []).then(c => cuentas = c || []);
+      if (esPlata) fetchAuth(API_BASE + "Finanzas/Cuentas").then(r => r.ok ? r.json() : []).then(c => cuentas = c || []);
       const id = parseInt(new URLSearchParams(location.search).get("id"), 10);
       cargarSaldos(id || null);
     };
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

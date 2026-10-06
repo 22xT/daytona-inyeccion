@@ -59,7 +59,7 @@
         { key: 'pedidos', label: 'Listado de Pedidos', icon: 'bi-clipboard-data', href: 'ListadoPedido.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'cuenta-proveedores', label: 'Cuenta de proveedores', icon: 'bi-journal-text', href: 'CuentaProveedores.html',
-          roles: ['Dueño', 'Administrador', 'Analista'] },
+          roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] },
         { key: 'proveedores', label: 'Proveedores', icon: 'bi-shop', href: 'ProveedoresListado.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'catalogo-prov', label: 'Catálogo de Proveedores', icon: 'bi-search', href: 'CatalogoProveedores.html',

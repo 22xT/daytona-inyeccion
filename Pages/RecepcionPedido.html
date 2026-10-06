@@ -17,28 +17,56 @@
     .estado-ped { font-size:0.78rem; font-weight:700; border-radius:8px; padding:3px 10px; }
     .ep-1 { background:#fff4d6; color:#8a6300; } .ep-2 { background:#e3f4e9; color:#146c43; } .ep-3 { background:var(--bg); color:var(--text-muted); }
 
-    .archivo-box { border:2px dashed var(--border); border-radius:10px; padding:12px; text-align:center; cursor:pointer; transition:0.12s; }
+    /* Los dos pasos */
+    .pasos { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+    .paso { flex:1 1 220px; border:1px solid var(--border); border-radius:10px; padding:10px 14px; background:#fff; display:flex; gap:10px; align-items:center; }
+    .paso .n { width:28px; height:28px; border-radius:50%; background:var(--bg); color:var(--text-muted); font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .paso.activo { border-color:var(--navy); box-shadow:0 0 0 1px var(--navy) inset; }
+    .paso.activo .n { background:var(--navy); color:#fff; }
+    .paso.hecho .n { background:#166534; color:#fff; }
+    .paso .t { font-weight:700; color:var(--navy); font-size:0.9rem; }
+    .paso .d { font-size:0.76rem; color:var(--text-muted); }
+
+    .archivo-box { border:2px dashed var(--border); border-radius:10px; padding:12px; text-align:center; cursor:pointer; }
     .archivo-box:hover { border-color:var(--nav-accent); background:var(--nav-accent-soft); }
     .archivo-box.cargado { border-style:solid; border-color:#146c43; background:#eaf6ee; }
     .archivo-box i { font-size:1.5rem; color:var(--text-muted); }
     .archivo-box.cargado i { color:#146c43; }
+    .btn-leer { margin-top:8px; width:100%; border:none; border-radius:9px; padding:8px 10px; font-weight:700; font-size:0.85rem;
+                background:linear-gradient(90deg, #1F3864, #2E5496); color:#fff; display:none; }
+    .btn-leer.visible { display:block; } .btn-leer:disabled { opacity:0.6; }
 
-    .tabla-ren td, .tabla-ren th { vertical-align:middle; font-size:0.86rem; }
-    .tabla-ren th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
-    .tabla-ren input { text-align:right; }
-    .tabla-ren .cant { width:80px; }
-    .tabla-ren .costo { width:130px; }
-    .tabla-ren tr.completo td { opacity:0.45; }
+    .tabla-r td, .tabla-r th { vertical-align:middle; font-size:0.86rem; }
+    .tabla-r th { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); white-space:nowrap; }
+    .tabla-r input.n { width:76px; text-align:right; }
+    .tabla-r input.c { width:120px; text-align:right; }
     .codigo { font-family:'Courier New', monospace; font-weight:700; color:#2c3e50; font-size:0.8rem; }
     .num { text-align:center; }
-    .pend { font-weight:800; color:#8a6300; }
+    tr.leido td { background:#F5F9FF; }
+    tr.extra td { background:#FFFBEF; }
+    .sub { font-size:0.72rem; color:var(--text-muted); }
+
+    .res { font-size:0.7rem; font-weight:700; border-radius:7px; padding:2px 8px; white-space:nowrap; display:inline-block; margin:1px 0; }
+    .r-ok { background:#DCFCE7; color:#166534; }
+    .r-falta { background:#FEE2E2; color:#991B1B; }
+    .r-sobra { background:#E0EAFF; color:#1E40AF; }
+    .r-roto { background:#FEF3C7; color:#92400E; }
+    .r-nopedido { background:#F3E8FF; color:#6B21A8; }
+    .r-noid { background:#F3F4F6; color:#374151; }
 
     .totales { display:flex; gap:28px; justify-content:flex-end; flex-wrap:wrap; padding:12px 16px; background:var(--bg-soft); border-top:1px solid var(--border); }
     .totales .l { font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; }
     .totales .v { font-size:1.15rem; font-weight:800; color:var(--navy); }
-    .aviso-dif { font-size:0.8rem; color:#8a6300; }
+    .aviso { font-size:0.84rem; border-radius:9px; padding:10px 14px; margin-bottom:12px; }
+    .aviso-info { background:#E8F1FF; color:#0b3f85; }
+    .aviso-warn { background:#FFF4D6; color:#6b4d00; }
+    .incid-resumen { padding:12px 16px; border-top:1px solid var(--border); display:none; }
+    .incid-resumen.visible { display:block; }
+    .incid-resumen li { font-size:0.86rem; }
     .previas td { font-size:0.84rem; vertical-align:middle; }
     tr.anulada td { opacity:0.5; text-decoration:line-through; }
+    .est-rec { font-size:0.7rem; font-weight:700; border-radius:7px; padding:2px 8px; }
+    .er-EN_CONTROL { background:#FEF3C7; color:#92400E; } .er-CONFIRMADA { background:#DCFCE7; color:#166534; }
   </style>
 </head>
 
@@ -49,24 +77,27 @@
     <div class="header-bar">
       <div>
         <h2><i class="bi bi-box-arrow-in-down"></i> Recibir mercadería</h2>
-        <span class="subtitle">Lo que llega suma al stock y genera la deuda con el proveedor. El dinero sale recién al pagar.</span>
+        <span class="subtitle">Primero la factura, después el control. El stock sube recién al confirmar.</span>
       </div>
       <a href="ListadoPedido.html" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Pedidos</a>
     </div>
 
     <div class="panel"><div class="panel-body"><div class="cab" id="cabecera">Cargando…</div></div></div>
 
-    <div id="zonaRecibir">
-      <!-- Comprobante -->
+    <div class="pasos" id="pasos" style="display:none;">
+      <div class="paso" id="paso1"><div class="n">1</div><div><div class="t">Cargar la factura</div><div class="d">Apenas llega: foto o PDF del mail</div></div></div>
+      <div class="paso" id="paso2"><div class="n">2</div><div><div class="t">Controlar lo que llegó</div><div class="d">Cuando hay tiempo: contar y revisar el estado</div></div></div>
+    </div>
+
+    <!-- ============ PASO 1: CAPTURA DE LA FACTURA ============ -->
+    <div id="modoCaptura" style="display:none;">
       <div class="panel">
-        <div class="panel-header"><i class="bi bi-receipt"></i> Comprobante del proveedor</div>
+        <div class="panel-header"><i class="bi bi-receipt"></i> Factura del proveedor</div>
         <div class="panel-body">
           <div class="row g-3">
             <div class="col-md-2">
               <label class="form-label">Tipo <span class="required">*</span></label>
-              <select id="tipoComp" class="form-select">
-                <option>Factura A</option><option>Factura B</option><option>Factura C</option><option>Remito</option>
-              </select>
+              <select id="tipoComp" class="form-select"><option>Factura A</option><option>Factura B</option><option>Factura C</option><option>Presupuesto</option><option>Remito</option></select>
             </div>
             <div class="col-md-3">
               <label class="form-label">Número <span class="required">*</span></label>
@@ -78,60 +109,84 @@
             </div>
             <div class="col-md-2">
               <label class="form-label">Total <span class="required">*</span></label>
-              <div class="input-group"><span class="input-group-text">$</span>
-                <input type="text" inputmode="decimal" id="totalComp" class="form-control text-end"></div>
+              <div class="input-group"><span class="input-group-text">$</span><input type="text" inputmode="decimal" id="totalComp" class="form-control text-end"></div>
             </div>
             <div class="col-md-3">
               <label class="form-label">Foto o PDF</label>
-              <div class="archivo-box" id="archivoBox">
-                <i class="bi bi-camera"></i>
-                <div id="archivoTxt" style="font-size:0.8rem;">Tocá para adjuntar la factura</div>
-              </div>
+              <div class="archivo-box" id="archivoBox"><i class="bi bi-camera"></i>
+                <div id="archivoTxt" style="font-size:0.8rem;">Tocá para adjuntar la factura</div></div>
               <input type="file" id="archivo" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" hidden>
-            </div>
-            <div class="col-12">
-              <input type="text" id="observacion" class="form-control" maxlength="250" placeholder="Observación (opcional): bulto dañado, llegó otra marca…">
+              <button type="button" class="btn-leer" id="btnLeer"><i class="bi bi-magic"></i> Leer la factura</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Renglones -->
       <div class="panel">
-        <div class="panel-header"><i class="bi bi-list-check"></i> Qué llegó
+        <div class="panel-header"><i class="bi bi-list-ul"></i> Qué dice la factura
+          <span class="ms-auto sub" id="lectInfo"></span></div>
+        <div class="panel-body p-0">
+          <div class="table-responsive">
+            <table class="table tabla-r mb-0">
+              <thead><tr><th>Repuesto</th><th class="num">Pedido</th><th class="num">Falta llegar</th><th class="num">Facturado</th><th class="text-end">Costo unit.</th><th>Lectura</th></tr></thead>
+              <tbody id="factRenglones"></tbody>
+            </table>
+          </div>
+          <div class="totales">
+            <div><div class="l">Unidades facturadas</div><div class="v" id="totUnid">0</div></div>
+            <div><div class="l">Suma de renglones</div><div class="v" id="totRen">$0,00</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mb-4 flex-wrap">
+        <button class="btn btn-primary btn-lg" id="btnGuardarFactura"><i class="bi bi-save"></i> Guardar factura para controlar</button>
+        <button class="btn btn-outline-warning" id="btnCerrar"><i class="bi bi-slash-circle"></i> Cerrar faltantes del pedido</button>
+      </div>
+    </div>
+
+    <!-- ============ PASO 2: CONTROL ============ -->
+    <div id="modoControl" style="display:none;">
+      <div class="aviso aviso-info" id="avisoControl"></div>
+
+      <div class="panel">
+        <div class="panel-header"><i class="bi bi-clipboard-check"></i> Control de lo que llegó
           <div class="ms-auto d-flex gap-2">
-            <button class="btn btn-sm btn-outline-primary" id="btnTodo">Llegó todo lo pendiente</button>
-            <button class="btn btn-sm btn-outline-secondary" id="btnNada">Poner en cero</button>
+            <button class="btn btn-sm btn-outline-primary" id="btnTodoBien">Llegó todo bien</button>
           </div>
         </div>
         <div class="panel-body p-0">
           <div class="table-responsive">
-            <table class="table tabla-ren mb-0">
-              <thead><tr><th>Repuesto</th><th class="num">Pedido</th><th class="num">Ya llegó</th><th class="num">Falta</th><th class="num">Llega ahora</th><th class="text-end">Costo unit.</th><th class="text-end">Subtotal</th></tr></thead>
-              <tbody id="renglones"></tbody>
+            <table class="table tabla-r mb-0">
+              <thead><tr><th>Repuesto</th><th class="num">Facturado</th><th class="num">Llegó</th><th class="num">En mal estado</th><th class="num">Entra al stock</th><th>Resultado</th></tr></thead>
+              <tbody id="ctrlRenglones"></tbody>
             </table>
           </div>
-          <div class="totales">
-            <div><div class="l">Unidades</div><div class="v" id="totUnid">0</div></div>
-            <div><div class="l">Suma de renglones</div><div class="v" id="totRen">$0,00</div></div>
-            <div class="aviso-dif" id="avisoDif"></div>
+          <div class="p-3 border-top" id="agregarWrap">
+            <div class="sub mb-2"><i class="bi bi-plus-circle"></i> ¿Llegó algo del pedido que no está en la factura?</div>
+            <div class="d-flex gap-2 flex-wrap">
+              <select id="extraRep" class="form-select form-select-sm" style="max-width:420px;"></select>
+              <input type="number" id="extraCant" min="1" value="1" class="form-control form-control-sm" style="width:90px;">
+              <button class="btn btn-sm btn-outline-secondary" id="btnAgregarExtra">Agregar</button>
+            </div>
           </div>
+          <div class="incid-resumen" id="incidResumen"></div>
         </div>
       </div>
 
-      <div class="d-flex gap-2 mb-4">
-        <button class="btn btn-success btn-lg" id="btnRecibir"><i class="bi bi-check2-circle"></i> Registrar recepción</button>
-        <button class="btn btn-outline-warning" id="btnCerrar"><i class="bi bi-slash-circle"></i> Cerrar faltantes</button>
+      <div class="d-flex gap-2 mb-4 flex-wrap">
+        <button class="btn btn-success btn-lg" id="btnConfirmar"><i class="bi bi-check2-circle"></i> Confirmar recepción</button>
+        <button class="btn btn-outline-danger" id="btnDescartar" style="display:none;"><i class="bi bi-x-circle"></i> Descartar esta factura</button>
       </div>
     </div>
 
-    <!-- Recepciones anteriores -->
+    <!-- Historial -->
     <div class="panel">
       <div class="panel-header"><i class="bi bi-clock-history"></i> Recepciones de este pedido</div>
       <div class="panel-body p-0">
         <table class="table previas mb-0">
-          <thead><tr><th>Fecha</th><th>Comprobante</th><th class="text-end">Total</th><th class="text-center">Unidades</th><th>Recibió</th><th></th></tr></thead>
-          <tbody id="previas"><tr><td colspan="6" class="text-center text-muted p-3">Todavía no se recibió nada.</td></tr></tbody>
+          <thead><tr><th>Fecha</th><th>Comprobante</th><th>Estado</th><th class="text-end">Total</th><th class="text-center">Al stock</th><th>Reclamos</th><th></th></tr></thead>
+          <tbody id="previas"><tr><td colspan="7" class="text-center text-muted p-3">Todavía no se recibió nada.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -144,9 +199,14 @@
     const API = API_BASE + "Compras/";
     const idPedido = parseInt(new URLSearchParams(location.search).get("id"), 10);
     const usuario = Auth.getUsuario() || {};
-    const puedeRecibir = ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
+    const puedeRecibir = ["Dueño", "Administrador", "Supervisor", "Vendedor"].indexOf(usuario.Rol) !== -1;
     const puedeAnular = ["Dueño", "Administrador"].indexOf(usuario.Rol) !== -1;
-    let datos = null, archivoSel = null;
+
+    let datos = null;
+    let archivoSel = null, idAdjuntoSubido = null, idLectura = null;
+    let factFilas = [];   // paso 1: renglones de la factura (del pedido + leidos que no estaban)
+    let ctrlFilas = [];   // paso 2: renglones a controlar
+    let cuentas = [];     // para el pago al recibir (solo Dueño y Administrador)
 
     function escapeHtml(s) {
       if (s === null || s === undefined) return "";
@@ -159,103 +219,79 @@
     const fechaLocal = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     const fmtFecha = f => new Date(f).toLocaleString("es-AR", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" });
     const ESTADO = { 1: "Pendiente", 2: "Recibido", 3: "Cancelado" };
+    const mostrar = (id, si) => document.getElementById(id).style.display = si ? "" : "none";
+
+    /* ================= CARGA ================= */
 
     function cargar() {
       if (!idPedido) { document.getElementById("cabecera").textContent = "Falta el número de pedido."; return; }
       fetchAuth(API + "Pedido/" + idPedido + "/Recepcion").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
-        datos = d;
-        pintar();
+        datos = d; pintar();
       }).catch(() => document.getElementById("cabecera").textContent = "No se pudo cargar el pedido.");
     }
 
     function pintar() {
-      const p = datos.Pedido[0];
-      const ren = datos.Renglones;
+      const p = datos.Pedido[0], ren = datos.Renglones;
       const falta = ren.reduce((a, r) => a + r.Pendiente, 0);
       const pedidas = ren.reduce((a, r) => a + r.Cantidad, 0);
       const llegaron = ren.reduce((a, r) => a + r.CantidadRecibida, 0);
-      const parcial = p.IdEstado === 1 && llegaron > 0;
+      const enControl = (datos.EnControl || []).length > 0;
 
       document.getElementById("cabecera").innerHTML =
-        '<div><div class="l">Pedido</div><div class="v">#' + p.Id + '</div></div>' +
+        '<div><div class="l">Pedido</div><div class="v">#' + String(p.Id).padStart(4, "0") + '</div></div>' +
         '<div><div class="l">Proveedor</div><div class="v">' + escapeHtml(p.Proveedor) + '</div></div>' +
-        '<div><div class="l">Fecha</div><div class="v" style="font-size:0.95rem;">' + fmtFecha(p.Fecha) + '</div></div>' +
         '<div><div class="l">Llegaron</div><div class="v">' + llegaron + ' de ' + pedidas + '</div></div>' +
-        '<div><span class="estado-ped ep-' + p.IdEstado + '">' + (parcial ? "Parcialmente recibido" : ESTADO[p.IdEstado]) + '</span></div>' +
-        (p.MotivoCierreFaltantes ? '<div style="font-size:0.8rem;color:var(--text-muted);">Faltantes cerrados: ' + escapeHtml(p.MotivoCierreFaltantes) + '</div>' : '');
+        '<div><span class="estado-ped ep-' + p.IdEstado + '">' + (p.IdEstado === 1 && llegaron > 0 ? "Parcialmente recibido" : ESTADO[p.IdEstado]) + '</span></div>';
 
-      // Sin nada pendiente o sin permiso, no hay nada que recibir
-      document.getElementById("zonaRecibir").style.display = (falta > 0 && puedeRecibir && p.IdEstado !== 3) ? "" : "none";
+      const abierto = p.IdEstado === 1 && puedeRecibir;
+      mostrar("pasos", abierto && (falta > 0 || enControl));
+      mostrar("modoCaptura", abierto && falta > 0 && !enControl);
+      mostrar("modoControl", abierto && enControl);
+      document.getElementById("paso1").className = "paso " + (enControl ? "hecho" : "activo");
+      document.getElementById("paso2").className = "paso " + (enControl ? "activo" : "");
 
-      document.getElementById("renglones").innerHTML = ren.map((r, i) =>
-        '<tr class="' + (r.Pendiente === 0 ? 'completo' : '') + '">' +
-          '<td><span class="codigo">' + escapeHtml(r.Codigo) + '</span> ' + escapeHtml(r.Descripcion) + '</td>' +
-          '<td class="num">' + r.Cantidad + '</td>' +
-          '<td class="num">' + r.CantidadRecibida + (r.CantidadCancelada ? '<div style="font-size:0.7rem;color:var(--text-muted);">' + r.CantidadCancelada + ' cerrados</div>' : '') + '</td>' +
-          '<td class="num ' + (r.Pendiente ? 'pend' : '') + '">' + r.Pendiente + '</td>' +
-          '<td class="num">' + (r.Pendiente > 0
-            ? '<input type="number" min="0" max="' + r.Pendiente + '" class="form-control form-control-sm cant mx-auto" data-i="' + i + '" value="' + r.Pendiente + '">'
-            : '—') + '</td>' +
-          '<td class="text-end">' + (r.Pendiente > 0
-            ? '<input type="text" inputmode="decimal" class="form-control form-control-sm costo ms-auto" id="costo_' + i + '" data-i="' + i + '" value="' + numeroAPrecio(r.PrecioUnitario) + '">'
-            : '') + '</td>' +
-          '<td class="text-end" id="sub_' + i + '"></td>' +
-        '</tr>').join("");
-
-      ren.forEach((r, i) => { if (r.Pendiente > 0) activarInputPrecio("costo_" + i); });
-      document.querySelectorAll(".cant, .costo").forEach(x => x.addEventListener("input", recalcular));
-      recalcular();
+      if (abierto && enControl) prepararControl();
+      else if (abierto && falta > 0) prepararCaptura();
       pintarPrevias();
     }
 
-    function lineas() {
-      return datos.Renglones.map((r, i) => {
-        const c = document.querySelector('.cant[data-i="' + i + '"]');
-        const k = document.getElementById("costo_" + i);
-        return { r, i, cantidad: c ? (parseInt(c.value, 10) || 0) : 0, costo: k ? (precioANumero(k.value) || 0) : 0 };
-      });
+    /* ================= PASO 1: CAPTURA ================= */
+
+    function prepararCaptura() {
+      factFilas = datos.Renglones.filter(r => r.Pendiente > 0).map(r => ({
+        IdRepuesto: r.IdRepuesto, Codigo: r.Codigo, Descripcion: r.Descripcion, Cantidad: r.Cantidad,
+        Pendiente: r.Pendiente, Facturado: 0, Costo: Number(r.PrecioUnitario), deLectura: false, extra: false, resultado: null
+      }));
+      pintarFactura();
     }
 
-    function recalcular() {
-      let unid = 0, suma = 0;
-      lineas().forEach(l => {
-        const sub = l.cantidad * l.costo;
-        unid += l.cantidad; suma += sub;
-        const td = document.getElementById("sub_" + l.i);
-        if (td) td.textContent = l.cantidad ? formatearMoneda(sub) : "";
-      });
-      document.getElementById("totUnid").textContent = unid;
-      document.getElementById("totRen").textContent = formatearMoneda(suma);
-
-      // Ayuda a detectar errores de carga: la factura incluye IVA, los costos no
-      const tot = precioANumero(document.getElementById("totalComp").value) || 0;
-      const aviso = document.getElementById("avisoDif");
-      if (!tot || !suma) { aviso.textContent = ""; return; }
-      const ratio = tot / suma;
-      aviso.textContent = (ratio < 0.98 || ratio > 1.30)
-        ? "El total del comprobante no se parece a la suma de renglones (con o sin IVA). Revisá cantidades y costos."
-        : "";
+    function pintarFactura() {
+      const RES = { COINCIDE: ["r-ok", "Coincide"], CANTIDAD_DISTINTA: ["r-roto", "Otra cantidad"], NO_PEDIDO: ["r-nopedido", "No estaba pedido"],
+                    SIN_INCORPORAR: ["r-noid", "No está en el catálogo"], NO_IDENTIFICADO: ["r-noid", "No identificado"] };
+      document.getElementById("factRenglones").innerHTML = factFilas.map((f, i) => {
+        const res = f.resultado ? '<span class="res ' + RES[f.resultado][0] + '">' + RES[f.resultado][1] + '</span>' : '';
+        return '<tr class="' + (f.extra ? 'extra' : (f.deLectura ? 'leido' : '')) + '">' +
+          '<td>' + (f.Codigo ? '<span class="codigo">' + escapeHtml(f.Codigo) + '</span> ' : '') + escapeHtml(f.Descripcion) +
+            (f.extra && f.CodigoFactura ? '<div class="sub">En factura: ' + escapeHtml(f.CodigoFactura) + '</div>' : '') + '</td>' +
+          '<td class="num">' + (f.extra ? '—' : f.Cantidad) + '</td>' +
+          '<td class="num">' + (f.extra ? '—' : f.Pendiente) + '</td>' +
+          '<td class="num"><input type="number" min="0" class="form-control form-control-sm n mx-auto fact" data-i="' + i + '" value="' + f.Facturado + '"></td>' +
+          '<td class="text-end"><input type="text" inputmode="decimal" class="form-control form-control-sm c ms-auto" id="fc_' + i + '" value="' + numeroAPrecio(f.Costo) + '"></td>' +
+          '<td>' + res + '</td></tr>';
+      }).join("");
+      factFilas.forEach((f, i) => activarInputPrecio("fc_" + i));
+      document.querySelectorAll(".fact").forEach(x => x.addEventListener("input", () => { factFilas[x.dataset.i].Facturado = parseInt(x.value, 10) || 0; totalesFactura(); }));
+      factFilas.forEach((f, i) => document.getElementById("fc_" + i).addEventListener("input", e => { f.Costo = precioANumero(e.target.value) || 0; totalesFactura(); }));
+      totalesFactura();
     }
 
-    function pintarPrevias() {
-      const t = document.getElementById("previas");
-      const lista = datos.Recepciones;
-      if (!lista.length) { t.innerHTML = '<tr><td colspan="6" class="text-center text-muted p-3">Todavía no se recibió nada.</td></tr>'; return; }
-      t.innerHTML = lista.map(x =>
-        '<tr class="' + (x.Anulada ? 'anulada' : '') + '">' +
-          '<td>' + fmtFecha(x.Fecha) + '</td>' +
-          '<td>' + escapeHtml(x.TipoComprobante + ' ' + x.NumeroComprobante) +
-            (x.Anulada ? '<div style="font-size:0.74rem;text-decoration:none;">Anulada: ' + escapeHtml(x.MotivoAnulacion) + '</div>' : '') + '</td>' +
-          '<td class="text-end">' + formatearMoneda(x.TotalComprobante) + '</td>' +
-          '<td class="text-center">' + (x.Unidades || 0) + '</td>' +
-          '<td>' + escapeHtml(x.Usuario || "") + '</td>' +
-          '<td class="text-end" style="white-space:nowrap;">' +
-            (x.IdAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + x.IdAdjunto + ')"><i class="bi bi-paperclip"></i></button> ' : '') +
-            (puedeAnular && !x.Anulada ? '<button class="btn btn-sm btn-outline-danger" onclick="anular(' + x.Id + ')">Anular</button>' : '') +
-          '</td></tr>').join("");
+    function totalesFactura() {
+      let u = 0, s = 0;
+      factFilas.forEach(f => { u += f.Facturado; s += f.Facturado * f.Costo; });
+      document.getElementById("totUnid").textContent = u;
+      document.getElementById("totRen").textContent = formatearMoneda(s);
     }
 
-    /* Mismo tratamiento que en Gastos: la foto del celular se achica si pesa mucho */
     function prepararArchivo(file) {
       return new Promise((resolve, reject) => {
         const leer = f => { const fr = new FileReader(); fr.onload = () => resolve({ nombre: file.name, mime: f.type || file.type, base64: fr.result, tam: f.size }); fr.onerror = reject; fr.readAsDataURL(f); };
@@ -273,61 +309,273 @@
       });
     }
 
-    function registrar() {
-      const ls = lineas().filter(l => l.cantidad > 0);
-      if (!ls.length) { Swal.fire("Nada para recibir", "Indicá cuántas unidades llegaron de cada repuesto.", "warning"); return; }
-      const sobra = ls.find(l => l.cantidad > l.r.Pendiente);
-      if (sobra) { Swal.fire("Cantidad de más", "De " + sobra.r.Descripcion + " faltan " + sobra.r.Pendiente + ". Lo que llega de más va en otro pedido.", "warning"); return; }
+    function subirAdjunto() {
+      if (idAdjuntoSubido) return Promise.resolve(idAdjuntoSubido);
+      if (!archivoSel) return Promise.resolve(null);
+      return fetchAuth(API_BASE + "Finanzas/Adjunto", { method: "POST", body: JSON.stringify({
+          NombreArchivo: archivoSel.nombre, TipoMime: archivoSel.mime, ContenidoBase64: archivoSel.base64 }) })
+        .then(x => x.ok ? x.json() : leerError(x).then(m => Promise.reject(m)))
+        .then(d => { idAdjuntoSubido = d.IdAdjunto; return idAdjuntoSubido; });
+    }
+
+    function leerFactura() {
+      const btn = document.getElementById("btnLeer");
+      btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Leyendo la factura…';
+      subirAdjunto().then(idAdj => fetchAuth(API + "Pedido/" + idPedido + "/LeerFactura", { method: "POST", body: JSON.stringify({ IdAdjunto: idAdj }) }))
+        .then(x => x.ok ? x.json() : leerError(x).then(m => Promise.reject(m)))
+        .then(aplicarLectura)
+        .catch(m => Swal.fire("No se pudo leer", typeof m === "string" ? m : "Error de conexión.", "warning"))
+        .then(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-magic"></i> Leer la factura de nuevo'; });
+    }
+
+    /* Completa la factura con lo leido. Es una PROPUESTA: se revisa antes de guardar. */
+    function aplicarLectura(l) {
+      idLectura = l.IdLectura;
+      const c = l.Comprobante || {};
+      if (c.TipoComprobante) document.getElementById("tipoComp").value = c.TipoComprobante;
+      if (c.Numero) document.getElementById("numComp").value = c.Numero;
+      if (c.Fecha && /^\d{4}-\d{2}-\d{2}$/.test(c.Fecha)) document.getElementById("fechaComp").value = c.Fecha;
+      if (c.Total) document.getElementById("totalComp").value = numeroAPrecio(c.Total);
+
+      const prov = (datos.Pedido[0].Proveedor || "").toUpperCase().split(/\s+/)[0];
+      if (c.Proveedor && prov && c.Proveedor.toUpperCase().indexOf(prov) === -1)
+        Swal.fire("¿Es el pedido correcto?", "La factura parece ser de <strong>" + escapeHtml(c.Proveedor) +
+          "</strong> y el pedido es de <strong>" + escapeHtml(datos.Pedido[0].Proveedor) + "</strong>.", "warning");
+
+      // Se arma de nuevo: lo del pedido con lo leido, mas lo leido que no estaba en el pedido
+      prepararCaptura();
+      (l.Renglones || []).forEach(r => {
+        const cant = Math.round(Number(r.CantidadLeida || 0));
+        const precio = r.PrecioLeido != null ? Number(r.PrecioLeido) : null;
+        const fila = r.IdRepuesto ? factFilas.find(f => f.IdRepuesto === r.IdRepuesto && !f.extra) : null;
+        if (fila) {
+          fila.Facturado += cant; fila.deLectura = true; fila.resultado = r.Resultado;
+          if (precio) fila.Costo = precio;
+        } else {
+          factFilas.push({ IdRepuesto: r.IdRepuesto || null, Codigo: r.CodigoPropio || null, CodigoFactura: r.CodigoLeido,
+            Descripcion: r.DescripcionPropia || r.DescripcionLeida || "(sin descripción)", Cantidad: 0, Pendiente: 0,
+            Facturado: cant, Costo: precio || 0, deLectura: true, extra: true, resultado: r.Resultado });
+        }
+      });
+      document.getElementById("lectInfo").textContent = "Leído en " + (l.DuracionMs / 1000).toFixed(1) + " s · revisá antes de guardar";
+      pintarFactura();
+    }
+
+    function guardarFactura() {
+      const lineas = factFilas.filter(f => f.Facturado > 0);
       const num = document.getElementById("numComp").value.trim();
       const tot = precioANumero(document.getElementById("totalComp").value);
       const fecha = document.getElementById("fechaComp").value;
-      if (!num) { Swal.fire("Falta el número", "Cargá el número del comprobante del proveedor.", "warning"); return; }
-      if (!(tot > 0)) { Swal.fire("Falta el total", "El total del comprobante es lo que se le debe al proveedor.", "warning"); return; }
+      if (!lineas.length) { Swal.fire("Falta lo facturado", "Indicá cuánto factura el proveedor de cada repuesto, o leé la foto.", "warning"); return; }
+      if (!num) { Swal.fire("Falta el número", "Cargá el número del comprobante.", "warning"); return; }
+      if (!(tot > 0)) { Swal.fire("Falta el total", "El total del comprobante es lo que se le va a deber al proveedor.", "warning"); return; }
       if (!fecha || fecha > fechaLocal(new Date())) { Swal.fire("Fecha inválida", "La fecha del comprobante no puede ser futura.", "warning"); return; }
 
-      const unid = ls.reduce((a, l) => a + l.cantidad, 0);
-      Swal.fire({
-        title: "¿Registrar recepción?",
-        html: unid + " unidades suman al stock.<br>Se registra una deuda de <strong>" + formatearMoneda(tot) +
-              "</strong> con " + escapeHtml(datos.Pedido[0].Proveedor) + ".<br><small class='text-muted'>No se mueve dinero: se paga desde Cuenta de proveedores.</small>",
-        icon: "question", showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar", confirmButtonColor: "#28a745"
+      const btn = document.getElementById("btnGuardarFactura");
+      btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando…';
+      subirAdjunto().then(idAdj => fetchAuth(API + "Pedido/" + idPedido + "/Iniciar", { method: "POST", body: JSON.stringify({
+          Lineas: lineas.map(f => ({ IdRepuesto: f.IdRepuesto, Codigo: f.CodigoFactura || f.Codigo, Descripcion: f.Descripcion,
+                                     CantidadFacturada: f.Facturado, CostoUnitario: f.Costo })),
+          TipoComprobante: document.getElementById("tipoComp").value, NumeroComprobante: num,
+          FechaComprobante: fecha, TotalComprobante: tot, IdAdjunto: idAdj, IdLecturaFactura: idLectura }) }))
+        .then(x => x.ok ? x.json() : leerError(x).then(m => Promise.reject(m)))
+        .then(() => {
+          Swal.fire({ icon: "success", title: "Factura guardada",
+            text: "La mercadería puede esperar. Cuando tengas tiempo de revisarla, entrá de nuevo a este pedido para controlar." });
+          archivoSel = null; idAdjuntoSubido = null; idLectura = null;
+          cargar();
+        })
+        .catch(m => Swal.fire("No se pudo guardar", typeof m === "string" ? m : "Error de conexión.", "error"))
+        .then(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Guardar factura para controlar'; });
+    }
+
+    /* ================= PASO 2: CONTROL ================= */
+
+    function prepararControl() {
+      const rec = datos.Recepciones.find(r => r.Estado === "EN_CONTROL" && !r.Anulada);
+      document.getElementById("avisoControl").innerHTML =
+        '<i class="bi bi-receipt"></i> <strong>' + escapeHtml(rec.TipoComprobante + ' ' + rec.NumeroComprobante) + '</strong> por ' +
+        formatearMoneda(rec.TotalComprobante) + ', cargada el ' + fmtFecha(rec.Fecha) + '. ' +
+        (rec.IdAdjunto ? '<a href="#" onclick="verAdjunto(' + rec.IdAdjunto + ');return false;">Ver la factura</a>. ' : '') +
+        'Contá lo que llegó y revisá el estado de cada repuesto.';
+      document.getElementById("btnDescartar").style.display = puedeAnular ? "" : "none";
+      document.getElementById("btnDescartar").onclick = () => anular(rec.Id, true);
+
+      ctrlFilas = datos.EnControl.map(d => ({
+        IdDetalle: d.IdDetalle, IdRepuesto: d.IdRepuesto, IdRepuestoElegido: null, Codigo: d.Codigo || d.CodigoFactura,
+        Descripcion: d.Descripcion, Facturado: d.CantidadFacturada, Recibido: d.CantidadFacturada, Danado: 0,
+        Costo: Number(d.CostoUnitario), PendientePedido: d.PendientePedido
+      }));
+
+      // Lo que se puede agregar: repuestos del pedido que no vienen en la factura
+      const enFactura = new Set(ctrlFilas.map(f => f.IdRepuesto));
+      const opciones = datos.Renglones.filter(r => r.Pendiente > 0 && !enFactura.has(r.IdRepuesto));
+      document.getElementById("extraRep").innerHTML = opciones.map(r =>
+        '<option value="' + r.IdRepuesto + '">' + escapeHtml(r.Codigo + ' · ' + r.Descripcion) + ' (faltan ' + r.Pendiente + ')</option>').join("");
+      mostrar("agregarWrap", opciones.length > 0);
+      pintarControl();
+    }
+
+    function resultadoFila(f) {
+      const ok = [], acept = f.Recibido - f.Danado;
+      if (!f.IdDetalle) ok.push('<span class="res r-sobra">Llegó sin facturar · ' + f.Recibido + '</span>');
+      else {
+        if (f.Recibido < f.Facturado) ok.push('<span class="res r-falta">Faltan ' + (f.Facturado - f.Recibido) + ' facturados</span>');
+        if (f.Recibido > f.Facturado) ok.push('<span class="res r-sobra">Sobran ' + (f.Recibido - f.Facturado) + ' sin facturar</span>');
+      }
+      if (f.Danado > 0) ok.push('<span class="res r-roto">' + f.Danado + ' en mal estado</span>');
+      if (!f.IdRepuesto && !f.IdRepuestoElegido && acept > 0) ok.push('<span class="res r-noid">Vinculalo a un repuesto</span>');
+      if (!ok.length) ok.push('<span class="res r-ok">Todo bien</span>');
+      return ok.join(" ");
+    }
+
+    function pintarControl() {
+      const opcionesVinc = datos.Renglones.map(r => '<option value="' + r.IdRepuesto + '">' + escapeHtml(r.Codigo + ' · ' + r.Descripcion) + '</option>').join("");
+      document.getElementById("ctrlRenglones").innerHTML = ctrlFilas.map((f, i) =>
+        '<tr class="' + (f.IdDetalle ? '' : 'extra') + '">' +
+          '<td>' + (f.Codigo ? '<span class="codigo">' + escapeHtml(f.Codigo) + '</span> ' : '') + escapeHtml(f.Descripcion) +
+            (!f.IdRepuesto && f.IdDetalle ? '<div class="mt-1"><select class="form-select form-select-sm vinc" data-i="' + i + '"><option value="">No está identificado: elegí el repuesto…</option>' + opcionesVinc + '</select></div>' : '') +
+          '</td>' +
+          '<td class="num">' + (f.IdDetalle ? f.Facturado : '—') + '</td>' +
+          '<td class="num"><input type="number" min="0" class="form-control form-control-sm n mx-auto rec" data-i="' + i + '" value="' + f.Recibido + '"></td>' +
+          '<td class="num"><input type="number" min="0" class="form-control form-control-sm n mx-auto dan" data-i="' + i + '" value="' + f.Danado + '"></td>' +
+          '<td class="num"><strong id="acep_' + i + '">' + Math.max(0, f.Recibido - f.Danado) + '</strong></td>' +
+          '<td id="res_' + i + '">' + resultadoFila(f) + '</td></tr>').join("");
+
+      const refrescar = i => {
+        const f = ctrlFilas[i];
+        document.getElementById("acep_" + i).textContent = Math.max(0, f.Recibido - f.Danado);
+        document.getElementById("res_" + i).innerHTML = resultadoFila(f);
+        resumenIncidencias();
+      };
+      document.querySelectorAll(".rec").forEach(x => x.addEventListener("input", () => { ctrlFilas[x.dataset.i].Recibido = Math.max(0, parseInt(x.value, 10) || 0); refrescar(x.dataset.i); }));
+      document.querySelectorAll(".dan").forEach(x => x.addEventListener("input", () => { ctrlFilas[x.dataset.i].Danado = Math.max(0, parseInt(x.value, 10) || 0); refrescar(x.dataset.i); }));
+      document.querySelectorAll(".vinc").forEach(x => x.addEventListener("change", () => { ctrlFilas[x.dataset.i].IdRepuestoElegido = parseInt(x.value, 10) || null; refrescar(x.dataset.i); }));
+      resumenIncidencias();
+    }
+
+    // Lo que va a quedar como reclamo al confirmar, antes de confirmar
+    function resumenIncidencias() {
+      let faltan = 0, sobran = 0, rotos = 0, importe = 0;
+      ctrlFilas.forEach(f => {
+        if (f.IdDetalle && f.Recibido < f.Facturado) { faltan += f.Facturado - f.Recibido; importe += (f.Facturado - f.Recibido) * f.Costo; }
+        if (!f.IdDetalle) sobran += f.Recibido; else if (f.Recibido > f.Facturado) sobran += f.Recibido - f.Facturado;
+        if (f.Danado > 0) { rotos += f.Danado; importe += f.Danado * f.Costo; }
+      });
+      const el = document.getElementById("incidResumen");
+      if (!faltan && !sobran && !rotos) { el.classList.remove("visible"); return; }
+      el.classList.add("visible");
+      el.innerHTML = '<strong>Al confirmar quedan estos reclamos abiertos con el proveedor:</strong><ul class="mb-0 mt-1">' +
+        (faltan ? '<li>' + faltan + ' unidad(es) facturadas que no llegaron: pedir nota de crédito.</li>' : '') +
+        (rotos ? '<li>' + rotos + ' unidad(es) en mal estado: quedan apartadas para devolverle al viajante.</li>' : '') +
+        (sobran ? '<li>' + sobran + ' unidad(es) que llegaron sin facturar: pedir la factura o devolverlas.</li>' : '') +
+        '</ul>' + (importe > 0 ? '<div class="sub mt-1">Importe a acreditar: ' + formatearMoneda(importe) +
+        '. No se descuenta del pago: se toma cuando llegue la nota de crédito.</div>' : '');
+    }
+
+    function agregarExtra() {
+      const id = parseInt(document.getElementById("extraRep").value, 10);
+      const cant = parseInt(document.getElementById("extraCant").value, 10) || 0;
+      const r = datos.Renglones.find(x => x.IdRepuesto === id);
+      if (!r || cant <= 0) return;
+      ctrlFilas.push({ IdDetalle: null, IdRepuesto: id, Codigo: r.Codigo, Descripcion: r.Descripcion,
+                       Facturado: 0, Recibido: cant, Danado: 0, Costo: Number(r.PrecioUnitario), PendientePedido: r.Pendiente });
+      const op = document.querySelector('#extraRep option[value="' + id + '"]'); if (op) op.remove();
+      mostrar("agregarWrap", document.getElementById("extraRep").options.length > 0);
+      pintarControl();
+    }
+
+    function confirmar() {
+      const sinVincular = ctrlFilas.find(f => f.IdDetalle && !f.IdRepuesto && !f.IdRepuestoElegido && f.Recibido - f.Danado > 0);
+      if (sinVincular) { Swal.fire("Falta vincular", "\"" + sinVincular.Descripcion + "\" llegó pero no está identificado. Elegí a qué repuesto corresponde, o poné que llegaron 0.", "warning"); return; }
+      const rec = datos.Recepciones.find(r => r.Estado === "EN_CONTROL" && !r.Anulada);
+      const unid = ctrlFilas.reduce((a, f) => a + Math.max(0, f.Recibido - f.Danado), 0);
+
+      Swal.fire({ title: "¿Confirmar la recepción?",
+        html: unid + " unidad(es) entran al stock.<br>Se registra la deuda de <strong>" + formatearMoneda(rec.TotalComprobante) +
+              "</strong> con " + escapeHtml(datos.Pedido[0].Proveedor) + ", a pagar a su vencimiento." +
+              (document.getElementById("incidResumen").classList.contains("visible") ? "<br><br><small>Las diferencias quedan como reclamos abiertos.</small>" : "") +
+              // A veces se paga cuando llega la mercaderia: se registra el pago en el mismo momento
+              (puedeAnular && cuentas.length ? '<div class="text-start mt-3 p-2" style="background:#f7f8fa;border-radius:8px;">' +
+                 '<div class="form-check"><input class="form-check-input" type="checkbox" id="pagoYa">' +
+                 '<label class="form-check-label" for="pagoYa">Se pagó al recibir</label></div>' +
+                 '<select id="pagoCuenta" class="form-select form-select-sm mt-2">' + cuentas.map(c => '<option value="' + c.Id + '"' + (!c.EsCaja ? ' selected' : '') + '>' + escapeHtml(c.Nombre) + '</option>').join("") + '</select></div>' : ''),
+        icon: "question", showCancelButton: true, confirmButtonText: "Confirmar", cancelButtonText: "Revisar", confirmButtonColor: "#28a745",
+        preConfirm: () => {
+          const chk = document.getElementById("pagoYa");
+          return { pagar: !!(chk && chk.checked), cuenta: chk ? parseInt(document.getElementById("pagoCuenta").value, 10) : null };
+        }
       }).then(r => {
         if (!r.isConfirmed) return;
-        const btn = document.getElementById("btnRecibir");
-        btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registrando…';
-
-        const subir = archivoSel
-          ? fetchAuth(API_BASE + "Finanzas/Adjunto", { method: "POST", body: JSON.stringify({
-              NombreArchivo: archivoSel.nombre, TipoMime: archivoSel.mime, ContenidoBase64: archivoSel.base64 }) })
-              .then(x => x.ok ? x.json() : leerError(x).then(m => Promise.reject(m))).then(d => d.IdAdjunto)
-          : Promise.resolve(null);
-
-        subir.then(idAdj => fetchAuth(API + "Pedido/" + idPedido + "/Recibir", { method: "POST", body: JSON.stringify({
-            Lineas: ls.map(l => ({ IdRepuesto: l.r.IdRepuesto, Cantidad: l.cantidad, CostoUnitario: l.costo })),
-            TipoComprobante: document.getElementById("tipoComp").value,
-            NumeroComprobante: num, FechaComprobante: fecha, TotalComprobante: tot,
-            IdAdjunto: idAdj, Observacion: document.getElementById("observacion").value.trim() || null }) }))
+        const pagoAlRecibir = r.value;
+        const btn = document.getElementById("btnConfirmar");
+        btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Confirmando…';
+        fetchAuth(API + "Recepcion/" + rec.Id + "/Confirmar", { method: "POST", body: JSON.stringify({
+            Lineas: ctrlFilas.map(f => ({ IdDetalle: f.IdDetalle, IdRepuesto: f.IdRepuestoElegido || f.IdRepuesto,
+                                          CantidadRecibida: f.Recibido, CantidadDanada: f.Danado, CostoUnitario: f.Costo })) }) })
           .then(x => x.ok ? x.json() : leerError(x).then(m => Promise.reject(m)))
           .then(res => {
-            Swal.fire({ icon: "success", title: "Recepción registrada",
-              text: res.IdEstadoPedido === 2 ? "El pedido quedó completo." : "Quedan faltantes: el pedido sigue abierto." });
-            limpiarComprobante(); cargar();
+            if (!pagoAlRecibir.pagar) return res;
+            // La recepcion ya quedo confirmada; si el pago falla, se registra despues desde la cuenta del proveedor
+            return fetchAuth(API + "Pagos", { method: "POST", body: JSON.stringify({
+                IdProveedor: datos.Pedido[0].IdProveedor, IdCuentaFinanciera: pagoAlRecibir.cuenta,
+                Importe: rec.TotalComprobante, Referencia: "Pagado al recibir " + rec.TipoComprobante + " " + rec.NumeroComprobante }) })
+              .then(x => x.ok ? Object.assign(res, { pagado: true })
+                              : leerError(x).then(m => Object.assign(res, { errorPago: m })));
           })
-          .catch(m => Swal.fire("No se pudo registrar", typeof m === "string" ? m : "Error de conexión.", "error"))
-          .then(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2-circle"></i> Registrar recepción'; });
+          .then(res => {
+            if (res.errorPago) Swal.fire("Recepción confirmada, pago no registrado", res.errorPago + "<br><small>Registralo desde Cuenta de proveedores.</small>", "warning");
+            else Swal.fire({ icon: res.Incidencias > 0 ? "info" : "success", title: "Recepción confirmada" + (res.pagado ? " y pagada" : ""),
+              html: res.Incidencias > 0
+                ? "Quedaron <strong>" + res.Incidencias + "</strong> reclamo(s) abiertos con el proveedor" +
+                  (Number(res.ImporteAReclamar) > 0 ? ", por " + formatearMoneda(res.ImporteAReclamar) + " a acreditar." : ".") +
+                  "<br><small>Se ven en Cuenta de proveedores.</small>"
+                : "Todo llegó bien. El stock ya está actualizado." });
+            cargar();
+          })
+          .catch(m => Swal.fire("No se pudo confirmar", typeof m === "string" ? m : "Error de conexión.", "error"))
+          .then(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2-circle"></i> Confirmar recepción'; });
       });
     }
 
-    function limpiarComprobante() {
-      ["numComp", "totalComp", "observacion"].forEach(id => document.getElementById(id).value = "");
-      document.getElementById("archivo").value = ""; archivoSel = null;
-      document.getElementById("archivoBox").classList.remove("cargado");
-      document.getElementById("archivoTxt").textContent = "Tocá para adjuntar la factura";
+    /* ================= HISTORIAL Y ACCIONES ================= */
+
+    function pintarPrevias() {
+      const t = document.getElementById("previas"), lista = datos.Recepciones;
+      if (!lista.length) { t.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-3">Todavía no se recibió nada.</td></tr>'; return; }
+      t.innerHTML = lista.map(x =>
+        '<tr class="' + (x.Anulada ? 'anulada' : '') + '">' +
+          '<td>' + fmtFecha(x.Fecha) + '<div class="sub">' + escapeHtml(x.Usuario || "") + '</div></td>' +
+          '<td>' + escapeHtml(x.TipoComprobante + ' ' + x.NumeroComprobante) +
+            (x.Anulada ? '<div class="sub" style="text-decoration:none;">Anulada: ' + escapeHtml(x.MotivoAnulacion) + '</div>' : '') + '</td>' +
+          '<td><span class="est-rec er-' + x.Estado + '">' + (x.Estado === "EN_CONTROL" ? "En control" : "Confirmada") + '</span></td>' +
+          '<td class="text-end">' + formatearMoneda(x.TotalComprobante) + '</td>' +
+          '<td class="text-center">' + (x.Estado === "CONFIRMADA" ? (x.Unidades || 0) : '—') + '</td>' +
+          '<td>' + (x.IncidenciasAbiertas ? '<span class="res r-roto">' + x.IncidenciasAbiertas + ' abierto(s)</span>' : '') + '</td>' +
+          '<td class="text-end" style="white-space:nowrap;">' +
+            (x.IdAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + x.IdAdjunto + ')" title="Ver factura"><i class="bi bi-paperclip"></i></button> ' : '') +
+            (puedeAnular && !x.Anulada && x.Estado === "CONFIRMADA" ? '<button class="btn btn-sm btn-outline-danger" onclick="anular(' + x.Id + ', false)">Anular</button>' : '') +
+          '</td></tr>').join("");
+    }
+
+    function anular(id, enControl) {
+      Swal.fire({
+        title: enControl ? "Descartar la factura cargada" : "Anular recepción",
+        text: enControl ? "La factura queda registrada como descartada. No había stock ni deuda." :
+                          "Se descuenta del stock lo que entró y se revierte la deuda con el proveedor.",
+        input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)", showCancelButton: true,
+        confirmButtonText: enControl ? "Descartar" : "Anular", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
+        inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "Recepcion/" + id + "/Anular", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
+          .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo", m, "error")));
+      });
     }
 
     function cerrarFaltantes() {
       Swal.fire({
-        title: "Cerrar faltantes", text: "Lo que falta se da por no recibido y vuelve a la reposición sugerida.",
+        title: "Cerrar faltantes", text: "Lo que falta del pedido se da por no recibido y vuelve a la reposición sugerida.",
         input: "text", inputPlaceholder: "Motivo (ej: el proveedor no tiene stock)", showCancelButton: true,
         confirmButtonText: "Cerrar faltantes", cancelButtonText: "Cancelar", confirmButtonColor: "#c47700",
         inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null
@@ -335,19 +583,6 @@
         if (!r.isConfirmed) return;
         fetchAuth(API + "Pedido/" + idPedido + "/CerrarFaltantes", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
           .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo cerrar", m, "error")));
-      });
-    }
-
-    function anular(id) {
-      Swal.fire({
-        title: "Anular recepción", text: "Se descuenta del stock lo que entró y se revierte la deuda con el proveedor.",
-        input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)", showCancelButton: true,
-        confirmButtonText: "Anular", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
-        inputValidator: v => (!v || v.trim().length < 10) ? "Escribí un motivo de al menos 10 caracteres." : null
-      }).then(r => {
-        if (!r.isConfirmed) return;
-        fetchAuth(API + "Recepcion/" + id + "/Anular", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
-          .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo anular", m, "error")));
       });
     }
 
@@ -360,24 +595,26 @@
     window.onload = function () {
       document.getElementById("fechaComp").value = fechaLocal(new Date());
       activarInputPrecio("totalComp");
-      document.getElementById("totalComp").addEventListener("input", recalcular);
-      document.getElementById("btnRecibir").addEventListener("click", registrar);
+      if (puedeAnular) fetchAuth(API_BASE + "Finanzas/Cuentas").then(r => r.ok ? r.json() : []).then(c => cuentas = c || []).catch(() => {});
+      document.getElementById("btnGuardarFactura").addEventListener("click", guardarFactura);
+      document.getElementById("btnConfirmar").addEventListener("click", confirmar);
       document.getElementById("btnCerrar").addEventListener("click", cerrarFaltantes);
-      document.getElementById("btnTodo").addEventListener("click", () => {
-        document.querySelectorAll(".cant").forEach(x => x.value = x.getAttribute("max")); recalcular();
-      });
-      document.getElementById("btnNada").addEventListener("click", () => {
-        document.querySelectorAll(".cant").forEach(x => x.value = 0); recalcular();
+      document.getElementById("btnLeer").addEventListener("click", leerFactura);
+      document.getElementById("btnAgregarExtra").addEventListener("click", agregarExtra);
+      document.getElementById("btnTodoBien").addEventListener("click", () => {
+        ctrlFilas.forEach(f => { if (f.IdDetalle) { f.Recibido = f.Facturado; f.Danado = 0; } }); pintarControl();
       });
       document.getElementById("archivoBox").addEventListener("click", () => document.getElementById("archivo").click());
       document.getElementById("archivo").addEventListener("change", e => {
         const f = e.target.files[0], box = document.getElementById("archivoBox"), txt = document.getElementById("archivoTxt");
-        archivoSel = null; box.classList.remove("cargado");
+        archivoSel = null; idAdjuntoSubido = null; idLectura = null; box.classList.remove("cargado");
+        document.getElementById("btnLeer").classList.remove("visible");
         if (!f) return;
         txt.textContent = "Preparando…";
         prepararArchivo(f).then(a => {
           if (a.tam > 2 * 1024 * 1024) { txt.textContent = "Supera 2 MB."; return; }
           archivoSel = a; box.classList.add("cargado"); txt.textContent = a.nombre + " · " + (a.tam / 1024).toFixed(0) + " KB";
+          const b = document.getElementById("btnLeer"); b.classList.add("visible"); b.innerHTML = '<i class="bi bi-magic"></i> Leer la factura';
         }).catch(() => txt.textContent = "No se pudo leer el archivo.");
       });
       cargar();

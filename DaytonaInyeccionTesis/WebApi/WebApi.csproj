@@ -237,6 +237,7 @@
     <Compile Include="Models\Finanzas.cs" />
     <Compile Include="Models\Indicador.cs" />
     <Compile Include="Models\JwtHelper.cs" />
+    <Compile Include="Models\LectorFactura.cs" />
     <Compile Include="Models\LoginRequest.cs" />
     <Compile Include="Models\LoginResponse.cs" />
     <Compile Include="Models\Cliente.cs" />
