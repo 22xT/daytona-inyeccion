@@ -28,6 +28,10 @@
     tr.fila-sin-stock {
       background-color: #fde9e9 !important;
     }
+    .min-edit { display:inline-block; min-width:34px; padding:2px 8px; border:1px dashed #c5cfdd; border-radius:6px; cursor:pointer; }
+    .min-edit:hover { background:#eef3fa; border-color:#2E5496; }
+    .min-edit.min-ok { background:#DCFCE7; border-color:#166534; }
+    .min-input { width:70px; margin:0 auto; text-align:center; }
     tr.fila-bajo-minimo {
       background-color: #fff8e1 !important;
     }
@@ -174,13 +178,14 @@
               <th>Rubro</th>
               <th>Modelo</th>
               <th class="text-center">Stock</th>
+              <th class="text-center" title="Debajo de este número, el repuesto aparece en la reposición sugerida">Mín.</th>
               <th class="text-center">Estado</th>
               <th class="text-end">Precio</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody id="tablaRepuestos">
-            <tr class="loading-row"><td colspan="9">Cargando repuestos…</td></tr>
+            <tr class="loading-row"><td colspan="10">Cargando repuestos…</td></tr>
           </tbody>
         </table>
       </div>
@@ -201,6 +206,31 @@
 
     const usuario = Auth.getUsuario();
     const esAdmin = usuario && usuario.Rol === "Administrador";
+    const puedeMinimo = usuario && ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
+
+    function editarMinimo(span, idRepuesto, actual) {
+      if (span.querySelector("input")) return;
+      span.innerHTML = "<input type='number' min='0' max='9999' class='form-control form-control-sm min-input' value='" + actual + "'>";
+      const inp = span.querySelector("input");
+      inp.focus(); inp.select();
+      let listo = false;
+      const guardar = () => {
+        if (listo) return; listo = true;
+        const n = parseInt(inp.value, 10);
+        if (isNaN(n) || n < 0 || n === actual) { span.textContent = actual; return; }
+        fetchAuth(API_BASE + "Compras/StockMinimo", { method: "POST", body: JSON.stringify({ IdRepuesto: idRepuesto, StockMinimo: n }) })
+          .then(r => {
+            if (!r.ok) return r.text().then(t => { throw new Error(t); });
+            // Se actualiza el dato local y se repinta: cambia el estado (bajo minimo o no)
+            span.textContent = n; span.classList.add("min-ok");
+            setTimeout(() => span.classList.remove("min-ok"), 900);
+            setTimeout(cargar, 900);   // recarga para que el estado (bajo minimo o no) se actualice
+          })
+          .catch(() => { span.textContent = actual; Swal.fire("No se pudo guardar", "Revisá el valor e intentá de nuevo.", "error"); });
+      };
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") guardar(); if (e.key === "Escape") { listo = true; span.textContent = actual; } });
+      inp.addEventListener("blur", guardar);
+    }
     if (esAdmin) document.body.classList.add('is-admin');
 
     let repuestos = [];
@@ -247,7 +277,7 @@
         aplicarFiltros();
       }).catch(() => {
         document.getElementById("tablaRepuestos").innerHTML =
-          "<tr><td colspan='9' class='text-center text-danger p-4'>No se pudieron cargar los repuestos.</td></tr>";
+          "<tr><td colspan='10' class='text-center text-danger p-4'>No se pudieron cargar los repuestos.</td></tr>";
       });
     }
 
@@ -330,6 +360,10 @@
         html += "<td><span class='badge-rubro'>" + escapeHtml(x.Rubro || "-") + "</span></td>";
         html += "<td>" + escapeHtml(x.Modelo || "-") + "</td>";
         html += "<td class='text-center'><strong>" + stock + "</strong></td>";
+        // El minimo se edita con un clic: es lo que dispara la reposicion sugerida
+        html += "<td class='text-center'>" + (puedeMinimo && activo
+          ? "<span class='min-edit' tabindex='0' onclick='editarMinimo(this, " + x.Id + ", " + minimo + ")' title='Clic para cambiar el mínimo'>" + minimo + "</span>"
+          : minimo) + "</td>";
         html += "<td class='text-center'>" + badge + "</td>";
         html += "<td class='text-end precio'>$" + Number(x.PrecioDeVenta).toFixed(2) + "</td>";
         if (esAdmin) {

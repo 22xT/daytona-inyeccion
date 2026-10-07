@@ -424,7 +424,9 @@
             '<button class="btn btn-sm btn-outline-light" onclick="exportarExcel()">' +
               '<i class="bi bi-file-earmark-excel"></i> Excel</button>' +
             (puedeAjustar
-              ? '<button class="btn btn-sm btn-outline-light ms-auto" onclick="abrirAjuste()">' +
+              ? '<button class="btn btn-sm btn-outline-light ms-auto" onclick="abrirNotaDebito()" title="Interés, flete, diferencia de precio">' +
+                '<i class="bi bi-receipt"></i> Nota de débito</button>' +
+                '<button class="btn btn-sm btn-outline-light" onclick="abrirAjuste()">' +
                 '<i class="bi bi-pencil"></i> Ajuste</button>'
               : '') +
           '</div>' +
@@ -513,6 +515,40 @@
     }
 
     /* ================= AJUSTE ================= */
+
+    /* Nota de debito: suma deuda con un documento propio (interes,
+       flete, diferencia de precio). El ajuste queda para corregir errores. */
+    function abrirNotaDebito() {
+      Swal.fire({
+        title: "Nota de débito",
+        html:
+          '<div style="text-align:left;">' +
+            '<div class="form-text mb-2">Suma a lo que debe el cliente. No mueve dinero.</div>' +
+            '<label class="form-label mb-1">Importe</label>' +
+            '<div class="input-group"><span class="input-group-text">$</span>' +
+              '<input type="text" inputmode="decimal" id="swMontoNd" class="form-control text-end"></div>' +
+            '<label class="form-label mb-1 mt-2">Motivo</label>' +
+            '<input type="text" id="swMotivoNd" class="form-control" placeholder="Ej: interés por pago fuera de término">' +
+          '</div>',
+        showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar",
+        didOpen: function () { activarInputPrecio("swMontoNd"); },
+        preConfirm: function () {
+          var m = precioANumero(document.getElementById("swMontoNd").value);
+          var c = document.getElementById("swMotivoNd").value.trim();
+          if (isNaN(m) || m <= 0) { Swal.showValidationMessage("El importe debe ser mayor a cero."); return false; }
+          if (c.length < 10) { Swal.showValidationMessage("Explicá el motivo con al menos 10 caracteres."); return false; }
+          return { IdCliente: clienteActual, Importe: m, Motivo: c };
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value) return;
+        fetchAuth(api + "NotasCliente/Debito", { method: "POST", body: JSON.stringify(res.value) }).then(function (r) {
+          if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+          Swal.fire("Nota de débito registrada", "", "success");
+          cargarClientes();
+          verCliente(clienteActual);
+        }).catch(function (err) { Swal.fire("No se pudo registrar", err.message || "Error de conexión.", "error"); });
+      });
+    }
 
     function abrirAjuste() {
       Swal.fire({

@@ -12,6 +12,9 @@
   <style>
     .required { color: #dc3545; font-weight: bold; }
     .char-counter { font-size: 0.78rem; color: #6c757d; text-align: right; }
+    .cond-info { display:none; border-radius:10px; padding:10px 14px; font-size:0.86rem; background:#eef3fa; color:#1F3864; }
+    .cond-info.visible { display:flex; gap:18px; flex-wrap:wrap; }
+    .cond-info b { display:block; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:#6c757d; }
     .cuit-preview { font-size: 0.82rem; color: #1F3864; font-weight: 600; margin-top: 4px; min-height: 18px; }
     .is-valid { border-color: #198754 !important; }
     .is-invalid { border-color: #dc3545 !important; }
@@ -39,28 +42,32 @@
         <div class="panel-header"><span class="num">1</span> Datos fiscales</div>
         <div class="panel-body">
           <div class="row g-3">
+            <!-- La condicion va primero: define el comprobante, el precio y si el CUIT es obligatorio -->
             <div class="col-md-4">
-              <label class="form-label">CUIT <span class="required">*</span></label>
-              <input type="text" id="cuit" class="form-control" maxlength="11" required placeholder="20123456789" autocomplete="off">
-              <div class="form-text">Ingrese 11 dígitos sin guiones. Ejemplo: 20123456789</div>
-              <div class="cuit-preview" id="cuitPreview"></div>
-              <div class="invalid-feedback" id="fb-cuit">Ingrese un CUIT válido de 11 dígitos.</div>
-            </div>
-            <div class="col-md-5">
-              <label class="form-label">Razón social <span class="required">*</span></label>
-              <input type="text" id="razonSocial" class="form-control" maxlength="100" required autocomplete="off">
-              <div class="invalid-feedback" id="fb-razonSocial">Ingrese una razón social válida.</div>
-            </div>
-            <div class="col-md-3">
               <label class="form-label">Condición IVA <span class="required">*</span></label>
               <select id="condicionIva" class="form-select" required>
                 <option value="">Seleccionar...</option>
                 <option value="Responsable Inscripto">Responsable Inscripto</option>
                 <option value="Monotributista">Monotributista</option>
                 <option value="Exento">Exento</option>
-                <option value="Consumidor Final">Consumidor Final</option>
+                <option value="Consumidor Final">Consumidor Final (no factura)</option>
               </select>
               <div class="invalid-feedback" id="fb-condicionIva">Debe seleccionar una condición frente al IVA.</div>
+            </div>
+            <div class="col-md-3" id="colCuit">
+              <label class="form-label">CUIT <span class="required">*</span></label>
+              <input type="text" id="cuit" class="form-control" maxlength="11" required placeholder="20123456789" autocomplete="off">
+              <div class="form-text">11 dígitos sin guiones.</div>
+              <div class="cuit-preview" id="cuitPreview"></div>
+              <div class="invalid-feedback" id="fb-cuit">Ingrese un CUIT válido de 11 dígitos.</div>
+            </div>
+            <div class="col-md-5" id="colRazon">
+              <label class="form-label">Razón social <span class="required">*</span></label>
+              <input type="text" id="razonSocial" class="form-control" maxlength="100" required autocomplete="off">
+              <div class="invalid-feedback" id="fb-razonSocial">Ingrese una razón social válida.</div>
+            </div>
+            <div class="col-12">
+              <div class="cond-info" id="condInfo"></div>
             </div>
           </div>
         </div>
@@ -166,6 +173,34 @@
     const esAdmin = usuario && usuario.Rol === "Administrador";
 
     const CONDICIONES_IVA = ["Responsable Inscripto", "Monotributista", "Exento", "Consumidor Final"];
+
+    /* La condicion frente al IVA define como se trabaja con el proveedor:
+       que comprobante entrega, como se calcula el precio de venta y si
+       el CUIT es obligatorio. Es lo mismo que aplica la base de datos. */
+    const REGLAS_IVA = {
+      "Responsable Inscripto": { comp: "Factura A (o remito)", precio: "Costo + margen + IVA", cuit: true },
+      "Monotributista":        { comp: "Factura C (o remito)", precio: "Costo + margen = precio final, con IVA incluido", cuit: true },
+      "Exento":                { comp: "Factura C (o remito)", precio: "Costo + margen = precio final, con IVA incluido", cuit: true },
+      "Consumidor Final":      { comp: "Presupuesto (o remito): no factura", precio: "Costo + margen = precio final, con IVA incluido", cuit: false }
+    };
+    const cuitObligatorio = () => { const r = REGLAS_IVA[f.condicionIva.value]; return !r || r.cuit; };
+
+    function aplicarCondicion() {
+      const r = REGLAS_IVA[f.condicionIva.value];
+      const info = document.getElementById("condInfo");
+      if (!r) { info.classList.remove("visible"); info.innerHTML = ""; }
+      else {
+        info.classList.add("visible");
+        info.innerHTML = '<div><b>Comprobante</b>' + r.comp + '</div><div><b>Precio de venta</b>' + r.precio + '</div>' +
+                         '<div><b>CUIT</b>' + (r.cuit ? 'Obligatorio' : 'No corresponde') + '</div>';
+      }
+      // Quien no factura no tiene CUIT que cargar: el campo desaparece
+      const lleva = cuitObligatorio();
+      document.getElementById("colCuit").style.display = lleva ? "" : "none";
+      document.getElementById("colRazon").className = lleva ? "col-md-5" : "col-md-8";
+      f.cuit.required = lleva;
+      if (!lleva) { f.cuit.value = ""; document.getElementById("cuitPreview").textContent = ""; limpiarMarca(f.cuit); }
+    }
 
     if (!esAdmin) {
       Swal.fire({ icon: "error", title: "Acceso denegado", text: "Solo administradores pueden gestionar proveedores." })
@@ -283,6 +318,8 @@
     f.codigoPostal.addEventListener("input", () => { f.codigoPostal.value = f.codigoPostal.value.replace(/[^A-Za-z0-9]/g, ""); });
     f.observaciones.addEventListener("input", () => { document.getElementById("obsCount").textContent = f.observaciones.value.length; });
 
+    f.condicionIva.addEventListener("change", aplicarCondicion);
+
     // Limpiar marca de error al corregir
     ["razonSocial","condicionIva","provincia","localidad","calle","numero","barrio","codigoPostal","telefono","mail"].forEach(k => {
       f[k].addEventListener("input", () => limpiarMarca(f[k]));
@@ -306,7 +343,7 @@
       const errores = [];
 
       // CUIT
-      if (p.Cuit === "") errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT es obligatorio." });
+      if (p.Cuit === "") { if (cuitObligatorio()) errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT es obligatorio para esta condición frente al IVA." }); }
       else if (p.Cuit.length !== 11) errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT debe tener exactamente 11 dígitos." });
       else if (PREFIJOS_CUIT.indexOf(p.Cuit.substring(0, 2)) === -1)
         errores.push({ input: f.cuit, fbId: "fb-cuit", msg: "El CUIT debe comenzar con 20, 23, 24 o 27 (persona) o 30, 33 o 34 (empresa). El prefijo " + p.Cuit.substring(0, 2) + " no existe." });
@@ -526,6 +563,7 @@
         f.cuit.value = p.Cuit || "";
         f.razonSocial.value = p.RazonSocial || "";
         f.condicionIva.value = p.CondicionIva || "";
+        aplicarCondicion();
         f.calle.value = p.Calle || "";
         f.numero.value = p.Numero || "";
         f.barrio.value = p.Barrio || "";

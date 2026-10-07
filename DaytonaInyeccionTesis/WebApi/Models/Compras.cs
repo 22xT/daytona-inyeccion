@@ -106,6 +106,20 @@ namespace WebApi.Models
             return ConsultarDs("SP_Pedido_ParaRecepcion", c => c.Parameters.Add("@IdPedido", SqlDbType.Int).Value = idPedido);
         }
 
+        public void SetStockMinimo(int idRepuesto, int minimo)
+        {
+            Ejecutar("SP_Stock_SetMinimo", c =>
+            {
+                c.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = idRepuesto;
+                c.Parameters.Add("@StockMinimo", SqlDbType.Int).Value = minimo;
+            });
+        }
+
+        public DataSet ReposicionSugerida()
+        {
+            return ConsultarDs("SP_Reposicion_Sugerida", c => { });
+        }
+
         public DataTable ResumenRecepcion()
         {
             return ConsultarDs("SP_Pedido_ResumenRecepcion", c => { }).Tables[0];
@@ -287,6 +301,17 @@ namespace WebApi.Models
                 p.SqlDbType = SqlDbType.Structured; p.TypeName = "dbo.SaldoInicialType";
                 c.Parameters.Add("@IdUsuario", SqlDbType.Int).Value = idUsuario;
             }).Tables[0];
+        }
+
+        // Reemplaza o quita la foto de una factura. La anterior queda guardada.
+        public void CambiarAdjunto(int idRecepcion, int? idAdjunto, int idUsuario)
+        {
+            Ejecutar("SP_Recepcion_CambiarAdjunto", c =>
+            {
+                c.Parameters.Add("@IdRecepcion", SqlDbType.Int).Value = idRecepcion;
+                c.Parameters.Add("@IdAdjunto", SqlDbType.Int).Value = N(idAdjunto);
+                c.Parameters.Add("@IdUsuario", SqlDbType.Int).Value = idUsuario;
+            });
         }
 
         public void SetDiasPago(int idProveedor, int dias)

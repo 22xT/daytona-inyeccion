@@ -168,6 +168,8 @@ namespace WebApi.Controllers
 
             try
             {
+                // Anular corrige un error del dia; despues, la devolucion es una nota de credito
+                new NotaCliente().ValidarAnulacionVenta(id);
                 oVenta.Anular(idUsuario);
             }
             catch (SqlException ex)

@@ -328,7 +328,7 @@
           '<div class="res-precios">' +
             '<div class="res-costo">Costo ' + formatearMoneda(r.PrecioCompra) + '</div>' +
             '<div class="res-venta">' + formatearMoneda(r.FinalSugerido) + '</div>' +
-            '<div class="res-margen">margen ' + margen + '%</div>' +
+            '<div class="res-margen">margen ' + margen + '%' + (r.IvaIncluido === 1 ? ' · IVA incl.' : '') + '</div>' +
           '</div>' +
           (yaEsta
             ? '<button class="btn-incorporar" style="background:#ced4da;cursor:default;" ' +
@@ -343,14 +343,100 @@
 
     /* ================= INCORPORAR ================= */
 
-    function opcionesRubro(idSugerido) {
-      var html = '<option value="">— Elegí un rubro —</option>';
-      rubros.forEach(function (ru) {
-        html += '<option value="' + ru.Id + '"' +
-                (ru.Id === idSugerido ? ' selected' : '') + '>' +
-                escapeHtml(ru.Nombre) + '</option>';
+    /* Palabras de la descripcion que sirven para sugerir rubro:
+       "BUJIA ENC.NGK ZKR7B-10" -> BUJIA, NGK. Se ignoran numeros y palabras cortas. */
+    function palabrasClave(desc) {
+      var ruido = ["PARA", "CON", "SIN", "DEL", "LAS", "LOS", "UNA", "UNO", "ENC", "TIPO", "JUEGO", "KIT"];
+      return String(desc || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .split(/[^A-Z]+/).filter(function (w) { return w.length >= 3 && ruido.indexOf(w) === -1; }).slice(0, 4);
+    }
+    function sinTildes(t) { return String(t || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+
+    // Los rubros que comparten palabras con la descripcion van primero
+    function opcionesRubro(idSugerido, desc, filtro) {
+      var claves = palabrasClave(desc);
+      var f = sinTildes(filtro).trim();
+      var lista = rubros.map(function (ru) {
+        var n = sinTildes(ru.Nombre);
+        var puntos = 0;
+        claves.forEach(function (c) { if (n.indexOf(c.substring(0, Math.max(4, c.length - 1))) !== -1) puntos++; });
+        return { ru: ru, puntos: puntos, n: n };
+      }).filter(function (x) { return !f || x.n.indexOf(f) !== -1; });
+      lista.sort(function (a, b) { return b.puntos - a.puntos || a.n.localeCompare(b.n); });
+
+      var html = "";
+      var sugeridos = lista.filter(function (x) { return x.puntos > 0; });
+      var resto = lista.filter(function (x) { return x.puntos === 0; });
+      if (sugeridos.length && !f) html += '<optgroup label="Sugeridos">';
+      sugeridos.forEach(function (x) {
+        html += '<option value="' + x.ru.Id + '"' + (x.ru.Id === idSugerido ? ' selected' : '') + '>' + escapeHtml(x.ru.Nombre) + '</option>';
       });
-      return html;
+      if (sugeridos.length && !f) html += '</optgroup><optgroup label="Todos">';
+      resto.forEach(function (x) {
+        html += '<option value="' + x.ru.Id + '"' + (x.ru.Id === idSugerido ? ' selected' : '') + '>' + escapeHtml(x.ru.Nombre) + '</option>';
+      });
+      if (sugeridos.length && !f) html += '</optgroup>';
+      return html || '<option value="" disabled>No hay rubros con ese nombre: crealo con "+ Crear rubro"</option>';
+    }
+
+    // Sigla propuesta: iniciales de las palabras importantes, sin repetir una existente
+    function siglaPropuesta(nombre) {
+      var p = sinTildes(nombre).replace(/"/g, " ").split(/[^A-Z0-9]+/).filter(function (w) { return w.length >= 2 && ["DE", "DEL", "LA", "LOS", "LAS", "Y"].indexOf(w) === -1; });
+      var base = p.map(function (w) { return w[0]; }).join("").substring(0, 4) || "RUB";
+      if (base.length < 2 && p[0]) base = p[0].substring(0, 3);
+      var usadas = rubros.map(function (r) { return String(r.Sigla || "").toUpperCase(); });
+      var sigla = base, n = 2;
+      while (usadas.indexOf(sigla) !== -1 && n < 10) { sigla = base.substring(0, 4) + n; n++; }
+      return sigla;
+    }
+
+    // Engancha el buscador y el alta de rubro dentro del dialogo
+    function prepararSelectorRubro(r) {
+      var sel = document.getElementById("swRubro");
+      var buscar = document.getElementById("swRubroBuscar");
+      buscar.addEventListener("input", function () {
+        var actual = sel.value;
+        sel.innerHTML = opcionesRubro(parseInt(actual, 10) || r.IdRubro, r.Descripcion, buscar.value);
+        if (!sel.value && sel.options.length && !sel.options[0].disabled) sel.selectedIndex = 0;
+      });
+      // Sin rubro del proveedor: queda elegido el primer sugerido
+      if (!r.IdRubro && sel.querySelector("optgroup[label='Sugeridos'] option")) sel.value = sel.querySelector("optgroup[label='Sugeridos'] option").value;
+
+      document.getElementById("swNuevoRubroLink").addEventListener("click", function (e) {
+        e.preventDefault();
+        var box = document.getElementById("swNuevoRubro");
+        box.style.display = box.style.display === "none" ? "" : "none";
+        var claves = palabrasClave(r.Descripcion);
+        var nombre = document.getElementById("swRubroNombre");
+        if (!nombre.value && claves.length) nombre.value = claves[0] + (claves[1] ? ' "' + claves[1] + '"' : "");
+        document.getElementById("swRubroSigla").value = siglaPropuesta(nombre.value);
+        nombre.focus();
+      });
+      document.getElementById("swRubroNombre").addEventListener("input", function () {
+        document.getElementById("swRubroSigla").value = siglaPropuesta(this.value);
+      });
+      document.getElementById("swRubroCrear").addEventListener("click", function () {
+        var nombre = document.getElementById("swRubroNombre").value.trim().toUpperCase();
+        var sigla = document.getElementById("swRubroSigla").value.trim().toUpperCase();
+        var msg = document.getElementById("swRubroMsg");
+        if (nombre.length < 3) { msg.textContent = "El nombre necesita al menos 3 caracteres."; return; }
+        if (!/^[A-Z0-9]{2,5}$/.test(sigla)) { msg.textContent = "La sigla va de 2 a 5 letras o números."; return; }
+        msg.textContent = "Creando…";
+        fetchAuth(api + "Rubro", { method: "POST", body: JSON.stringify({ Id: 0, Nombre: nombre, Sigla: sigla }) })
+          .then(function (x) {
+            if (!x.ok) return leerError(x).then(function (m) { throw new Error(m); });
+            return cargarRubros();
+          })
+          .then(function () {
+            var nuevo = rubros.find(function (ru) { return sinTildes(ru.Nombre) === sinTildes(nombre); });
+            buscar.value = "";
+            sel.innerHTML = opcionesRubro(nuevo ? nuevo.Id : null, r.Descripcion);
+            if (nuevo) sel.value = nuevo.Id;
+            document.getElementById("swNuevoRubro").style.display = "none";
+            msg.textContent = "";
+          })
+          .catch(function (err) { msg.textContent = err.message || "No se pudo crear el rubro."; });
+      });
     }
 
     function incorporar(idx) {
@@ -371,8 +457,18 @@
               escapeHtml(String(r.Descripcion).substring(0, 100)) + '">' +
             '<div class="form-text mb-2">Podés acortarla o escribirla como la buscás vos.</div>' +
 
-            '<label class="form-label mb-1">Rubro</label>' +
-            '<select id="swRubro" class="form-select">' + opcionesRubro(r.IdRubro) + '</select>' +
+            '<label class="form-label mb-1 d-flex justify-content-between">Rubro' +
+              '<a href="#" id="swNuevoRubroLink" style="font-size:0.8rem;font-weight:600;">+ Crear rubro</a></label>' +
+            '<input type="text" id="swRubroBuscar" class="form-control form-control-sm mb-1" placeholder="Buscar rubro…">' +
+            '<select id="swRubro" class="form-select" size="6">' + opcionesRubro(r.IdRubro, r.Descripcion) + '</select>' +
+            '<div id="swNuevoRubro" style="display:none;background:var(--bg-soft);border-radius:8px;padding:10px;margin-top:6px;">' +
+              '<div class="row g-2">' +
+                '<div class="col-8"><input type="text" id="swRubroNombre" class="form-control form-control-sm" maxlength="60" placeholder="Nombre, ej: BUJIAS DE IGNICION &quot;NGK&quot;"></div>' +
+                '<div class="col-4"><input type="text" id="swRubroSigla" class="form-control form-control-sm" maxlength="5" placeholder="Sigla" style="text-transform:uppercase;"></div>' +
+              '</div>' +
+              '<button type="button" id="swRubroCrear" class="btn btn-sm btn-primary mt-2">Crear y elegir</button>' +
+              '<span id="swRubroMsg" class="ms-2" style="font-size:0.8rem;"></span>' +
+            '</div>' +
             '<div class="form-text mb-2">' +
               (r.IdRubro
                 ? 'Viene sugerido del proveedor. Cambialo si en tu negocio va en otro lado.'
@@ -424,15 +520,18 @@
                    'font-weight:700;color:var(--navy);">' +
                 '<span>Costo</span><span>' + formatearMoneda(r.PrecioCompra) + '</span></div>' +
 
-              '<div class="d-flex justify-content-between" style="margin-top:5px;">' +
-                '<span>Utilidad ' + r.MargenAplicado + '%</span><span>+' +
-                formatearMoneda(r.NetoSugerido - r.PrecioCompra) + '</span></div>' +
-
-              '<div class="d-flex justify-content-between"><span>Neto</span><span>' +
-                formatearMoneda(r.NetoSugerido) + '</span></div>' +
-
-              '<div class="d-flex justify-content-between"><span>IVA 21%</span><span>+' +
-                formatearMoneda(r.FinalSugerido - r.NetoSugerido) + '</span></div>' +
+              (r.IvaIncluido === 1
+                /* Proveedor que no factura IVA: costo + margen es el precio de venta */
+                ? '<div class="d-flex justify-content-between" style="margin-top:5px;">' +
+                    '<span>Margen ' + r.MargenAplicado + '%</span><span>+' +
+                    formatearMoneda(r.FinalSugerido - r.PrecioCompra) + '</span></div>'
+                : '<div class="d-flex justify-content-between" style="margin-top:5px;">' +
+                    '<span>Utilidad ' + r.MargenAplicado + '%</span><span>+' +
+                    formatearMoneda(r.NetoSugerido - r.PrecioCompra) + '</span></div>' +
+                  '<div class="d-flex justify-content-between"><span>Neto</span><span>' +
+                    formatearMoneda(r.NetoSugerido) + '</span></div>' +
+                  '<div class="d-flex justify-content-between"><span>IVA 21%</span><span>+' +
+                    formatearMoneda(r.FinalSugerido - r.NetoSugerido) + '</span></div>') +
 
               '<div class="d-flex justify-content-between" ' +
                    'style="border-top:1px solid var(--border);margin-top:5px;padding-top:5px;' +
@@ -447,7 +546,7 @@
         confirmButtonText: "Sumar al catálogo",
         cancelButtonText: "Cancelar",
         confirmButtonColor: "#28a745",
-        didOpen: function () { activarInputPrecio("swPrecio"); },
+        didOpen: function () { activarInputPrecio("swPrecio"); prepararSelectorRubro(r); },
         preConfirm: function () {
           var desc = document.getElementById("swDesc").value.trim();
           var idRubro = parseInt(document.getElementById("swRubro").value, 10);

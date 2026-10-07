@@ -192,6 +192,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="layout.js"></script>
   <script>
     if (!Auth.requireSession()) { /* redirect */ }
@@ -249,6 +250,14 @@
       mostrar("modoControl", abierto && enControl);
       document.getElementById("paso1").className = "paso " + (enControl ? "hecho" : "activo");
       document.getElementById("paso2").className = "paso " + (enControl ? "activo" : "");
+
+      // Solo los comprobantes que corresponden a la condicion del proveedor
+      const permitidos = (p.ComprobantesPermitidos || "Factura A,Factura B,Factura C,Presupuesto,Remito").split(",");
+      const sel = document.getElementById("tipoComp");
+      if (sel.dataset.prov !== String(p.IdProveedor)) {
+        sel.innerHTML = permitidos.map(t => '<option>' + t + '</option>').join("");
+        sel.dataset.prov = String(p.IdProveedor);
+      }
 
       if (abierto && enControl) prepararControl();
       else if (abierto && falta > 0) prepararCaptura();
@@ -332,7 +341,13 @@
     function aplicarLectura(l) {
       idLectura = l.IdLectura;
       const c = l.Comprobante || {};
-      if (c.TipoComprobante) document.getElementById("tipoComp").value = c.TipoComprobante;
+      if (c.TipoComprobante) {
+        const sel = document.getElementById("tipoComp");
+        if (Array.from(sel.options).some(o => o.value === c.TipoComprobante)) sel.value = c.TipoComprobante;
+        else Swal.fire("Revisá el comprobante", "La foto parece ser un/a <strong>" + escapeHtml(c.TipoComprobante) +
+               "</strong>, pero " + escapeHtml(datos.Pedido[0].Proveedor) + " es " + escapeHtml(datos.Pedido[0].CondicionIva || "") +
+               " y entrega " + escapeHtml((datos.Pedido[0].ComprobantesPermitidos || "").replace(",", " o ")) + ".", "warning");
+      }
       if (c.Numero) document.getElementById("numComp").value = c.Numero;
       if (c.Fecha && /^\d{4}-\d{2}-\d{2}$/.test(c.Fecha)) document.getElementById("fechaComp").value = c.Fecha;
       if (c.Total) document.getElementById("totalComp").value = numeroAPrecio(c.Total);
@@ -553,9 +568,10 @@
           '<td class="text-center">' + (x.Estado === "CONFIRMADA" ? (x.Unidades || 0) : '—') + '</td>' +
           '<td>' + (x.IncidenciasAbiertas ? '<span class="res r-roto">' + x.IncidenciasAbiertas + ' abierto(s)</span>' : '') + '</td>' +
           '<td class="text-end" style="white-space:nowrap;">' +
-            (x.IdAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + x.IdAdjunto + ')" title="Ver factura"><i class="bi bi-paperclip"></i></button> ' : '') +
+            (x.Anulada ? (x.IdAdjunto ? accionesFoto(null, x.IdAdjunto) : '') : accionesFoto(x.Id, x.IdAdjunto, cargar)) +
             (puedeAnular && !x.Anulada && x.Estado === "CONFIRMADA" ? '<button class="btn btn-sm btn-outline-danger" onclick="anular(' + x.Id + ', false)">Anular</button>' : '') +
           '</td></tr>').join("");
+      activarTooltips();
     }
 
     function anular(id, enControl) {
@@ -583,6 +599,83 @@
         if (!r.isConfirmed) return;
         fetchAuth(API + "Pedido/" + idPedido + "/CerrarFaltantes", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
           .then(x => x.ok ? cargar() : leerError(x).then(m => Swal.fire("No se pudo cerrar", m, "error")));
+      });
+    }
+
+    /* ================= FOTO DE LA FACTURA =================
+       Cambiar o quitar una foto mal subida. La anterior no se borra:
+       queda guardada y desvinculada, con quien la cambio. */
+    const puedeFoto = ["Dueño", "Administrador", "Supervisor"].indexOf((Auth.getUsuario() || {}).Rol) !== -1;
+    let fotoRecepcion = null, fotoAlTerminar = null;
+
+    function accionesFoto(idRecepcion, idAdjunto, alTerminar) {
+      if (!idRecepcion) return idAdjunto ? '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + idAdjunto + ')" data-bs-toggle="tooltip" title="Ver la foto de la factura"><i class="bi bi-paperclip"></i></button> ' : '';
+      window._fotoCb = alTerminar;
+      let h = "";
+      if (idAdjunto) h += '<button class="btn btn-sm btn-outline-primary" onclick="verAdjunto(' + idAdjunto + ')" data-bs-toggle="tooltip" title="Ver la foto de la factura"><i class="bi bi-paperclip"></i></button> ';
+      if (!puedeFoto) return h;
+      if (idAdjunto)
+        h += '<button class="btn btn-sm btn-outline-secondary" onclick="cambiarFoto(' + idRecepcion + ')" data-bs-toggle="tooltip" title="Cambiar la foto: si se subió la equivocada"><i class="bi bi-camera"></i></button> ' +
+             '<button class="btn btn-sm btn-outline-danger" onclick="quitarFoto(' + idRecepcion + ')" data-bs-toggle="tooltip" title="Quitar la foto de esta factura"><i class="bi bi-trash"></i></button> ';
+      else
+        h += '<button class="btn btn-sm btn-outline-secondary" onclick="cambiarFoto(' + idRecepcion + ')" data-bs-toggle="tooltip" title="Adjuntar la foto de la factura"><i class="bi bi-camera"></i> Foto</button> ';
+      return h;
+    }
+
+    function activarTooltips() {
+      if (!window.bootstrap) return;
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => bootstrap.Tooltip.getOrCreateInstance(el));
+    }
+
+    function prepararFoto(file) {
+      return new Promise((resolve, reject) => {
+        const leer = f => { const fr = new FileReader(); fr.onload = () => resolve({ nombre: file.name, mime: f.type || file.type, base64: fr.result, tam: f.size }); fr.onerror = reject; fr.readAsDataURL(f); };
+        if (!file.type.startsWith("image/") || file.size <= 1.5 * 1024 * 1024) { leer(file); return; }
+        const img = new Image();
+        img.onload = () => {
+          const k = Math.min(1, 1800 / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(b => { URL.revokeObjectURL(img.src); leer(new File([b], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" })); }, "image/jpeg", 0.82);
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    function cambiarFoto(idRecepcion) {
+      fotoRecepcion = idRecepcion;
+      let input = document.getElementById("fotoFactura");
+      if (!input) {
+        input = document.createElement("input");
+        input.type = "file"; input.id = "fotoFactura"; input.hidden = true;
+        input.accept = "image/jpeg,image/png,image/webp,application/pdf";
+        input.addEventListener("change", e => {
+          const f = e.target.files[0]; e.target.value = "";
+          if (!f || !fotoRecepcion) return;
+          prepararFoto(f).then(a => {
+            if (a.tam > 2 * 1024 * 1024) return Promise.reject("El archivo supera los 2 MB.");
+            return fetchAuth(API_BASE + "Finanzas/Adjunto", { method: "POST", body: JSON.stringify({ NombreArchivo: a.nombre, TipoMime: a.mime, ContenidoBase64: a.base64 }) });
+          })
+          .then(x => x.ok ? x.json() : leerError(x).then(m => Promise.reject(m)))
+          .then(d => fetchAuth(API_BASE + "Compras/Recepcion/" + fotoRecepcion + "/Adjunto", { method: "POST", body: JSON.stringify({ IdAdjunto: d.IdAdjunto }) }))
+          .then(x => x.ok ? null : leerError(x).then(m => Promise.reject(m)))
+          .then(() => { Swal.fire({ icon: "success", title: "Foto actualizada", timer: 1300, showConfirmButton: false }); if (window._fotoCb) window._fotoCb(); })
+          .catch(m => Swal.fire("No se pudo cambiar", typeof m === "string" ? m : "Error de conexión.", "error"));
+        });
+        document.body.appendChild(input);
+      }
+      input.click();
+    }
+
+    function quitarFoto(idRecepcion) {
+      Swal.fire({ title: "¿Quitar la foto?", text: "Deja de mostrarse en esta factura. Queda registrado quién la quitó.",
+        icon: "warning", showCancelButton: true, confirmButtonText: "Quitar", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b"
+      }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API_BASE + "Compras/Recepcion/" + idRecepcion + "/Adjunto", { method: "POST", body: JSON.stringify({ IdAdjunto: null }) })
+          .then(x => x.ok ? (window._fotoCb && window._fotoCb()) : leerError(x).then(m => Swal.fire("No se pudo quitar", m, "error")));
       });
     }
 

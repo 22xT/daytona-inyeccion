@@ -211,6 +211,86 @@
       .repo-lista { max-height: 55vh; }
       .repo-resumen { max-height: 40vh; }
     }
+
+    /* ===== Reposicion sugerida: filas densas, alternativas en linea ===== */
+    .rp-caja { display:flex; flex-direction:column; min-height:0; flex:1; }
+    .rp-top { display:flex; justify-content:space-between; align-items:flex-start; padding:12px 14px 6px; }
+    .rp-titulo { font-weight:800; color:var(--navy); font-size:1.02rem; }
+    .rp-stats { font-size:0.8rem; color:var(--text-muted); margin-top:2px; }
+    .rp-stats b { color:#1F2937; font-weight:700; }
+    .rp-stats .rojo { color:#B42318; }
+    .rp-btn-sec { border:1px solid var(--border); background:#fff; border-radius:8px; padding:5px 10px; font-size:0.8rem; font-weight:600; color:#374151; }
+    .rp-btn-sec:hover { background:var(--bg-soft); }
+    .rp-filtros { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:6px 14px 10px; border-bottom:1px solid var(--border); }
+    .rp-buscar { position:relative; flex:1 1 200px; }
+    .rp-buscar i { position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:0.85rem; }
+    .rp-buscar input { width:100%; border:1px solid var(--border); border-radius:8px; padding:5px 10px 5px 28px; font-size:0.85rem; }
+    .rp-chips { display:flex; gap:4px; }
+    .rp-chip { border:1px solid var(--border); background:#fff; border-radius:16px; padding:3px 10px; font-size:0.76rem; font-weight:600; color:var(--text-muted); }
+    .rp-chip.activo { background:var(--navy); border-color:var(--navy); color:#fff; }
+    .rp-chip .n { opacity:0.75; margin-left:3px; }
+    .rp-sel { width:auto; max-width:190px; font-size:0.8rem; }
+
+    .rp-cab, .rp-fila { display:grid; grid-template-columns: 28px minmax(180px, 2.2fr) 110px 112px minmax(170px, 1.6fr) 100px; gap:10px; align-items:center; }
+    .rp-cab { padding:7px 14px; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); background:var(--bg-soft); border-bottom:1px solid var(--border); }
+    .rp-cab .c { text-align:center; } .rp-cab .d { text-align:right; }
+    .rp-item { border-bottom:1px solid #F0F1F3; border-left:3px solid transparent; transition:background 0.4s; }
+    .rp-item.u-SIN_STOCK { border-left-color:#D92D20; }
+    .rp-item.u-CRITICO { border-left-color:#F79009; }
+    .rp-item.excluido .rp-fila > *:not(:first-child) { opacity:0.4; }
+    .rp-item.flash { background:#EEF4FF; }
+    .rp-fila { padding:8px 14px 8px 11px; }
+    .rp-cod { font-family:'Courier New', monospace; font-weight:700; font-size:0.78rem; color:#2c3e50; }
+    .rp-desc { font-size:0.84rem; color:#111827; line-height:1.25; }
+    .rp-urg { font-size:0.66rem; font-weight:700; border-radius:5px; padding:1px 6px; margin-left:4px; vertical-align:1px; }
+    .rp-urg.SIN_STOCK { background:#FEE4E2; color:#B42318; } .rp-urg.CRITICO { background:#FEF0C7; color:#93370D; }
+    .rp-stock { font-size:0.82rem; font-variant-numeric:tabular-nums; }
+    .rp-stock b { font-size:0.95rem; }
+    .rp-barra { height:4px; background:#E5E7EB; border-radius:2px; margin-top:3px; overflow:hidden; }
+    .rp-barra > div { height:100%; background:#F79009; }
+    .rp-camino { font-size:0.7rem; color:#1E40AF; }
+    .rp-cant { display:flex; align-items:center; justify-content:center; }
+    .rp-cant button { width:26px; height:28px; border:1px solid var(--border); background:#fff; color:#374151; font-weight:700; }
+    .rp-cant button:first-child { border-radius:7px 0 0 7px; } .rp-cant button:last-child { border-radius:0 7px 7px 0; }
+    .rp-cant input { width:44px; height:28px; border:1px solid var(--border); border-left:none; border-right:none; text-align:center; font-weight:700; font-size:0.88rem; }
+    .rp-sug { font-size:0.68rem; color:var(--text-muted); text-align:center; }
+    .rp-prov { font-size:0.84rem; line-height:1.25; }
+    .rp-prov .nom { font-weight:700; color:#111827; }
+    .rp-prov .pre { font-variant-numeric:tabular-nums; }
+    .rp-tag { font-size:0.66rem; font-weight:700; border-radius:5px; padding:1px 6px; }
+    .rp-tag.mejor { background:#DCFCE7; color:#166534; } .rp-tag.mas { background:#FEF0C7; color:#93370D; }
+    .rp-tag.siniva { background:#F3F4F6; color:#4B5563; }
+    .rp-opc { border:none; background:none; padding:0; font-size:0.76rem; font-weight:600; color:var(--nav-accent, #1266d1); }
+    .rp-sinprov { font-size:0.8rem; color:#93370D; }
+    .rp-sinprov button { border:1px solid #F5C99A; background:#FFFAEB; color:#93370D; border-radius:6px; font-size:0.74rem; font-weight:700; padding:2px 8px; margin-left:4px; }
+    .rp-sub { text-align:right; font-weight:700; font-variant-numeric:tabular-nums; font-size:0.86rem; }
+    .rp-alts { margin:0 14px 10px 50px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .rp-alt { display:grid; grid-template-columns: 18px 1fr auto 90px 70px; gap:10px; align-items:center; width:100%; border:none; border-bottom:1px solid #F0F1F3; background:#fff; padding:6px 10px; font-size:0.8rem; text-align:left; }
+    .rp-alt:last-child { border-bottom:none; }
+    .rp-alt:hover { background:#F8FAFF; }
+    .rp-alt.elegida { background:#EEF4FF; }
+    .rp-alt .r { text-align:right; font-variant-numeric:tabular-nums; }
+    .rp-alt .dif { color:#93370D; } .rp-alt .dif.cero { color:#166534; }
+    .rp-vacio { padding:40px 20px; text-align:center; color:var(--text-muted); }
+
+    .rp-res-top { padding:12px 14px; font-weight:800; color:var(--navy); border-bottom:1px solid var(--border); }
+    .rp-res-top small { display:block; font-weight:500; color:var(--text-muted); font-size:0.78rem; }
+    .rp-grupo { border-bottom:1px solid #F0F1F3; transition:background 0.4s; }
+    .rp-grupo.flash { background:#EEF4FF; }
+    .rp-grupo-h { display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; border:none; background:none; padding:9px 14px; text-align:left; }
+    .rp-grupo-h .nom { font-weight:700; color:#111827; font-size:0.88rem; }
+    .rp-grupo-h .cnt { font-size:0.74rem; color:var(--text-muted); }
+    .rp-grupo-h .sub { font-weight:700; font-variant-numeric:tabular-nums; }
+    .rp-grupo-items { display:none; padding:0 14px 8px; }
+    .rp-grupo.abierto .rp-grupo-items { display:block; }
+    .rp-gi { display:flex; justify-content:space-between; gap:8px; font-size:0.76rem; color:#4B5563; padding:2px 0; }
+    .rp-pend { padding:10px 14px; font-size:0.8rem; color:#93370D; background:#FFFAEB; }
+    .rp-sobrecosto { display:none; padding:8px 14px; font-size:0.78rem; color:#93370D; background:#FFFAEB; border-top:1px solid #FDE5C2; }
+    .rp-sobrecosto.visible { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .rp-sobrecosto button { border:none; background:none; color:var(--nav-accent, #1266d1); font-weight:700; font-size:0.76rem; padding:0; }
+    @media (max-width: 1366px) {
+      .rp-cab, .rp-fila { grid-template-columns: 26px minmax(150px, 2fr) 92px 104px minmax(150px, 1.5fr) 90px; gap:8px; }
+    }
   </style>
 </head>
 
@@ -234,35 +314,51 @@
     <!-- ============ PESTAÑA: REPOSICIÓN SUGERIDA ============ -->
     <div id="tabRepo" class="repo-body">
 
-      <!-- Izquierda: productos para reponer -->
+      <!-- Izquierda: que reponer, cuanto y a quien -->
       <div class="repo-col-izq">
-        <div class="caja">
-          <div class="repo-head">
-            <span id="repoTitulo">Productos para reponer</span>
-            <button type="button" class="repo-link" id="btnRepoRefrescar" title="Volver a analizar el stock">
-              <i class="bi bi-arrow-clockwise"></i> Actualizar
-            </button>
+        <div class="caja rp-caja">
+          <div class="rp-top">
+            <div>
+              <div class="rp-titulo" id="repoTitulo">Reposición sugerida</div>
+              <div class="rp-stats" id="repoStats">Analizando stock…</div>
+            </div>
+            <button type="button" class="rp-btn-sec" id="btnRepoRefrescar" title="Volver a analizar el stock"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+          </div>
+          <div class="rp-filtros">
+            <div class="rp-buscar"><i class="bi bi-search"></i><input type="text" id="repoBuscar" placeholder="Buscar código o descripción…"></div>
+            <div class="rp-chips" id="repoChips">
+              <button type="button" class="rp-chip activo" data-f="">Todos</button>
+              <button type="button" class="rp-chip" data-f="SIN_STOCK">Sin stock</button>
+              <button type="button" class="rp-chip" data-f="SIN_PROV">Sin proveedor</button>
+            </div>
+            <select id="repoProvFiltro" class="form-select form-select-sm rp-sel"><option value="">Todos los proveedores</option></select>
+            <select id="repoOrden" class="form-select form-select-sm rp-sel">
+              <option value="urg">Más urgentes primero</option>
+              <option value="sub">Mayor subtotal</option>
+              <option value="prov">Por proveedor</option>
+            </select>
+          </div>
+          <div class="rp-cab">
+            <span></span><span>Producto</span><span>Stock / mín.</span><span class="c">Pedir</span><span>Comprar a</span><span class="d">Subtotal</span>
           </div>
           <div class="repo-lista" id="repoLista"></div>
         </div>
       </div>
 
-      <!-- Derecha: resumen por proveedor -->
+      <!-- Derecha: los pedidos que se generan -->
       <div class="repo-col-der">
-        <div class="caja">
-          <div class="repo-head">
-            <span><i class="bi bi-truck"></i> Pedidos que se van a generar</span>
-          </div>
+        <div class="caja rp-caja">
+          <div class="rp-res-top" id="repoResTop">Pedidos que se van a generar</div>
           <div class="repo-resumen" id="repoResumen"></div>
+          <div class="rp-sobrecosto" id="repoSobrecosto"></div>
           <div class="repo-total">
             <span class="lbl">TOTAL ESTIMADO</span>
             <span class="monto" id="repoTotal">$0,00</span>
           </div>
         </div>
-
         <div class="repo-nota" id="repoNota"></div>
         <button type="button" class="btn-repo-confirmar" id="btnRepoConfirmar" disabled>
-          <i class="bi bi-check2-circle"></i> CONFIRMAR REPOSICIÓN
+          <i class="bi bi-check2-circle"></i> Generar pedidos
         </button>
       </div>
 
@@ -962,535 +1058,383 @@
 
   /* ==========================================================
      REPOSICION SUGERIDA
-     Nombres con prefijo "repo" para no pisar el pedido manual.
+     El calculo lo hace la base (SP_Reposicion_Sugerida): stock,
+     minimo, lo que ya viene en camino y las opciones de compra.
+     Aca solo se decide: cuanto, a quien, y que se incluye.
      ========================================================== */
 
-  var apiRepuestoRepo = api + "Repuesto";
-  var apiProvRep = api + "ProveedorRepuesto";   // puede no existir todavia
-
-  var repoItems = [];          // {IdRepuesto, Codigo, Descripcion, Stock, Minimo, Cantidad,
-                               //  IdProveedor, Precio, Alternativas:[{IdProveedor,Nombre,Precio}]}
-  var repoProveedores = [];    // catalogo de proveedores activos
-  var repoMapaPrecios = {};    // IdRepuesto -> [{IdProveedor, Nombre, Precio}]
-  var repoHayListas = false;   // true si el endpoint de listas respondio con datos
-
-  /* ---------- Carga ---------- */
+  var repoItems = [];          // {IdRepuesto, Codigo, Descripcion, Stock, Minimo, EnCamino, Sugerido, Urgencia,
+                               //  Cantidad, Incluido, IdProveedor, NombreProveedor, Precio, CondicionIva,
+                               //  Alternativas:[{IdProveedor, Nombre, Precio, CondicionIva}], abierto}
+  var repoProveedores = [];    // para la asignacion manual
+  var repoCubiertos = 0;       // bajo minimo pero ya pedidos
+  var repoFiltro = "", repoTexto = "", repoProvSel = "", repoOrden = "urg";
 
   function repoCargarProveedores() {
-    return fetchAuth(api + "Proveedor")
-      .then(function (r) { return r.json(); })
-      .then(function (datos) {
-        repoProveedores = datos.filter(function (p) {
-          return p.Activo !== false && p.Activo !== 0;
-        });
-      })
+    return fetchAuth(api + "Proveedor").then(function (r) { return r.json(); })
+      .then(function (d) { repoProveedores = (d || []).filter(function (p) { return p.Activo !== false && p.Activo !== 0; }); })
       .catch(function () { repoProveedores = []; });
   }
 
-  // Intenta leer la relacion Proveedor-Repuesto con precios de compra.
-  // Si el endpoint no existe (404) o viene vacio, se sigue funcionando
-  // sin precios: cada item queda como "sin proveedor" y se asigna a mano.
-  function repoCargarListas() {
-    return fetchAuth(apiProvRep)
-      .then(function (r) {
-        if (!r.ok) throw new Error("sin endpoint");
-        return r.json();
-      })
-      .then(function (datos) {
-        if (!datos || datos.length === 0) { repoHayListas = false; return; }
-        repoMapaPrecios = {};
-        datos.forEach(function (x) {
-          var idRep = x.IdRepuesto;
-          var precio = Number(x.PrecioCompra !== undefined ? x.PrecioCompra : x.Precio);
-          if (!idRep || isNaN(precio)) return;
-          if (!repoMapaPrecios[idRep]) repoMapaPrecios[idRep] = [];
-          var prov = repoProveedores.find(function (p) { return p.Id === x.IdProveedor; });
-          repoMapaPrecios[idRep].push({
-            IdProveedor: x.IdProveedor,
-            Nombre: x.Proveedor || (prov ? prov.RazonSocial : "Proveedor " + x.IdProveedor),
-            Precio: precio
-          });
-        });
-        // Cada lista queda ordenada de menor a mayor precio
-        Object.keys(repoMapaPrecios).forEach(function (k) {
-          repoMapaPrecios[k].sort(function (a, b) { return a.Precio - b.Precio; });
-        });
-        repoHayListas = true;
-      })
-      .catch(function () { repoHayListas = false; repoMapaPrecios = {}; });
-  }
-
-  function repoEsActivo(r) {
-    return r.Activo === true || r.Activo === 1 || r.Activo === undefined;
-  }
-
-  // Cantidad sugerida = StockMinimo - StockActual (nunca negativa).
-  // Si algun dia existe StockObjetivo en Repuesto, se usa ese en su lugar.
-  function repoCantidadSugerida(r) {
-    var stock = Number(r.StockActual || 0);
-    var objetivo = (r.StockObjetivo !== undefined && r.StockObjetivo !== null)
-      ? Number(r.StockObjetivo)
-      : Number(r.StockMinimo || 0);
-    var falta = objetivo - stock;
-    return falta > 0 ? falta : 0;
-  }
-
   function repoCargarFaltantes() {
-    var cont = document.getElementById("repoLista");
-    cont.innerHTML = '<div class="p-4 text-center text-muted">' +
-      '<span class="spinner-border spinner-border-sm"></span> Analizando stock…</div>';
-
-    return fetchAuth(apiRepuestoRepo)
-      .then(function (r) { return r.json(); })
-      .then(function (datos) {
-        var faltantes = datos.filter(repoEsActivo).filter(function (r) {
-          return Number(r.StockActual || 0) <= Number(r.StockMinimo || 0) && repoCantidadSugerida(r) > 0;
+    document.getElementById("repoLista").innerHTML = '<div class="rp-vacio"><span class="spinner-border spinner-border-sm"></span> Analizando stock…</div>';
+    return fetchAuth(api + "Compras/Reposicion")
+      .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function (d) {
+        var alts = {};
+        (d.Alternativas || []).forEach(function (a) {
+          (alts[a.IdRepuesto] = alts[a.IdRepuesto] || []).push({
+            IdProveedor: a.IdProveedor, Nombre: a.Proveedor, Precio: Number(a.Precio), CondicionIva: a.CondicionIva });
         });
-
-        // Una sola fila por repuesto: se calcula sobre el stock actual,
-        // asi que varias ventas del mismo item no generan filas repetidas.
-        repoItems = faltantes.map(function (r) {
-          var alternativas = repoMapaPrecios[r.Id] || [];
-          var mejor = alternativas.length > 0 ? alternativas[0] : null;
+        repoCubiertos = Number(d.CubiertosEnCamino || 0);
+        repoItems = (d.Items || []).map(function (r) {
+          var lista = alts[r.IdRepuesto] || [];
+          var mejor = lista[0] || null;
           return {
-            IdRepuesto: r.Id,
-            Codigo: r.Codigo || "",
-            Descripcion: r.Descripcion,
-            Imagen: r.Imagen || r.UrlImagen || r.Foto || "",
-            Stock: Number(r.StockActual || 0),
-            Minimo: Number(r.StockMinimo || 0),
-            Cantidad: repoCantidadSugerida(r),
-            IdProveedor: mejor ? mejor.IdProveedor : null,
-            NombreProveedor: mejor ? mejor.Nombre : null,
-            Precio: mejor ? mejor.Precio : null,
-            Alternativas: alternativas,
-            verAlternativas: false
+            IdRepuesto: r.IdRepuesto, Codigo: r.Codigo || "", Descripcion: r.Descripcion,
+            Stock: Number(r.Stock), Minimo: Number(r.Minimo), EnCamino: Number(r.EnCamino),
+            Sugerido: Number(r.Sugerido), Urgencia: r.Urgencia,
+            Cantidad: Number(r.Sugerido), Incluido: true,
+            IdProveedor: mejor ? mejor.IdProveedor : null, NombreProveedor: mejor ? mejor.Nombre : null,
+            Precio: mejor ? mejor.Precio : null, CondicionIva: mejor ? mejor.CondicionIva : null,
+            Alternativas: lista, abierto: false
           };
         });
-
-        // Los mas criticos primero
-        repoItems.sort(function (a, b) { return a.Stock - b.Stock; });
+        repoLlenarFiltroProveedores();
         repoRender();
       })
       .catch(function () {
-        cont.innerHTML = '<div class="p-4 text-center text-danger">' +
-          'No se pudieron cargar los repuestos. ' +
+        document.getElementById("repoLista").innerHTML = '<div class="rp-vacio text-danger">No se pudo analizar el stock. ' +
           '<button class="btn btn-sm btn-outline-danger ms-2" onclick="repoCargarFaltantes()">Reintentar</button></div>';
       });
   }
 
+  function repoLlenarFiltroProveedores() {
+    var nombres = {};
+    repoItems.forEach(function (it) { it.Alternativas.forEach(function (a) { nombres[a.IdProveedor] = a.Nombre; }); });
+    var sel = document.getElementById("repoProvFiltro");
+    sel.innerHTML = '<option value="">Todos los proveedores</option>' + Object.keys(nombres)
+      .sort(function (a, b) { return String(nombres[a]).localeCompare(String(nombres[b])); })
+      .map(function (id) { return '<option value="' + id + '">' + escapeHtml(nombres[id]) + '</option>'; }).join("");
+  }
+
+  /* ---------- Calculos ---------- */
+
+  function repoMejor(it) { return it.Alternativas.length ? it.Alternativas[0] : null; }
+  function repoListo(it) { return it.IdProveedor && it.Precio !== null && it.Cantidad > 0; }
+  function repoNoFactura(cond) { return cond && cond !== "Responsable Inscripto"; }
+
+  function repoVisibles() {
+    var t = repoTexto.trim().toUpperCase();
+    var lista = repoItems.map(function (it, idx) { return { it: it, idx: idx }; }).filter(function (x) {
+      var it = x.it;
+      if (repoFiltro === "SIN_STOCK" && it.Urgencia !== "SIN_STOCK") return false;
+      if (repoFiltro === "SIN_PROV" && it.IdProveedor) return false;
+      if (repoProvSel && !it.Alternativas.some(function (a) { return String(a.IdProveedor) === repoProvSel; })) return false;
+      if (t && (it.Codigo + " " + it.Descripcion).toUpperCase().indexOf(t) === -1) return false;
+      return true;
+    });
+    var urg = { SIN_STOCK: 0, CRITICO: 1, BAJO: 2 };
+    lista.sort(function (a, b) {
+      if (repoOrden === "sub") return (b.it.Cantidad * (b.it.Precio || 0)) - (a.it.Cantidad * (a.it.Precio || 0));
+      if (repoOrden === "prov") return String(a.it.NombreProveedor || "~").localeCompare(String(b.it.NombreProveedor || "~"));
+      return (urg[a.it.Urgencia] - urg[b.it.Urgencia]) || (a.it.Stock - b.it.Stock);
+    });
+    return lista;
+  }
+
   /* ---------- Render de la lista ---------- */
-
-  function repoMiniatura(it) {
-    if (it.Imagen) {
-      return '<img class="repo-foto" src="' + escapeHtml(it.Imagen) + '" alt="" ' +
-             'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
-             '<div class="repo-foto-ph" style="display:none;"><i class="bi bi-nut"></i></div>';
-    }
-    return '<div class="repo-foto-ph"><i class="bi bi-nut"></i></div>';
-  }
-
-  function repoBloqueProveedor(it, idx) {
-    if (!it.IdProveedor) {
-      return '<div class="repo-sin-prov">' +
-        '<i class="bi bi-exclamation-triangle-fill"></i> Sin proveedor/precio cargado' +
-        '<button type="button" class="repo-link" onclick="repoAsignar(' + idx + ')">Asignar</button>' +
-      '</div>';
-    }
-
-    var html = '<div class="repo-prov-nombre">' + escapeHtml(it.NombreProveedor);
-    if (it.Alternativas.length > 0 && it.Alternativas[0].IdProveedor === it.IdProveedor) {
-      html += ' <span class="repo-estrella" title="Mejor precio disponible">★</span>';
-    }
-    html += '</div>';
-
-    var otras = it.Alternativas.length - 1;
-    if (otras > 0) {
-      html += '<button type="button" class="repo-link" onclick="repoToggleAlt(' + idx + ')">' +
-        (it.verAlternativas ? 'Ocultar alternativas' : 'Ver ' + otras + ' alternativa' + (otras === 1 ? '' : 's')) +
-      '</button>';
-    } else {
-      html += '<button type="button" class="repo-link" onclick="repoAsignar(' + idx + ')">Cambiar</button>';
-    }
-
-    if (it.verAlternativas) {
-      html += '<div class="repo-alts">';
-      it.Alternativas.forEach(function (a) {
-        var elegida = a.IdProveedor === it.IdProveedor;
-        html += '<button type="button" class="repo-alt' + (elegida ? ' elegida' : '') + '" ' +
-          'onclick="repoElegirProveedor(' + idx + ', ' + a.IdProveedor + ')">' +
-          '<span>' + escapeHtml(a.Nombre) + '</span>' +
-          '<strong>' + formatearMoneda(a.Precio) + '</strong></button>';
-      });
-      html += '</div>';
-    }
-    return html;
-  }
 
   function repoRender() {
     var cont = document.getElementById("repoLista");
-    document.getElementById("repoTitulo").textContent =
-      "Productos para reponer (" + repoItems.length + ")";
-
-    if (repoItems.length === 0) {
-      cont.innerHTML = '<div class="empty-state">' +
-        '<div class="icon"><i class="bi bi-check-circle"></i></div>' +
-        '<h4>Todo en orden</h4>' +
-        '<p>Ningún repuesto está por debajo del stock mínimo.</p></div>';
-      repoRenderResumen();
-      return;
-    }
-
-    var html = "";
-    repoItems.forEach(function (it, idx) {
-      var subtotal = it.Precio !== null ? it.Cantidad * it.Precio : null;
-      var claseStock = it.Stock <= 0 ? "repo-cero" : "repo-bajo";
-
-      html += '<div class="repo-item">' +
-        repoMiniatura(it) +
-
-        '<div class="repo-info">' +
-          '<div class="repo-desc"><span class="codigo-repuesto">' + escapeHtml(it.Codigo) + '</span> ' +
-            escapeHtml(it.Descripcion) + '</div>' +
-          '<div class="repo-stock">' +
-            '<span class="' + claseStock + '">Stock ' + it.Stock + '</span>' +
-            '<span class="repo-sep">·</span>Mínimo ' + it.Minimo +
-          '</div>' +
-        '</div>' +
-
-        '<div class="repo-cant">' +
-          '<div class="qty-group">' +
-            '<button type="button" onclick="repoSumar(' + idx + ', -1)">−</button>' +
-            '<input type="number" min="1" value="' + it.Cantidad + '" ' +
-              'onchange="repoCambiarCantidad(' + idx + ', this.value)">' +
-            '<button type="button" onclick="repoSumar(' + idx + ', 1)">+</button>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="repo-prov">' + repoBloqueProveedor(it, idx) + '</div>' +
-
-        '<div class="repo-precio">' +
-          (it.Precio !== null
-            ? '<div class="repo-unit">' + formatearMoneda(it.Precio) + '</div>' +
-              '<div class="repo-sub">' + formatearMoneda(subtotal) + '</div>'
-            : '<div class="repo-unit text-muted">—</div>') +
-        '</div>' +
-
-        '<button class="repo-quitar" onclick="repoQuitar(' + idx + ')" title="Quitar de la reposición">' +
-          '<i class="bi bi-x-lg"></i></button>' +
-      '</div>';
+    var sinStock = repoItems.filter(function (it) { return it.Urgencia === "SIN_STOCK"; }).length;
+    var sinProv = repoItems.filter(function (it) { return it.Incluido && !it.IdProveedor; }).length;
+    document.getElementById("repoStats").innerHTML = repoItems.length === 0 ? "Todo el stock está sobre el mínimo." :
+      '<b>' + repoItems.length + '</b> producto' + (repoItems.length === 1 ? '' : 's') + ' para reponer' +
+      (sinStock ? ' · <b class="rojo">' + sinStock + ' sin stock</b>' : '') +
+      (sinProv ? ' · <b>' + sinProv + ' sin proveedor</b>' : '') +
+      (repoCubiertos ? ' · ' + repoCubiertos + ' ya pedido' + (repoCubiertos === 1 ? '' : 's') + ', no se repite' + (repoCubiertos === 1 ? '' : 'n') : '');
+    document.querySelectorAll("#repoChips .rp-chip").forEach(function (c) {
+      var f = c.getAttribute("data-f");
+      var n = f === "SIN_STOCK" ? sinStock : f === "SIN_PROV" ? sinProv : repoItems.length;
+      c.innerHTML = c.innerHTML.split('<span')[0] + '<span class="n">' + n + '</span>';
+      c.classList.toggle("activo", f === repoFiltro);
     });
 
-    cont.innerHTML = html;
+    var vis = repoVisibles();
+    if (repoItems.length === 0) {
+      cont.innerHTML = '<div class="rp-vacio"><i class="bi bi-check2-circle" style="font-size:1.6rem;color:#166534;"></i><div class="mt-2">No hay nada para reponer.</div></div>';
+    } else if (vis.length === 0) {
+      cont.innerHTML = '<div class="rp-vacio">Ningún producto coincide con el filtro.</div>';
+    } else {
+      cont.innerHTML = vis.map(function (x) { return repoFila(x.it, x.idx); }).join("");
+    }
     repoRenderResumen();
   }
 
-  /* ---------- Acciones sobre la lista ---------- */
+  function repoFila(it, idx) {
+    var pct = it.Minimo > 0 ? Math.min(100, Math.round(it.Stock / it.Minimo * 100)) : 0;
+    var urg = it.Urgencia === "SIN_STOCK" ? '<span class="rp-urg SIN_STOCK">Sin stock</span>'
+            : it.Urgencia === "CRITICO" ? '<span class="rp-urg CRITICO">Crítico</span>' : '';
+    var mejor = repoMejor(it);
+    var compra;
+    if (!it.IdProveedor) {
+      compra = '<div class="rp-sinprov"><i class="bi bi-exclamation-triangle"></i> Sin proveedor' +
+               '<button type="button" onclick="repoAsignar(' + idx + ')">Asignar</button></div>';
+    } else {
+      var dif = mejor ? (it.Precio - mejor.Precio) : 0;
+      var tag = !mejor ? '' : (dif <= 0.005 ? '<span class="rp-tag mejor">Mejor precio</span>'
+                                            : '<span class="rp-tag mas">+' + formatearMoneda(dif) + ' vs. mejor</span>');
+      var otras = it.Alternativas.length - 1;
+      compra = '<div class="rp-prov"><span class="nom">' + escapeHtml(it.NombreProveedor) + '</span> · <span class="pre">' + formatearMoneda(it.Precio) + '</span>' +
+               (repoNoFactura(it.CondicionIva) ? ' <span class="rp-tag siniva" title="Este proveedor no factura IVA">sin IVA</span>' : '') +
+               '<div>' + tag + ' ' +
+               (otras > 0 ? '<button type="button" class="rp-opc" onclick="repoToggleAlt(' + idx + ')">' + (it.abierto ? 'Cerrar' : otras + ' opci' + (otras === 1 ? 'ón' : 'ones') + ' más') + ' <i class="bi bi-chevron-' + (it.abierto ? 'up' : 'down') + '"></i></button>'
+                          : '<button type="button" class="rp-opc" onclick="repoAsignar(' + idx + ')">Cambiar</button>') +
+               '</div></div>';
+    }
+
+    var html = '<div class="rp-item u-' + it.Urgencia + (it.Incluido ? '' : ' excluido') + '" id="rpItem' + idx + '">' +
+      '<div class="rp-fila">' +
+        '<input type="checkbox" class="form-check-input" ' + (it.Incluido ? 'checked' : '') + ' onchange="repoIncluir(' + idx + ', this.checked)" title="Incluir en la reposición">' +
+        '<div><span class="rp-cod">' + escapeHtml(it.Codigo) + '</span>' + urg + '<div class="rp-desc">' + escapeHtml(it.Descripcion) + '</div></div>' +
+        '<div class="rp-stock" title="Stock actual ' + it.Stock + ', mínimo ' + it.Minimo + (it.EnCamino ? ', ya pedidos ' + it.EnCamino : '') + '. Se sugiere ' + it.Sugerido + '."><b>' + it.Stock + '</b> / ' + it.Minimo +
+          '<div class="rp-barra"><div style="width:' + pct + '%"></div></div>' +
+          (it.EnCamino ? '<div class="rp-camino">+' + it.EnCamino + ' en camino</div>' : '') + '</div>' +
+        '<div><div class="rp-cant">' +
+          '<button type="button" onclick="repoSumar(' + idx + ', -1)" aria-label="Menos">−</button>' +
+          '<input type="number" min="0" value="' + it.Cantidad + '" onchange="repoCambiarCantidad(' + idx + ', this.value)">' +
+          '<button type="button" onclick="repoSumar(' + idx + ', 1)" aria-label="Más">+</button></div>' +
+          (it.Cantidad !== it.Sugerido ? '<div class="rp-sug">sugerido ' + it.Sugerido + '</div>' : '') + '</div>' +
+        '<div>' + compra + '</div>' +
+        '<div class="rp-sub">' + (it.Precio !== null ? formatearMoneda(it.Cantidad * it.Precio) : '—') + '</div>' +
+      '</div>';
+
+    // Comparacion de opciones de compra, debajo de la fila
+    if (it.abierto && it.Alternativas.length > 1) {
+      html += '<div class="rp-alts">' + it.Alternativas.map(function (a, i) {
+        var d = a.Precio - mejor.Precio;
+        return '<button type="button" class="rp-alt' + (a.IdProveedor === it.IdProveedor ? ' elegida' : '') + '" onclick="repoElegirProveedor(' + idx + ', ' + a.IdProveedor + ')">' +
+          '<i class="bi ' + (a.IdProveedor === it.IdProveedor ? 'bi-record-circle-fill' : 'bi-circle') + '"></i>' +
+          '<span><b>' + escapeHtml(a.Nombre) + '</b>' + (repoNoFactura(a.CondicionIva) ? ' <span class="rp-tag siniva">sin IVA</span>' : '') + '</span>' +
+          '<span>' + (i === 0 ? '<span class="rp-tag mejor">Mejor precio</span>' : '') + '</span>' +
+          '<span class="r">' + formatearMoneda(a.Precio) + '</span>' +
+          '<span class="r dif' + (d <= 0.005 ? ' cero' : '') + '">' + (d <= 0.005 ? '—' : '+' + formatearMoneda(d)) + '</span></button>';
+      }).join("") + '</div>';
+    }
+    return html + '</div>';
+  }
+
+  /* ---------- Acciones ---------- */
+
+  function repoDestacar(idx, idProv) {
+    var f = document.getElementById("rpItem" + idx);
+    if (f) { f.classList.add("flash"); setTimeout(function () { f.classList.remove("flash"); }, 700); }
+    var g = document.getElementById("rpGrupo" + idProv);
+    if (g) { g.classList.add("flash"); setTimeout(function () { g.classList.remove("flash"); }, 700); }
+  }
 
   function repoCambiarCantidad(idx, valor) {
-    var it = repoItems[idx];
-    if (!it) return;
+    var it = repoItems[idx]; if (!it) return;
     var n = parseInt(valor, 10);
-    if (!n || n < 1) n = 1;
-    it.Cantidad = n;
-    repoRender();
+    it.Cantidad = isNaN(n) || n < 0 ? 0 : Math.min(n, 9999);
+    if (it.Cantidad === 0) it.Incluido = false;
+    repoRender(); repoDestacar(idx, it.IdProveedor);
   }
+  function repoSumar(idx, delta) { var it = repoItems[idx]; if (it) repoCambiarCantidad(idx, it.Cantidad + delta); }
 
-  function repoSumar(idx, delta) {
+  function repoIncluir(idx, si) {
     var it = repoItems[idx];
-    if (!it) return;
-    repoCambiarCantidad(idx, it.Cantidad + delta);
+    it.Incluido = si;
+    if (si && it.Cantidad === 0) it.Cantidad = it.Sugerido;
+    repoRender(); repoDestacar(idx, it.IdProveedor);
   }
 
-  function repoQuitar(idx) {
-    repoItems.splice(idx, 1);
-    repoRender();
-  }
-
-  function repoToggleAlt(idx) {
-    repoItems[idx].verAlternativas = !repoItems[idx].verAlternativas;
-    repoRender();
-  }
+  function repoToggleAlt(idx) { repoItems[idx].abierto = !repoItems[idx].abierto; repoRender(); }
 
   function repoElegirProveedor(idx, idProveedor) {
     var it = repoItems[idx];
-    var alt = it.Alternativas.find(function (a) { return a.IdProveedor === idProveedor; });
-    if (!alt) return;
-    it.IdProveedor = alt.IdProveedor;
-    it.NombreProveedor = alt.Nombre;
-    it.Precio = alt.Precio;
-    it.verAlternativas = false;
+    var a = it.Alternativas.find(function (x) { return x.IdProveedor === idProveedor; });
+    if (!a) return;
+    it.IdProveedor = a.IdProveedor; it.NombreProveedor = a.Nombre; it.Precio = a.Precio; it.CondicionIva = a.CondicionIva;
+    it.abierto = false;
+    repoRender(); repoDestacar(idx, it.IdProveedor);
+  }
+
+  // Volver todo a la opcion mas barata
+  function repoMejoresPrecios() {
+    repoItems.forEach(function (it) {
+      var m = repoMejor(it);
+      if (m) { it.IdProveedor = m.IdProveedor; it.NombreProveedor = m.Nombre; it.Precio = m.Precio; it.CondicionIva = m.CondicionIva; }
+    });
     repoRender();
   }
 
-  // Asignacion manual: para repuestos sin lista de precios cargada.
+  // Asignacion manual: para repuestos sin lista de precios cargada
   function repoAsignar(idx) {
     var it = repoItems[idx];
-    if (repoProveedores.length === 0) {
-      Swal.fire("Sin proveedores", "No hay proveedores activos cargados.", "info");
-      return;
-    }
-
-    var opciones = '<option value="">Seleccione proveedor…</option>';
-    repoProveedores.forEach(function (p) {
-      var sel = p.Id === it.IdProveedor ? " selected" : "";
-      opciones += '<option value="' + p.Id + '"' + sel + '>' + escapeHtml(p.RazonSocial) + '</option>';
-    });
-
+    if (repoProveedores.length === 0) { Swal.fire("Sin proveedores", "No hay proveedores activos cargados.", "info"); return; }
+    var opciones = '<option value="">Seleccione proveedor…</option>' + repoProveedores.map(function (p) {
+      return '<option value="' + p.Id + '"' + (p.Id === it.IdProveedor ? ' selected' : '') + '>' + escapeHtml(p.RazonSocial) + '</option>';
+    }).join("");
     Swal.fire({
-      title: "Asignar proveedor y precio",
-      html: '<div style="text-align:left;">' +
-              '<div class="mb-2"><strong>' + escapeHtml(it.Descripcion) + '</strong></div>' +
-              '<label class="form-label mb-1">Proveedor</label>' +
-              '<select id="swProv" class="form-select">' + opciones + '</select>' +
-              '<label class="form-label mb-1 mt-2">Precio de compra unitario</label>' +
-              '<div class="input-group">' +
-                '<span class="input-group-text">$</span>' +
-                '<input type="text" inputmode="decimal" id="swPrecioRepo" class="form-control text-end" value="' +
-                  (it.Precio !== null ? numeroAPrecio(it.Precio) : "") + '">' +
-              '</div>' +
-              '<div class="form-text mt-2">Se usa solo para este pedido. No modifica listas de precios.</div>' +
-            '</div>',
-      showCancelButton: true,
-      confirmButtonText: "Asignar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#1F3864",
+      title: "Comprar a",
+      html: '<div style="text-align:left;"><div class="mb-2"><strong>' + escapeHtml(it.Descripcion) + '</strong></div>' +
+            '<label class="form-label mb-1">Proveedor</label><select id="swProv" class="form-select">' + opciones + '</select>' +
+            '<label class="form-label mb-1 mt-2">Costo unitario</label><div class="input-group"><span class="input-group-text">$</span>' +
+            '<input type="text" inputmode="decimal" id="swPrecioRepo" class="form-control text-end" value="' + (it.Precio !== null ? numeroAPrecio(it.Precio) : "") + '"></div>' +
+            '<div class="form-text mt-2">Solo para este pedido. No modifica la lista de precios del proveedor.</div></div>',
+      showCancelButton: true, confirmButtonText: "Asignar", cancelButtonText: "Cancelar", confirmButtonColor: "#1F3864",
       didOpen: function () { activarInputPrecio("swPrecioRepo", PRECIO_TOPE); },
       preConfirm: function () {
         var idProv = parseInt(document.getElementById("swProv").value, 10);
         var precio = precioANumero(document.getElementById("swPrecioRepo").value);
         if (!idProv) { Swal.showValidationMessage("Elegí un proveedor."); return false; }
-        if (isNaN(precio) || precio <= 0) { Swal.showValidationMessage("El precio debe ser mayor a cero."); return false; }
-        if (precio > PRECIO_TOPE) {
-          Swal.showValidationMessage("El precio no puede superar " + fmt(PRECIO_TOPE) + ".");
-          return false;
-        }
+        if (isNaN(precio) || precio <= 0) { Swal.showValidationMessage("El costo debe ser mayor a cero."); return false; }
+        if (precio > PRECIO_TOPE) { Swal.showValidationMessage("El costo no puede superar " + fmt(PRECIO_TOPE) + "."); return false; }
         return { idProv: idProv, precio: precio };
       }
     }).then(function (res) {
       if (!res.isConfirmed || !res.value) return;
       var prov = repoProveedores.find(function (p) { return p.Id === res.value.idProv; });
-      it.IdProveedor = res.value.idProv;
-      it.NombreProveedor = prov ? prov.RazonSocial : "Proveedor";
-      it.Precio = res.value.precio;
-      it.verAlternativas = false;
-      repoRender();
+      it.IdProveedor = res.value.idProv; it.NombreProveedor = prov ? prov.RazonSocial : "Proveedor";
+      it.Precio = res.value.precio; it.CondicionIva = prov ? prov.CondicionIva : null; it.abierto = false;
+      repoRender(); repoDestacar(idx, it.IdProveedor);
     });
   }
 
-  /* ---------- Resumen agrupado por proveedor ---------- */
+  /* ---------- Resumen: los pedidos que se generan ---------- */
 
   function repoAgrupar() {
     var grupos = {};
     repoItems.forEach(function (it) {
-      if (!it.IdProveedor || it.Precio === null) return;
-      if (!grupos[it.IdProveedor]) {
-        grupos[it.IdProveedor] = { IdProveedor: it.IdProveedor, Nombre: it.NombreProveedor, items: [], subtotal: 0 };
-      }
-      grupos[it.IdProveedor].items.push(it);
-      grupos[it.IdProveedor].subtotal += it.Cantidad * it.Precio;
+      if (!it.Incluido || !repoListo(it)) return;
+      var g = grupos[it.IdProveedor] || (grupos[it.IdProveedor] = { IdProveedor: it.IdProveedor, Nombre: it.NombreProveedor, items: [], subtotal: 0 });
+      g.items.push(it); g.subtotal += it.Cantidad * it.Precio;
     });
-    return Object.keys(grupos).map(function (k) { return grupos[k]; });
+    return Object.keys(grupos).map(function (k) { return grupos[k]; }).sort(function (a, b) { return b.subtotal - a.subtotal; });
   }
+
+  var repoGruposAbiertos = {};
+  function repoToggleGrupo(id) { repoGruposAbiertos[id] = !repoGruposAbiertos[id]; repoRenderResumen(); }
 
   function repoRenderResumen() {
-    var cont = document.getElementById("repoResumen");
     var grupos = repoAgrupar();
-    var pendientes = repoItems.filter(function (it) { return !it.IdProveedor || it.Precio === null; });
-
-    var html = "";
-
-    if (grupos.length === 0 && pendientes.length === 0) {
-      cont.innerHTML = '<div class="p-4 text-center text-muted">Nada para pedir.</div>';
-      document.getElementById("repoTotal").textContent = "$0,00";
-      document.getElementById("repoNota").textContent = "";
-      document.getElementById("btnRepoConfirmar").disabled = true;
-      return;
-    }
-
-    var total = 0;
-    grupos.forEach(function (g) {
-      total += g.subtotal;
-      html += '<div class="repo-grupo">' +
-        '<div class="repo-grupo-head">' +
-          '<span class="nom">' + escapeHtml(g.Nombre) + '</span>' +
-          '<span class="cant">' + g.items.length + ' producto' + (g.items.length === 1 ? '' : 's') + '</span>' +
-        '</div>';
-      g.items.forEach(function (it) {
-        html += '<div class="repo-grupo-item">' +
-          '<span class="d">' + escapeHtml(it.Descripcion) + ' × ' + it.Cantidad + '</span>' +
-          '<span class="m">' + formatearMoneda(it.Cantidad * it.Precio) + '</span>' +
-        '</div>';
-      });
-      html += '<div class="repo-grupo-sub">Subtotal: ' + formatearMoneda(g.subtotal) + '</div></div>';
-    });
-
-    if (pendientes.length > 0) {
-      html += '<div class="repo-grupo pendiente">' +
-        '<div class="repo-grupo-head">' +
-          '<span class="nom"><i class="bi bi-exclamation-triangle-fill"></i> Sin proveedor</span>' +
-          '<span class="cant">' + pendientes.length + '</span>' +
-        '</div>';
-      pendientes.forEach(function (it) {
-        html += '<div class="repo-grupo-item"><span class="d">' +
-          escapeHtml(it.Descripcion) + ' × ' + it.Cantidad + '</span></div>';
-      });
-      html += '<div class="repo-grupo-sub">No entran en los pedidos hasta asignarles proveedor.</div></div>';
-    }
-
-    cont.innerHTML = html;
-    document.getElementById("repoTotal").textContent = formatearMoneda(total);
-
-    var nota = document.getElementById("repoNota");
-    if (grupos.length === 0) {
-      nota.textContent = "Ningún producto tiene proveedor asignado todavía.";
-    } else {
-      nota.textContent = "Se generarán " + grupos.length + " pedido" + (grupos.length === 1 ? "" : "s") +
-        " a " + grupos.length + " proveedor" + (grupos.length === 1 ? "" : "es") + ".";
-    }
-    document.getElementById("btnRepoConfirmar").disabled = grupos.length === 0;
-  }
-
-  /* ---------- Confirmacion y generacion de pedidos ---------- */
-
-  function repoConfirmar() {
-    if (!puedeCrear) {
-      Swal.fire("Sin permisos", "Tu rol no permite crear pedidos.", "info");
-      return;
-    }
-
-    var grupos = repoAgrupar();
-    if (grupos.length === 0) return;
-
-    var pendientes = repoItems.filter(function (it) { return !it.IdProveedor || it.Precio === null; });
+    var pendientes = repoItems.filter(function (it) { return it.Incluido && !repoListo(it); });
+    var productos = grupos.reduce(function (s, g) { return s + g.items.length; }, 0);
     var total = grupos.reduce(function (s, g) { return s + g.subtotal; }, 0);
 
-    var detalle = "";
-    grupos.forEach(function (g) {
-      detalle += '<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;">' +
-        '<span>' + escapeHtml(g.Nombre) + ' — ' + g.items.length + ' producto' + (g.items.length === 1 ? '' : 's') + '</span>' +
-        '<strong>' + formatearMoneda(g.subtotal) + '</strong></div>';
-    });
+    document.getElementById("repoResTop").innerHTML = grupos.length
+      ? grupos.length + ' pedido' + (grupos.length === 1 ? '' : 's') + ' · ' + productos + ' producto' + (productos === 1 ? '' : 's') +
+        '<small>Se genera un pedido por proveedor</small>'
+      : 'Pedidos que se van a generar';
 
-    var aviso = "";
-    if (pendientes.length > 0) {
-      aviso = '<div style="margin-top:10px;padding:8px;background:#fff8e1;border-radius:6px;font-size:0.85rem;color:#856404;">' +
-        '<i class="bi bi-exclamation-triangle"></i> ' + pendientes.length +
-        ' producto(s) sin proveedor quedan fuera de estos pedidos.</div>';
-    }
+    var html = grupos.map(function (g) {
+      return '<div class="rp-grupo' + (repoGruposAbiertos[g.IdProveedor] ? ' abierto' : '') + '" id="rpGrupo' + g.IdProveedor + '">' +
+        '<button type="button" class="rp-grupo-h" onclick="repoToggleGrupo(' + g.IdProveedor + ')">' +
+          '<span><span class="nom">' + escapeHtml(g.Nombre) + '</span><br><span class="cnt">' + g.items.length + ' producto' + (g.items.length === 1 ? '' : 's') + ' <i class="bi bi-chevron-' + (repoGruposAbiertos[g.IdProveedor] ? 'up' : 'down') + '"></i></span></span>' +
+          '<span class="sub">' + formatearMoneda(g.subtotal) + '</span></button>' +
+        '<div class="rp-grupo-items">' + g.items.map(function (it) {
+          return '<div class="rp-gi"><span>' + it.Cantidad + ' × ' + escapeHtml(it.Descripcion) + '</span><span>' + formatearMoneda(it.Cantidad * it.Precio) + '</span></div>';
+        }).join("") + '</div></div>';
+    }).join("");
+    if (pendientes.length)
+      html += '<div class="rp-pend"><i class="bi bi-exclamation-triangle"></i> ' + pendientes.length + ' producto' + (pendientes.length === 1 ? '' : 's') +
+              ' incluido' + (pendientes.length === 1 ? '' : 's') + ' sin proveedor o con cantidad cero.</div>';
+    document.getElementById("repoResumen").innerHTML = html || '<div class="rp-vacio">Nada incluido todavía.</div>';
+    document.getElementById("repoTotal").textContent = formatearMoneda(total);
 
+    // Sobrecosto: solo si se eligio algo mas caro que el mejor precio
+    var mejorPosible = 0;
+    grupos.forEach(function (g) { g.items.forEach(function (it) { var m = repoMejor(it); mejorPosible += it.Cantidad * (m ? Math.min(m.Precio, it.Precio) : it.Precio); }); });
+    var sobre = total - mejorPosible;
+    var sc = document.getElementById("repoSobrecosto");
+    sc.classList.toggle("visible", sobre > 0.5);
+    sc.innerHTML = sobre > 0.5 ? '<span>Tu elección cuesta <b>+' + formatearMoneda(sobre) + '</b> más que los mejores precios.</span>' +
+                                 '<button type="button" onclick="repoMejoresPrecios()">Usar mejores precios</button>' : '';
+
+    // El boton dice lo que va a pasar, o lo que falta
+    var btn = document.getElementById("btnRepoConfirmar");
+    var nota = document.getElementById("repoNota");
+    btn.disabled = grupos.length === 0 || pendientes.length > 0;
+    btn.innerHTML = '<i class="bi bi-check2-circle"></i> ' + (grupos.length ? 'Generar ' + grupos.length + ' pedido' + (grupos.length === 1 ? '' : 's') : 'Generar pedidos');
+    nota.textContent = pendientes.length
+      ? 'No se puede generar todavía: ' + pendientes.length + ' producto' + (pendientes.length === 1 ? ' necesita' : 's necesitan') + ' proveedor. Asignalo o destildalo.'
+      : (grupos.length ? '' : 'Tildá al menos un producto con proveedor.');
+  }
+
+  /* ---------- Confirmacion y generacion ---------- */
+
+  function repoConfirmar() {
+    if (!puedeCrear) { Swal.fire("Sin permisos", "Tu rol no permite crear pedidos.", "info"); return; }
+    var grupos = repoAgrupar();
+    if (grupos.length === 0) return;
+    var total = grupos.reduce(function (s, g) { return s + g.subtotal; }, 0);
+    var productos = grupos.reduce(function (s, g) { return s + g.items.length; }, 0);
+    var detalle = grupos.map(function (g) {
+      return '<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;"><span>' + escapeHtml(g.Nombre) + ' — ' +
+        g.items.length + ' producto' + (g.items.length === 1 ? '' : 's') + '</span><strong>' + formatearMoneda(g.subtotal) + '</strong></div>';
+    }).join("");
+    var fuera = repoItems.filter(function (it) { return !it.Incluido; }).length;
     Swal.fire({
-      title: "Confirmar reposición",
+      title: "Generar " + grupos.length + " pedido" + (grupos.length === 1 ? "" : "s"),
       html: '<div style="text-align:left;font-size:0.9rem;">' + detalle +
-            '<div style="border-top:1px solid #dee2e6;margin-top:8px;padding-top:8px;' +
-            'display:flex;justify-content:space-between;font-size:1.05rem;">' +
-            '<strong>Total estimado</strong><strong>' + formatearMoneda(total) + '</strong></div>' +
-            aviso + '</div>',
-      showCancelButton: true,
-      confirmButtonText: "Confirmar y generar pedidos",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#28a745",
-      width: 500
-    }).then(function (res) {
-      if (res.isConfirmed) repoGenerarPedidos(grupos);
-    });
+            '<div style="border-top:1px solid #dee2e6;margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:1.05rem;">' +
+            '<strong>' + productos + ' productos</strong><strong>' + formatearMoneda(total) + '</strong></div>' +
+            '<div class="text-muted mt-2" style="font-size:0.8rem;">Quedan Pendientes hasta que llegue la mercadería.' +
+            (fuera ? ' ' + fuera + ' producto(s) destildado(s) no se piden.' : '') + '</div></div>',
+      showCancelButton: true, confirmButtonText: "Generar", cancelButtonText: "Revisar", confirmButtonColor: "#28a745", width: 500
+    }).then(function (res) { if (res.isConfirmed) repoGenerarPedidos(grupos); });
   }
 
   function repoSetLoading(cargando) {
     var btn = document.getElementById("btnRepoConfirmar");
     btn.disabled = cargando;
-    btn.innerHTML = cargando
-      ? '<span class="spinner-border spinner-border-sm"></span> Generando…'
-      : '<i class="bi bi-check2-circle"></i> CONFIRMAR REPOSICIÓN';
+    if (cargando) btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generando…';
+    else repoRenderResumen();
   }
 
-  // Un pedido por proveedor, usando la estructura actual (Pedido + DetallePedido).
-  // Se generan en secuencia para poder informar exactamente cual fallo.
+  // Un pedido por proveedor (Pedido + DetallePedido), en secuencia para saber cual fallo
   function repoGenerarPedidos(grupos) {
     repoSetLoading(true);
-
-    var creados = [];
-    var fallidos = [];
-    var idsPedidos = [];   // repuestos que quedaron efectivamente en un pedido
-
+    var creados = [], fallidos = [], idsPedidos = [];
     function siguiente(i) {
       if (i >= grupos.length) return repoFinalizar(creados, fallidos, idsPedidos);
-
       var g = grupos[i];
-      return fetchAuth(api + "Pedido", {
-        method: "POST",
-        body: JSON.stringify({ IdProveedor: g.IdProveedor, Total: g.subtotal, IdEstado: 1 })
-      }).then(function (r) {
-        if (!r.ok) return r.text().then(function (t) { throw new Error(extraerMensaje(t) || "No se pudo crear el pedido."); });
-        return r.json();
-      }).then(function (idPedido) {
-        var promesas = g.items.map(function (it) {
-          return fetchAuth(api + "DetallePedido", {
-            method: "POST",
-            body: JSON.stringify({
-              IdPedido: idPedido,
-              IdRepuesto: it.IdRepuesto,
-              Cantidad: it.Cantidad,
-              PrecioUnitario: it.Precio
-            })
-          }).then(function (r) {
-            if (!r.ok) throw new Error('No se pudo agregar "' + it.Descripcion + '".');
-            return true;
+      return fetchAuth(api + "Pedido", { method: "POST", body: JSON.stringify({ IdProveedor: g.IdProveedor, Total: g.subtotal, IdEstado: 1 }) })
+        .then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { throw new Error(extraerMensaje(t) || "No se pudo crear el pedido."); });
+          return r.json();
+        }).then(function (idPedido) {
+          return Promise.all(g.items.map(function (it) {
+            return fetchAuth(api + "DetallePedido", { method: "POST", body: JSON.stringify({
+              IdPedido: idPedido, IdRepuesto: it.IdRepuesto, Cantidad: it.Cantidad, PrecioUnitario: it.Precio }) })
+              .then(function (r) { if (!r.ok) throw new Error('No se pudo agregar "' + it.Descripcion + '".'); return true; });
+          })).then(function () {
+            creados.push({ id: idPedido, nombre: g.Nombre, subtotal: g.subtotal });
+            g.items.forEach(function (it) { idsPedidos.push(it.IdRepuesto); });
           });
-        });
-        return Promise.all(promesas).then(function () {
-          creados.push({ id: idPedido, nombre: g.Nombre, subtotal: g.subtotal });
-          g.items.forEach(function (it) { idsPedidos.push(it.IdRepuesto); });
-        });
-      }).catch(function (err) {
-        fallidos.push({ nombre: g.Nombre, motivo: err.message || "Error desconocido" });
-      }).then(function () {
-        return siguiente(i + 1);
-      });
+        }).catch(function (err) { fallidos.push({ nombre: g.Nombre, motivo: err.message || "Error desconocido" }); })
+        .then(function () { return siguiente(i + 1); });
     }
-
     siguiente(0);
   }
 
   function repoFinalizar(creados, fallidos, idsPedidos) {
     repoSetLoading(false);
-
-    var html = "";
-    if (creados.length > 0) {
-      html += '<div style="text-align:left;font-size:0.9rem;">';
-      creados.forEach(function (c) {
-        html += '<div>✓ Pedido N° ' + c.id + ' — ' + escapeHtml(c.nombre) + ' — ' + formatearMoneda(c.subtotal) + '</div>';
-      });
-      html += '</div>';
-    }
-    if (fallidos.length > 0) {
-      html += '<div style="text-align:left;margin-top:10px;padding:8px;background:#f8d7da;border-radius:6px;font-size:0.85rem;color:#721c24;">';
-      fallidos.forEach(function (f) {
-        html += '<div>✗ ' + escapeHtml(f.nombre) + ': ' + escapeHtml(f.motivo) + '</div>';
-      });
-      html += '</div>';
-    }
-
+    var html = creados.length ? '<div style="text-align:left;font-size:0.9rem;">' + creados.map(function (c) {
+      return '<div>✓ Pedido N° ' + c.id + ' — ' + escapeHtml(c.nombre) + ' — ' + formatearMoneda(c.subtotal) + '</div>'; }).join("") + '</div>' : "";
+    if (fallidos.length) html += '<div style="text-align:left;margin-top:10px;padding:8px;background:#f8d7da;border-radius:6px;font-size:0.85rem;color:#721c24;">' +
+      fallidos.map(function (f) { return '<div>✗ ' + escapeHtml(f.nombre) + ': ' + escapeHtml(f.motivo) + '</div>'; }).join("") + '</div>';
     Swal.fire({
       icon: fallidos.length === 0 ? "success" : "warning",
-      title: fallidos.length === 0
-        ? creados.length + " pedido(s) generado(s)"
-        : "Reposición parcial",
-      html: html + '<div style="margin-top:10px;"><small class="text-muted">' +
-            'Quedan en estado Pendiente hasta que recibas la mercadería.</small></div>',
-      confirmButtonText: "Ir al listado de pedidos",
-      showCancelButton: true,
-      cancelButtonText: "Seguir acá"
+      title: fallidos.length === 0 ? creados.length + " pedido(s) generado(s)" : "Reposición parcial",
+      html: html + '<div style="margin-top:10px;"><small class="text-muted">Quedan Pendientes hasta que recibas la mercadería.</small></div>',
+      confirmButtonText: "Ir al listado de pedidos", showCancelButton: true, cancelButtonText: "Seguir acá"
     }).then(function (res) {
       if (res.isConfirmed) { guardadoOk = true; window.location.href = "ListadoPedido.html"; }
-      else {
-        // Crear un pedido NO descuenta stock, asi que recargar traeria los mismos
-        // items. Se sacan de la lista solo los que efectivamente se pidieron.
-        repoItems = repoItems.filter(function (it) {
-          return idsPedidos.indexOf(it.IdRepuesto) === -1;
-        });
-        repoRender();
-      }
+      // Lo pedido ya cuenta como "en camino": al recargar no vuelve a aparecer
+      else repoCargarFaltantes();
     });
   }
 
@@ -1512,9 +1456,15 @@
     document.getElementById("btnRepoRefrescar").addEventListener("click", repoCargarFaltantes);
 
     // Proveedores primero: hacen falta para resolver los nombres de las listas
-    repoCargarProveedores()
-      .then(repoCargarListas)
-      .then(repoCargarFaltantes);
+    document.getElementById("repoBuscar").addEventListener("input", function (e) { repoTexto = e.target.value; repoRender(); });
+    document.getElementById("repoProvFiltro").addEventListener("change", function (e) { repoProvSel = e.target.value; repoRender(); });
+    document.getElementById("repoOrden").addEventListener("change", function (e) { repoOrden = e.target.value; repoRender(); });
+    document.querySelectorAll("#repoChips .rp-chip").forEach(function (c) {
+      c.addEventListener("click", function () { repoFiltro = c.getAttribute("data-f"); repoRender(); });
+    });
+    // El calculo lo hace la base; los proveedores solo hacen falta para asignar a mano
+    repoCargarProveedores();
+    repoCargarFaltantes();
   }
 
   /* ============ INICIO ============ */

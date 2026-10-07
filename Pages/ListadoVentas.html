@@ -187,6 +187,8 @@
 
     const puedeVender = tieneRol(["Administrador", "Supervisor", "Vendedor"]);
     const puedeAnular = tieneRol(["Administrador", "Supervisor", "Vendedor"]);
+    // Devolucion despues del dia: nota de credito (la anulacion queda para errores del dia)
+    const puedeDevolver = tieneRol(["Dueño", "Administrador", "Supervisor"]);
     const veAuditoria = tieneRol(["Dueño", "Administrador"]);
 
     // Mostrar "Venta" solo si puede vender
@@ -299,8 +301,11 @@
         html += "<td class='text-end precio'>$" + Number(v.Total).toFixed(2) + "</td>";
         html += "<td class='text-center'>";
         html += "<button class='btn btn-sm btn-outline-primary me-1' onclick='verDetalle(" + v.Id + ")' title='Ver detalle'><i class='bi bi-eye'></i></button>";
+        if (esConfirmada && puedeDevolver) {
+          html += "<a class='btn btn-sm btn-outline-secondary me-1' href='DevolucionVenta.html?id=" + v.Id + "' title='Devolución o nota de crédito'><i class='bi bi-arrow-counterclockwise'></i></a>";
+        }
         if (esConfirmada && puedeAnular) {
-          html += "<button class='btn btn-sm btn-outline-danger' onclick='anular(" + v.Id + ")' title='Anular venta'><i class='bi bi-slash-circle'></i></button>";
+          html += "<button class='btn btn-sm btn-outline-danger' onclick='anular(" + v.Id + ")' title='Anular venta (solo las del día)'><i class='bi bi-slash-circle'></i></button>";
         }
         html += "</td></tr>";
       });

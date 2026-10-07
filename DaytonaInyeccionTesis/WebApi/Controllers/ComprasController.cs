@@ -36,6 +36,31 @@ namespace WebApi.Controllers
             });
         }
 
+        public class StockMinimoDto { public int IdRepuesto { get; set; } public int StockMinimo { get; set; } }
+
+        [HttpPost, Route("api/Compras/StockMinimo")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor")]
+        public IHttpActionResult StockMinimo([FromBody] StockMinimoDto d)
+        {
+            if (d == null || d.IdRepuesto <= 0) return BadRequest("Falta el repuesto.");
+            try { new Compras().SetStockMinimo(d.IdRepuesto, d.StockMinimo); return Ok(); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo guardar el mínimo.")); }
+        }
+
+        // GET api/Compras/Reposicion — que reponer, cuanto, y a quien se le puede comprar
+        [HttpGet, Route("api/Compras/Reposicion")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Reposicion()
+        {
+            DataSet ds = new Compras().ReposicionSugerida();
+            return Ok(new
+            {
+                Items = ds.Tables[0],
+                Alternativas = ds.Tables[1],
+                CubiertosEnCamino = ds.Tables.Count > 2 && ds.Tables[2].Rows.Count > 0 ? ds.Tables[2].Rows[0]["CubiertosEnCamino"] : 0
+            });
+        }
+
         // GET api/Compras/ResumenRecepcion — para marcar los parciales en el listado
         [HttpGet, Route("api/Compras/ResumenRecepcion")]
         [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Analista")]
@@ -265,6 +290,19 @@ namespace WebApi.Controllers
                 return Ok(new { Cargados = dt.Rows[0]["Cargados"], Total = dt.Rows[0]["Total"] });
             }
             catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo cargar el saldo inicial.")); }
+        }
+
+        public class AdjuntoRecepcionDto { public int? IdAdjunto { get; set; } }
+
+        // Cambiar (IdAdjunto) o quitar (null) la foto de una factura
+        [HttpPost, Route("api/Compras/Recepcion/{id:int}/Adjunto")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor")]
+        public IHttpActionResult CambiarAdjunto(int id, [FromBody] AdjuntoRecepcionDto d)
+        {
+            int idUsuario = ObtenerIdUsuarioActual();
+            if (idUsuario <= 0) return Unauthorized();
+            try { new Compras().CambiarAdjunto(id, d == null ? null : d.IdAdjunto, idUsuario); return Ok(); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo cambiar la foto.")); }
         }
 
         [HttpPost, Route("api/Compras/Proveedor/{id:int}/DiasPago")]
