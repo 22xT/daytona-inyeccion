@@ -10,6 +10,7 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="vincular.js"></script>
   <style>
     .codigo-repuesto {
       font-family: 'Courier New', monospace; font-weight: 700;
@@ -609,194 +610,12 @@
        pero no es una clave —hay miles repetidos y valores basura—, y
        un enlace erroneo une repuestos distintos y corrompe el stock. */
     function revisarOtrosProveedores(idRepuesto, codigo) {
-      fetchAuth(api + "Repuesto/" + idRepuesto + "/OtrosProveedores")
-        .then(function (r) { return r.ok ? r.json() : []; })
-        .then(function (cands) {
-          if (!cands || cands.length === 0) {
-            // Sin candidatos confiables no se ofrece nada. Sugerir por
-            // parecido de texto trae piezas distintas del mismo auto.
-            abrirModalVinculacion(idRepuesto, codigo, "", 0);
-            return;
-          }
-
-          var filas = "";
-          cands.slice(0, 6).forEach(function (c, i) {
-            var alta = c.Confianza === "Alta";
-            var dif = c.DiferenciaPorc;
-            var color = dif < 0 ? "#157347" : (dif > 0 ? "#c0392b" : "#6c757d");
-
-            filas +=
-              '<label style="display:flex;align-items:center;gap:9px;padding:9px 11px;' +
-                     'border:1px solid ' + (alta ? '#b9d3f2' : '#dee2e6') + ';' +
-                     'border-radius:8px;margin-bottom:7px;cursor:pointer;' +
-                     'background:' + (alta ? '#f0f6fd' : '#fff') + ';">' +
-                '<input type="checkbox" class="form-check-input mt-0" value="' + c.Id + '"' +
-                  (alta ? ' checked' : '') + '>' +
-                '<div style="flex:1;min-width:0;text-align:left;">' +
-                  '<div style="font-size:0.85rem;font-weight:600;">' +
-                    escapeHtml(c.Proveedor) + ' · ' + escapeHtml(c.CodigoProveedor) +
-                    (alta ? ' <span style="background:#cfe2ff;color:#084298;border-radius:7px;' +
-                            'font-size:0.65rem;padding:1px 6px;">mismo código de fábrica</span>' : '') +
-                  '</div>' +
-                  '<div style="font-size:0.75rem;color:#6c757d;">' +
-                    escapeHtml(String(c.Descripcion).substring(0, 60)) + '</div>' +
-                '</div>' +
-                '<div style="text-align:right;white-space:nowrap;">' +
-                  '<div style="font-size:0.65rem;color:#6c757d;text-transform:uppercase;' +
-                       'letter-spacing:0.3px;">costo</div>' +
-                  '<div style="font-weight:700;">' + formatearMoneda(c.PrecioCompra) + '</div>' +
-                  (dif !== null
-                    ? '<div style="font-size:0.72rem;color:' + color + ';">' +
-                      (dif > 0 ? '+' : '') + dif + '% vs el tuyo</div>'
-                    : '') +
-                '</div>' +
-              '</label>';
-          });
-
-          abrirModalVinculacion(idRepuesto, codigo, filas, cands.length);
-        })
-        .catch(function () {
-          Swal.fire("Sumado al catálogo", "Código " + codigo, "success");
-        });
-    }
-
-    /* Modal de vinculacion: sugerencias automaticas arriba y buscador
-       manual abajo.
-
-       El automatico solo agarra cuando coincide el codigo de
-       fabricante. El resto de los casos —marcas escritas distinto,
-       codigos que no matchean— solo los reconoce una persona que
-       conoce el rubro. Por eso el buscador manual no es un accesorio:
-       es como se va a construir la mayor parte de los enlaces. */
-    function abrirModalVinculacion(idRepuesto, codigo, filasSugeridas, cantidad) {
-      var bloqueSug = cantidad > 0
-        ? '<div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">' +
-            'Mismo código de fabricante</div>' +
-          '<div class="form-text mb-2">Confirmá los que sean la misma pieza.</div>' +
-          '<div id="candidatos">' + filasSugeridas + '</div>' +
-          '<hr style="margin:14px 0;">'
-        : '<div class="form-text mb-3">Ningún otro proveedor lo tiene con el mismo ' +
-          'código de fabricante. Buscalo a mano si sabés que lo trabajan.</div>' +
-          '<div id="candidatos"></div>';
-
-      Swal.fire({
-        title: "Sumado al catálogo",
-        html:
-          '<div style="text-align:left;">' +
-            '<div class="mb-3">Código <strong>' + escapeHtml(codigo) + '</strong>. ' +
-            'Entró con stock en cero.</div>' +
-            bloqueSug +
-            '<div style="font-weight:600;font-size:0.9rem;margin-bottom:6px;">' +
-              'Buscar en otras listas</div>' +
-            '<div class="form-text mb-2">Escribí como lo llama el otro proveedor. ' +
-              'Los que marques se van a comparar con este repuesto. ' +
-              'Los importes son el COSTO, no el precio de venta.</div>' +
-            '<input type="text" id="swBuscarVinc" class="form-control mb-2" ' +
-              'placeholder="Ej: kit distribucion fox, KTB-341...">' +
-            '<div id="resVinc" style="max-height:230px;overflow-y:auto;"></div>' +
-          '</div>',
-        width: 600,
-        showCancelButton: true,
-        confirmButtonText: "Vincular seleccionados",
-        cancelButtonText: "Ahora no",
-        confirmButtonColor: "#1266d1",
-        didOpen: function () {
-          var campo = document.getElementById("swBuscarVinc");
-          var t = null;
-          campo.addEventListener("input", function () {
-            clearTimeout(t);
-            t = setTimeout(function () { buscarParaVincular(campo.value, idRepuesto); }, 320);
-          });
-        },
-        preConfirm: function () {
-          var ids = [];
-          document.querySelectorAll('#candidatos input:checked').forEach(function (c) {
-            ids.push(parseInt(c.value, 10));
-          });
-          document.querySelectorAll('#resVinc input:checked').forEach(function (c) {
-            var v = parseInt(c.value, 10);
-            if (ids.indexOf(v) === -1) ids.push(v);
-          });
-          return ids;
-        }
-      }).then(function (res) {
-        if (!res.isConfirmed || !res.value || res.value.length === 0) return;
-        vincular(res.value, idRepuesto);
-      });
-    }
-
-    function buscarParaVincular(texto, idRepuesto) {
-      var cont = document.getElementById("resVinc");
-      texto = (texto || "").trim();
-
-      if (texto.length < 3) {
-        cont.innerHTML = '<div class="form-text">Escribí al menos 3 letras.</div>';
-        return;
-      }
-
-      cont.innerHTML = '<div class="text-center p-2">' +
-        '<span class="spinner-border spinner-border-sm"></span></div>';
-
-      fetchAuth(api + "ProveedorRepuesto/Buscar?texto=" + encodeURIComponent(texto) +
-                "&soloSinEnlazar=true&tope=25")
-        .then(function (r) { return r.ok ? r.json() : []; })
-        .then(function (lista) {
-          if (!lista || lista.length === 0) {
-            cont.innerHTML = '<div class="form-text">Sin resultados.</div>';
-            return;
-          }
-
-          var html = "";
-          lista.forEach(function (c) {
-            html +=
-              '<label style="display:flex;align-items:center;gap:9px;padding:8px 10px;' +
-                     'border:1px solid var(--border);border-radius:8px;margin-bottom:6px;' +
-                     'cursor:pointer;">' +
-                '<input type="checkbox" class="form-check-input mt-0" value="' + c.Id + '">' +
-                '<div style="flex:1;min-width:0;text-align:left;">' +
-                  '<div style="font-size:0.83rem;font-weight:600;">' +
-                    escapeHtml(c.Proveedor) + ' · ' + escapeHtml(c.CodigoProveedor) +
-                    (c.Articulo ? ' · fab ' + escapeHtml(c.Articulo) : '') + '</div>' +
-                  '<div style="font-size:0.74rem;color:#6c757d;">' +
-                    escapeHtml(String(c.Descripcion).substring(0, 62)) + '</div>' +
-                '</div>' +
-                '<div style="text-align:right;white-space:nowrap;">' +
-                  '<div style="font-size:0.65rem;color:#6c757d;text-transform:uppercase;' +
-                       'letter-spacing:0.3px;">costo</div>' +
-                  '<div style="font-weight:700;">' + formatearMoneda(c.PrecioCompra) + '</div>' +
-                  (c.FinalSugerido
-                    ? '<div style="font-size:0.7rem;color:#6c757d;">venta ' +
-                      formatearMoneda(c.FinalSugerido) + '</div>'
-                    : '') +
-                '</div>' +
-              '</label>';
-          });
-          cont.innerHTML = html;
-        })
-        .catch(function () {
-          cont.innerHTML = '<div class="form-text text-danger">No se pudo buscar.</div>';
-        });
-    }
-
-    function vincular(ids, idRepuesto) {
-      var pendientes = ids.map(function (id) {
-        return fetchAuth(api + "ProveedorRepuesto/" + id + "/Enlazar", {
-          method: "PUT",
-          body: JSON.stringify({ IdRepuesto: idRepuesto })
-        }).then(function (r) { return r.ok; });
-      });
-
-      Promise.all(pendientes).then(function (res) {
-        var ok = res.filter(Boolean).length;
-        Swal.fire({
-          icon: ok === ids.length ? "success" : "warning",
-          title: ok + " de " + ids.length + " vinculados",
-          html: ok > 0
-            ? "<small class='text-muted'>Ya se pueden comparar precios entre proveedores " +
-              "para este repuesto.</small>"
-            : "<small class='text-muted'>No se pudo vincular ninguno.</small>"
-        });
-        buscar();
+      abrirVinculacion(idRepuesto, {
+        titulo: "Sumado al catálogo",
+        intro: "Código <strong>" + escapeHtml(codigo) + "</strong>. Entró con stock en cero. " +
+               "Marcá si otro proveedor tiene el mismo artículo o una equivalente de otra marca.",
+        cancelar: "Ahora no",
+        alTerminar: buscar
       });
     }
 

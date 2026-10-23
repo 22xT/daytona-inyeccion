@@ -99,6 +99,19 @@ namespace WebApi.Models
             return ds.Tables[0];
         }
 
+        // Corta el enlace: el articulo vuelve a ser una oferta suelta (script 71)
+        public void Desvincular()
+        {
+            SqlConnection sqlCnn = new SqlConnection(connectionstring);
+            SqlCommand sqlCom = new SqlCommand("SP_ProveedorRepuesto_Desvincular", sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+            sqlCom.Parameters.Add("@IdListaProveedor", SqlDbType.Int).Value = Id;
+
+            sqlCnn.Open();
+            sqlCom.ExecuteNonQuery();
+            sqlCnn.Close();
+        }
+
         // Confirma el enlace entre un articulo de la lista y un repuesto propio
         public void Enlazar()
         {

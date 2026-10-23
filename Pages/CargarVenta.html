@@ -10,6 +10,7 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="vincular.js"></script>
   <style>
     /* ============================================================
        Pantalla de mostrador: alto fijo, sin scroll de pagina.
@@ -478,6 +479,7 @@
     var clienteElegido = null;
     var presupActual = null;
     var presupuestoOrigen = null;   // {Id, Numero} si la venta viene de un presupuesto
+    var encargoOrigen = null;       // {Id, Nombre, Telefono, Sena, IdMedioSen} si se entrega un encargo
     var descuentosPublico = [5, 7, 10];
     var descuentoMecanico = 10;
     var descuentoActual = 0;
@@ -568,9 +570,31 @@
       if (actual && lista.some(function (m) { return String(m.Id) === actual; })) sel.value = actual;
     }
 
+    // Lo reservado para encargos abiertos no se puede vender: el stock que
+    // se muestra y se valida es el libre (fisico - reservado). La base lo
+    // controla igual; esto es para que el vendedor lo vea antes.
+    var reservas = {};   // IdRepuesto -> unidades reservadas
+
+    function cargarReservas() {
+      return fetchAuth(API_BASE + "Encargos/Reservas")
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (d) { reservas = {}; (d || []).forEach(function (x) { reservas[x.IdRepuesto] = Number(x.Reservado) || 0; }); })
+        .catch(function () { reservas = {}; });
+    }
+
+    function aplicarReservas() {
+      todosRepuestos.forEach(function (r) {
+        var fisico = r.StockActual !== undefined ? Number(r.StockActual) : 0;
+        r.StockFisico = fisico;
+        r.Reservado = reservas[r.Id] || 0;
+        r.StockActual = Math.max(0, fisico - r.Reservado);
+      });
+    }
+
     function cargarRepuestos() {
-      return fetchAuth(apiRepuesto).then(function (r) { return r.json(); }).then(function (data) {
-        todosRepuestos = data.filter(esActivo);
+      return Promise.all([fetchAuth(apiRepuesto).then(function (r) { return r.json(); }), cargarReservas(), Equivalencias.cargar()]).then(function (res) {
+        todosRepuestos = res[0].filter(esActivo);
+        aplicarReservas();
         buscar();
       }).catch(function () {
         document.getElementById("resultados").innerHTML =
@@ -690,6 +714,20 @@
         });
       }
       pintarResultados(lista.slice(0, 60), lista.length);
+      anotarBusqueda(texto);
+    }
+
+    // Registro de busquedas (script 78): cuando se deja de escribir,
+    // la API anota que se busco. No frena nada si falla.
+    var tAnotar = null, ultimaAnotada = "";
+    function anotarBusqueda(texto) {
+      clearTimeout(tAnotar);
+      if (!texto || texto.length < 3 || texto === ultimaAnotada) return;
+      tAnotar = setTimeout(function () {
+        ultimaAnotada = texto;
+        fetchAuth(API_BASE + "Busqueda/Registro", { method: "POST", body: JSON.stringify({ Texto: texto, Origen: "VENTA" }) })
+          .catch(function () { });
+      }, 1500);
     }
 
     // Miniatura: usa el campo de imagen si algun dia existe en Repuesto.
@@ -720,8 +758,10 @@
         var minimo = r.StockMinimo || 5;
         var sinStock = stock <= 0;
         var stockTxt = sinStock
-          ? '<span class="stock-zero">Sin stock</span>'
+          ? '<span class="stock-zero">' + (r.Reservado > 0 ? 'Reservado' : 'Sin stock') + '</span>'
           : (stock <= minimo ? '<span class="stock-low">Stock ' + stock + '</span>' : 'Stock ' + stock);
+        if (r.Reservado > 0)
+          stockTxt += ' <span class="stock-low" title="Apartado para encargos">· ' + r.Reservado + ' reservado' + (r.Reservado === 1 ? '' : 's') + '</span>';
 
         html += '<div class="res-item' + (sinStock ? ' sin-stock' : '') + '">' +
           miniatura(r) +
@@ -731,6 +771,7 @@
             '<div class="res-meta">' + escapeHtml(r.Rubro || "-") + ' · ' +
               escapeHtml(r.Marca || "Universal") + ' · ' +
               escapeHtml(r.Modelo || "Universal") + ' · ' + stockTxt + '</div>' +
+            (sinStock ? Equivalencias.chips(r.Id, 'agregar') : '') +
           '</div>' +
           '<div class="res-precio">' + formatearMoneda(r.PrecioDeVenta) + '</div>' +
           '<button class="btn-add" onclick="agregar(' + r.Id + ')"' + (sinStock ? ' disabled' : '') +
@@ -1350,8 +1391,78 @@
       });
     }
 
+    /* ================= ENTREGA DE UN ENCARGO =================
+       Se llega desde Encargos con ?encargo=N. El carrito se arma con lo
+       encargado al precio pactado, y en el cobro la seña ya figura como
+       pagada (medio "Seña aplicada"). Al registrar, el servidor cierra
+       el encargo en la misma operación. */
+
+    function idEncargoDeLaUrl() {
+      var m = window.location.search.match(/[?&]encargo=(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    }
+
+    function cargarDesdeEncargo(id) {
+      fetchAuth(API_BASE + "Encargos/" + id).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return r.json();
+      }).then(function (d) {
+        var cab = d.Encargo && d.Encargo[0];
+        if (!cab) throw new Error("No se encontró el encargo.");
+        if (cab.Estado === "ENTREGADO") throw new Error("Ese encargo ya fue entregado.");
+        if (cab.Estado === "CANCELADO") throw new Error("Ese encargo está cancelado.");
+
+        encargoOrigen = { Id: cab.Id, Nombre: cab.Nombre, Telefono: cab.Telefono,
+                          Sena: Number(cab.Sena) || 0, IdMedioSen: cab.IdMedioSen };
+
+        if (cab.IdCliente) {
+          clienteElegido = todosClientes.find(function (c) { return c.Id === cab.IdCliente; }) || null;
+          pintarChipCliente();
+        }
+
+        // Lo reservado para ESTE encargo es justamente lo que se entrega
+        (d.Renglones || []).forEach(function (r) {
+          var rep = todosRepuestos.find(function (x) { return x.Id === r.IdRepuesto; });
+          if (rep) {
+            rep.Reservado = Math.max(0, (rep.Reservado || 0) - r.Cantidad);
+            rep.StockActual = Math.max(0, (rep.StockFisico || 0) - rep.Reservado);
+          }
+        });
+
+        var faltan = [];
+        carrito = [];
+        (d.Renglones || []).forEach(function (r) {
+          var rep = todosRepuestos.find(function (x) { return x.Id === r.IdRepuesto; });
+          var stock = rep && rep.StockActual !== undefined ? rep.StockActual : 0;
+          var cant = Math.min(r.Cantidad, stock);
+          if (cant < r.Cantidad) faltan.push(r.Descripcion + " (encargado " + r.Cantidad + ", hay " + stock + ")");
+          if (cant <= 0) return;
+          carrito.push({
+            IdRepuesto: r.IdRepuesto, Codigo: r.Codigo || "", Descripcion: r.Descripcion,
+            // Se respeta el precio que se le dijo al cliente
+            PrecioUnitario: Number(r.PrecioPactado), Cantidad: cant,
+            StockActual: stock, StockMinimo: (rep && rep.StockMinimo) || 5
+          });
+        });
+        renderCarrito();
+
+        document.getElementById("bannerPresup").style.display = "flex";
+        document.getElementById("bannerPresupTexto").textContent =
+          "Entregando el encargo #" + cab.Id + " de " + cab.Nombre +
+          (encargoOrigen.Sena > 0 ? " — seña ya cobrada: " + formatearMoneda(encargoOrigen.Sena) : "");
+
+        if (faltan.length > 0)
+          Swal.fire({ icon: "warning", title: "Falta stock para entregar todo",
+                      html: "<div style='text-align:left;font-size:0.86rem;'>" + faltan.join("<br>") + "</div>" });
+      }).catch(function (err) {
+        encargoOrigen = null;
+        Swal.fire("No se pudo cargar el encargo", err.message || "Error de conexión.", "error");
+      });
+    }
+
     function cancelarConversion() {
       presupuestoOrigen = null;
+      encargoOrigen = null;
       document.getElementById("bannerPresup").style.display = "none";
       // Se saca el parámetro de la URL para que un F5 no lo vuelva a cargar
       if (window.history && window.history.replaceState) {
@@ -1439,6 +1550,12 @@
         lista.innerHTML = '<div class="cobro-vacio">Tocá el medio con el que paga el cliente.</div>';
       } else {
         lista.innerHTML = pagos.map(function (p, i) {
+          // La seña de un encargo ya se cobró: se muestra, no se edita
+          if (p.Fijo)
+            return '<div class="cobro-fila"><div class="nom">' + escapeHtml(p.Nombre) +
+                   '<small>Cobrada al tomar el encargo</small></div>' +
+                   '<strong style="width:150px;text-align:right;">' + formatearMoneda(p.Monto) + '</strong>' +
+                   '<span style="width:28px;"></span></div>';
           var com = Number(p.ComisionPorc) > 0
             ? '<small>' + Number(p.ComisionPorc) + '% de comisión: ' +
               formatearMoneda(redondear((Number(p.Monto) || 0) * p.ComisionPorc / 100)) + '</small>'
@@ -1456,6 +1573,7 @@
         }).join("");
 
         pagos.forEach(function (p, i) {
+          if (p.Fijo) return;
           var inp = document.getElementById("pago_" + i);
           activarInputPrecio("pago_" + i);
           inp.addEventListener("input", function () {
@@ -1562,6 +1680,20 @@
       var efe = mediosPago.find(function (m) { return m.Codigo === "EFE"; });
       pagos = efe ? [{ IdMedioPago: efe.Id, Codigo: efe.Codigo, Nombre: efe.Nombre,
                        ComisionPorc: Number(efe.ComisionPorc), Monto: total }] : [];
+      // Entrega de encargo: la seña cuenta como pagada y el efectivo cubre el resto
+      if (encargoOrigen && encargoOrigen.Sena > 0) {
+        var sena = Math.min(encargoOrigen.Sena, total);
+        if (sena < encargoOrigen.Sena) {
+          Swal.fire("La seña supera el total", "Lo que se entrega vale menos que la seña cobrada. " +
+                    "Agregá lo que falta del encargo o cancelalo desde Encargos.", "warning");
+          return;
+        }
+        pagos = [{ IdMedioPago: encargoOrigen.IdMedioSen, Codigo: "SEN", Nombre: "Seña aplicada",
+                   ComisionPorc: 0, Monto: sena, Fijo: true }];
+        if (efe && total - sena > 0.009)
+          pagos.push({ IdMedioPago: efe.Id, Codigo: efe.Codigo, Nombre: efe.Nombre,
+                       ComisionPorc: Number(efe.ComisionPorc), Monto: redondear(total - sena) });
+      }
 
       var botones = mediosPago.map(function (m) {
         return '<button type="button" class="cobro-medio" data-medio="' + m.Id + '">' +
@@ -1600,7 +1732,7 @@
               var falta = Math.max(0, redondear(total - sumaPagos()));
               // Si el unico pago es el efectivo inicial por el total, se
               // reemplaza: el vendedor esta cambiando de medio, no sumando
-              if (pagos.length === 1 && pagos[0].Codigo === "EFE" &&
+              if (pagos.length === 1 && pagos[0].Codigo === "EFE" && !pagos[0].Fijo &&
                   Math.abs(pagos[0].Monto - total) < 0.01 && m.Codigo !== "EFE") {
                 pagos = [];
                 falta = total;
@@ -1638,8 +1770,11 @@
         PorcentajeDescuento: descuentoActual,
         Pagos: pagosFinal,
         TipoCliente: tipoCliente === "mecanico" ? "Mecanico" : "Publico",
-        NombreOcasional: (presupActual && presupActual.nombre) ? presupActual.nombre : null,
-        TelefonoOcasional: (presupActual && presupActual.telefono) ? presupActual.telefono : null,
+        NombreOcasional: encargoOrigen ? encargoOrigen.Nombre
+                         : ((presupActual && presupActual.nombre) ? presupActual.nombre : null),
+        TelefonoOcasional: encargoOrigen ? encargoOrigen.Telefono
+                         : ((presupActual && presupActual.telefono) ? presupActual.telefono : null),
+        IdEncargo: encargoOrigen ? encargoOrigen.Id : null,
         Detalle: carrito.map(function (c) {
           return { IdRepuesto: c.IdRepuesto, Cantidad: c.Cantidad, PrecioUnitario: c.PrecioUnitario };
         })
@@ -1669,7 +1804,8 @@
 
             var detallePagos = pagosFinal.map(function (p) {
               var m = medioPorId(p.IdMedioPago);
-              return (m ? m.Nombre : "Pago") + ": " + formatearMoneda(p.Monto);
+              var nom = m ? m.Nombre : (encargoOrigen && p.IdMedioPago === encargoOrigen.IdMedioSen ? "Seña aplicada" : "Pago");
+              return nom + ": " + formatearMoneda(p.Monto);
             }).join("<br>");
 
             var html = "N° <strong>" + String(idVenta || "").padStart(8, "0") + "</strong><br>" +
@@ -1683,12 +1819,15 @@
               html += "<br><small class='text-muted'>Esta venta ya estaba registrada: no se duplicó.</small>";
             if (presupuestoOrigen)
               html += "<br><small class='text-muted'>Presupuesto N° " + presupuestoOrigen.Numero + " marcado como convertido.</small>";
+            if (encargoOrigen)
+              html += "<br><small class='text-muted'>Encargo #" + encargoOrigen.Id + " entregado.</small>";
 
             Swal.fire({
               icon: "success", title: "Venta registrada", html: html,
               showCancelButton: true, confirmButtonText: "Venta", cancelButtonText: "Ir al listado",
               confirmButtonColor: "#28a745"
             }).then(function (r2) {
+              if (encargoOrigen && !r2.isConfirmed) { window.location.href = "Encargos.html"; return; }
               if (r2.isConfirmed) window.location.href = window.location.pathname;
               else window.location.href = "ListadoVentas.html";
             });
@@ -1721,11 +1860,13 @@
       renderCarrito();
 
       var idPresup = idPresupuestoDeLaUrl();
+      var idEncargo = idEncargoDeLaUrl();
 
       // Los repuestos y los clientes tienen que estar antes de armar
       // el carrito desde un presupuesto: de ahí salen stock y precios.
       Promise.all([cargarClientes(), cargarRepuestos()]).then(function () {
         if (idPresup) cargarDesdePresupuesto(idPresup);
+        else if (idEncargo) cargarDesdeEncargo(idEncargo);
       });
 
       document.getElementById("tipoPublico").addEventListener("click", function () { setTipo("publico"); });

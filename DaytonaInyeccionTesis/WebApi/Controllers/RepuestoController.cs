@@ -154,7 +154,9 @@ namespace WebApi.Controllers
         // Da de alta un repuesto a partir de un articulo de la lista de un proveedor.
         [HttpPost]
         [Route("api/Repuesto/IncorporarDesdeLista")]
-        [AuthorizeJwt(Roles = "Administrador,Analista")]
+        // El mostrador tambien incorpora: al encargar o pedir desde el buscador
+        // un articulo que solo esta en la lista del proveedor
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor,Analista")]
         public IHttpActionResult IncorporarDesdeLista([FromBody] Repuesto repuesto)
         {
             if (repuesto == null || repuesto.IdListaProveedor <= 0)
@@ -169,6 +171,98 @@ namespace WebApi.Controllers
             {
                 if (ex.Number >= 50000) return BadRequest(ex.Message);
                 return BadRequest("No se pudo incorporar el repuesto.");
+            }
+        }
+
+        // GET: api/Repuesto/5/Vinculacion?texto=...
+        // El repuesto, candidatos de otras listas ordenados por parecido
+        // (con la marca de cada uno) y sus equivalentes actuales.
+        [HttpGet]
+        [Route("api/Repuesto/{id:int}/Vinculacion")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Analista")]
+        public IHttpActionResult Vinculacion(int id, string texto = null)
+        {
+            Repuesto oRepuesto = new Repuesto();
+            oRepuesto.Id = id;
+            try
+            {
+                DataSet ds = oRepuesto.Vinculacion(texto);
+                return Ok(new
+                {
+                    Repuesto = ds.Tables[0],
+                    Candidatos = ds.Tables[1],
+                    Equivalentes = ds.Tables[2]
+                });
+            }
+            catch (SqlException ex)
+            {
+                if (ex.Number >= 50000) return BadRequest(ex.Message);
+                return BadRequest("No se pudo buscar.");
+            }
+        }
+
+        // GET: api/Repuesto/5/Equivalentes  (la misma pieza en otras marcas)
+        [HttpGet]
+        [Route("api/Repuesto/{id:int}/Equivalentes")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor,Analista")]
+        public DataTable Equivalentes(int id)
+        {
+            Repuesto oRepuesto = new Repuesto();
+            oRepuesto.Id = id;
+            return oRepuesto.Equivalentes();
+        }
+
+        // POST: api/Repuesto/5/Equivalentes  { IdProveedorRepuesto }
+        [HttpPost]
+        [Route("api/Repuesto/{id:int}/Equivalentes")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Analista")]
+        public IHttpActionResult AgregarEquivalente(int id, [FromBody] EquivalenciaDatos datos)
+        {
+            if (datos == null || !datos.IdProveedorRepuesto.HasValue || datos.IdProveedorRepuesto.Value <= 0)
+                return BadRequest("Falta el artículo equivalente.");
+
+            Repuesto oRepuesto = new Repuesto();
+            oRepuesto.Id = id;
+            try
+            {
+                oRepuesto.AgregarEquivalente(datos.IdProveedorRepuesto.Value);
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                if (ex.Number >= 50000) return BadRequest(ex.Message);
+                return BadRequest("No se pudo agregar el equivalente.");
+            }
+        }
+
+        // GET: api/Equivalencias/Mapa
+        // Repuestos agrupados con stock disponible: el Buscador y la Venta
+        // ofrecen otra marca cuando la buscada no tiene.
+        [HttpGet]
+        [Route("api/Equivalencias/Mapa")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor,Analista")]
+        public DataTable MapaEquivalencias()
+        {
+            return Repuesto.MapaEquivalencias();
+        }
+
+        // POST: api/Equivalencias/Quitar  { IdRepuesto } o { IdProveedorRepuesto }
+        [HttpPost]
+        [Route("api/Equivalencias/Quitar")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Analista")]
+        public IHttpActionResult QuitarEquivalencia([FromBody] EquivalenciaDatos datos)
+        {
+            if (datos == null || (!datos.IdRepuesto.HasValue && !datos.IdProveedorRepuesto.HasValue))
+                return BadRequest("Falta qué sacar del grupo.");
+            try
+            {
+                Repuesto.QuitarEquivalencia(datos.IdRepuesto, datos.IdProveedorRepuesto);
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                if (ex.Number >= 50000) return BadRequest(ex.Message);
+                return BadRequest("No se pudo sacar del grupo.");
             }
         }
 

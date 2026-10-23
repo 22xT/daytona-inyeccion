@@ -26,6 +26,8 @@
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor', 'Analista'] },
         { key: 'ajuste-stock', label: 'Ajuste de Stock', icon: 'bi-sliders', href: 'AjusteStock.html',
           roles: ['Administrador', 'Analista', 'Vendedor'] },
+        { key: 'inventario', label: 'Inventario físico', icon: 'bi-clipboard-check', href: 'InventarioFisico.html',
+          roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'marcas', label: 'Marcas', icon: 'bi-tag', href: 'MarcasListado.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] },
         { key: 'modelos', label: 'Modelos', icon: 'bi-car-front', href: 'ModelosListado.html',
@@ -44,6 +46,8 @@
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'presupuestos', label: 'Presupuestos', icon: 'bi-file-earmark-text', href: 'ListadoPresupuestos.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
+        { key: 'encargos', label: 'Encargos', icon: 'bi-bookmark-star', href: 'Encargos.html',
+          roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'cuentacorriente', label: 'Cuenta Corriente', icon: 'bi-journal-text', href: 'CuentaCorriente.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'clientes', label: 'Clientes', icon: 'bi-people', href: 'ClientesListado.html',
@@ -51,19 +55,43 @@
       ]
     },
     {
-      section: 'Compras',
+      // Comprar: que hace falta y a quien pedirlo (devolucion del profesor:
+      // una funcion por pantalla, y el menu separado por tema)
+      section: 'Cotizador',
+      key: 'compras',
+      icon: 'bi-bag',
+      items: [
+        { key: 'pedido-nuevo', label: 'Reposición sugerida', icon: 'bi-stars', href: 'PedidoNuevo.html',
+          roles: ['Administrador', 'Supervisor', 'Vendedor'] },
+        { key: 'carrito', label: 'Carrito', icon: 'bi-cart', href: 'Carrito.html',
+          roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
+        { key: 'pedido-manual', label: 'Pedido manual', icon: 'bi-pencil-square', href: 'PedidoManual.html',
+          roles: ['Administrador', 'Supervisor', 'Vendedor'] }
+      ]
+    },
+    {
+      // Seguimiento de lo ya pedido: enviar, recibir, reclamar
+      section: 'Pedidos',
+      key: 'pedidos',
       icon: 'bi-truck',
       items: [
-        { key: 'pedido-nuevo', label: 'Pedido', icon: 'bi-box-seam', href: 'PedidoNuevo.html',
-          roles: ['Administrador', 'Supervisor', 'Vendedor'] },
-        { key: 'pedidos', label: 'Listado de Pedidos', icon: 'bi-clipboard-data', href: 'ListadoPedido.html',
+        { key: 'pedidos', label: 'Pedidos', icon: 'bi-clipboard-data', href: 'ListadoPedido.html',
+          roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] }
+      ]
+    },
+    {
+      section: 'Proveedores',
+      key: 'proveedores',
+      icon: 'bi-shop',
+      items: [
+        { key: 'proveedores', label: 'Proveedores', icon: 'bi-shop', href: 'ProveedoresListado.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'cuenta-proveedores', label: 'Cuenta de proveedores', icon: 'bi-journal-text', href: 'CuentaProveedores.html',
           roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] },
-        { key: 'proveedores', label: 'Proveedores', icon: 'bi-shop', href: 'ProveedoresListado.html',
-          roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
-        { key: 'catalogo-prov', label: 'Catálogo de Proveedores', icon: 'bi-search', href: 'CatalogoProveedores.html',
-          roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] }
+        { key: 'catalogo-prov', label: 'Catálogo de proveedores', icon: 'bi-search', href: 'CatalogoProveedores.html',
+          roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] },
+        { key: 'listas-precios', label: 'Listas de precios', icon: 'bi-file-earmark-arrow-up', href: 'ListasPrecios.html',
+          roles: ['Dueño', 'Administrador'] }
       ]
     },
     {
@@ -87,7 +115,9 @@
         { key: 'rep-ventas', label: 'Ventas por Período', icon: 'bi-graph-up', href: 'ReporteVentas.html',
           roles: ['Dueño', 'Administrador', 'Supervisor'] },
         { key: 'rep-caja', label: 'Resumen de Caja', icon: 'bi-cash-coin', href: 'ReporteCaja.html',
-          roles: ['Dueño', 'Administrador'] }
+          roles: ['Dueño', 'Administrador'] },
+        { key: 'rep-busquedas', label: 'Búsquedas', icon: 'bi-search-heart', href: 'ReporteBusquedas.html',
+          roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] }
       ]
     },
     {
@@ -153,10 +183,11 @@
     // Una sola pagina: link directo, sin desplegable
     if (visibles.length === 1) {
       var solo = visibles[0];
-      return '<a href="' + solo.href + '" class="topnav-link' + clsActiva + '">' +
+      return '<div class="topnav-item" data-menu="' + group.key + '">' +
+        '<a href="' + solo.href + '" class="topnav-link' + clsActiva + '">' +
         '<i class="bi ' + (group.icon || solo.icon) + ' ico"></i>' +
         '<span class="lbl">' + escape(group.section) + '</span>' +
-        '</a>';
+        '</a></div>';
     }
 
     // Varias paginas: desplegable
@@ -391,8 +422,10 @@
       + '.notif-loading{padding:30px;text-align:center;color:#6c7a89;font-size:0.85rem;}'
 
       /* ---- Responsive: menu vertical con hamburguesa ---- */
-      + '@media (max-width:1400px){.topnav-link{padding:9px 13px 7px;}.topnav-link .lbl{font-size:0.9rem;}'
+      + '@media (max-width:1400px){.topnav-link{padding:9px 10px 7px;}.topnav-link .lbl{font-size:0.88rem;}'
       +   '.topnav-link .ico{font-size:1.3rem;}}'
+      // Con 9 secciones: en notebooks chicas el nombre del usuario se ve al abrir su menu
+      + '@media (max-width:1320px){.user-btn .user-info{display:none;}}'
       + '@media (max-width:1150px){.topnav{justify-content:flex-start;}'
       +   '.topnav-link{padding:8px 10px 6px;}.topnav-link .lbl{font-size:0.83rem;}'
       +   '.user-btn .user-info{display:none;}}'
@@ -459,7 +492,11 @@
     document.getElementById('notifBellBtn').addEventListener('click', function (e) {
       e.stopPropagation();
       cerrarMenus(null);
-      document.getElementById('notifPanel').classList.toggle('open');
+      var panel = document.getElementById('notifPanel');
+      panel.classList.toggle('open');
+      // Abrir la campanita = verlas: el numero se va y la proxima vez
+      // solo aparecen las nuevas
+      if (panel.classList.contains('open')) marcarVistas();
     });
 
     document.addEventListener('click', function (e) {
@@ -489,12 +526,85 @@
         return r.json();
       })
       .then(function (data) {
-        actualizarBadge(data.Total || 0);
-        renderPanelContenido(data);
+        notifUltima = data;
+        var nuevas = filtrarNoVistas(data);
+        actualizarBadge(contarNotif(nuevas));
+        // Con el panel abierto no se cambia lo que se esta leyendo
+        var panel = document.getElementById('notifPanel');
+        if (!(panel && panel.classList.contains('open'))) pintarPanel();
       })
       .catch(function () {
         // Silencio: si falla, mantenemos el badge en lo ultimo conocido
       });
+  }
+
+  /* ---------- Notificaciones vistas ----------
+     Se guardan en el navegador, por usuario. Cada aviso tiene una clave
+     (venta anulada #12, 3 en stock critico...). Si cambia —otra venta
+     anulada, 4 en stock critico— es un aviso nuevo y vuelve a aparecer. */
+  var notifUltima = null, notifVerVistas = false;
+
+  function claveVistas() {
+    var u = (window.Auth && Auth.getUsuario()) ? Auth.getUsuario() : {};
+    return 'notifVistas:' + (u.Id || u.IdUsuario || u.Usuario || u.Nombre || 'x');
+  }
+  function leerVistas() {
+    try { return JSON.parse(localStorage.getItem(claveVistas()) || '[]'); } catch (e) { return []; }
+  }
+  function guardarVistas(lista) {
+    try { localStorage.setItem(claveVistas(), JSON.stringify(lista.slice(-400))); } catch (e) { }
+  }
+
+  function clavesDe(d) {
+    var k = { ventas: {}, pedidos: {}, ajustes: {} };
+    (d.VentasAnuladas || []).forEach(function (v) { k.ventas['VA:' + v.Id] = v; });
+    (d.PedidosCancelados || []).forEach(function (x) { k.pedidos['PC:' + x.Id] = x; });
+    (d.AjustesStock || []).forEach(function (a) { k.ajustes['AJ:' + (a.Id || (a.Fecha + '|' + a.Repuesto + '|' + a.Diferencia))] = a; });
+    return k;
+  }
+
+  function filtrarNoVistas(d) {
+    var vistas = {}; leerVistas().forEach(function (x) { vistas[x] = 1; });
+    var k = clavesDe(d), r = {};
+    for (var p in d) r[p] = d[p];
+    r.VentasAnuladas = Object.keys(k.ventas).filter(function (c) { return !vistas[c]; }).map(function (c) { return k.ventas[c]; });
+    r.PedidosCancelados = Object.keys(k.pedidos).filter(function (c) { return !vistas[c]; }).map(function (c) { return k.pedidos[c]; });
+    r.AjustesStock = Object.keys(k.ajustes).filter(function (c) { return !vistas[c]; }).map(function (c) { return k.ajustes[c]; });
+    if (vistas['RS:' + d.SolicitudesReset]) r.SolicitudesReset = 0;
+    if (vistas['SC:' + d.StockCritico]) r.StockCritico = 0;
+    return r;
+  }
+
+  function contarNotif(d) {
+    return (d.VentasAnuladas || []).length + (d.PedidosCancelados || []).length + (d.AjustesStock || []).length +
+           (d.SolicitudesReset > 0 ? 1 : 0) + (d.StockCritico > 0 ? 1 : 0);
+  }
+
+  function marcarVistas() {
+    if (!notifUltima) return;
+    var lista = leerVistas(), k = clavesDe(notifUltima);
+    [k.ventas, k.pedidos, k.ajustes].forEach(function (g) { Object.keys(g).forEach(function (c) { if (lista.indexOf(c) === -1) lista.push(c); }); });
+    if (notifUltima.SolicitudesReset > 0) lista.push('RS:' + notifUltima.SolicitudesReset);
+    if (notifUltima.StockCritico > 0) lista.push('SC:' + notifUltima.StockCritico);
+    guardarVistas(lista);
+    actualizarBadge(0);
+  }
+
+  // El panel muestra las nuevas; las ya vistas, solo si se piden
+  function pintarPanel() {
+    if (!notifUltima) return;
+    var nuevas = filtrarNoVistas(notifUltima);
+    var hayVistas = contarNotif(notifUltima) > contarNotif(nuevas);
+    renderPanelContenido(notifVerVistas ? notifUltima : nuevas);
+    var body = document.getElementById('notifBody');
+    if (body && hayVistas) {
+      var a = document.createElement('button');
+      a.type = 'button';
+      a.textContent = notifVerVistas ? 'Ocultar las ya vistas' : 'Ver las ya vistas';
+      a.style.cssText = 'display:block;width:100%;border:none;background:none;padding:10px;font-size:0.8rem;color:#1266d1;font-weight:600;';
+      a.addEventListener('click', function (e) { e.stopPropagation(); notifVerVistas = !notifVerVistas; pintarPanel(); });
+      body.appendChild(a);
+    }
   }
 
   function actualizarBadge(total) {
@@ -616,8 +726,8 @@
     if (!hayContenido) {
       html = '<div class="notif-empty">' +
         '<i class="bi bi-bell-slash"></i>' +
-        '<div>No hay notificaciones pendientes.</div>' +
-        '<small class="text-muted">Todo en orden por aquí.</small>' +
+        '<div>No hay notificaciones nuevas.</div>' +
+        '<small class="text-muted">Las que ya viste no se vuelven a mostrar.</small>' +
         '</div>';
     }
 
@@ -643,17 +753,53 @@
         if (!datos || !datos[0]) return;
         var d = datos[0];
 
-        // Compras: repuestos bajo el minimo
-        pintarGlobo('sec3', d.Reposicion, false,
-                    d.Reposicion + ' repuesto(s) para reponer' +
-                    (d.SinStock > 0 ? ', ' + d.SinStock + ' sin stock' : ''));
+        // Compras: repuestos bajo el minimo y pedidos en armado sin enviar
+        var enArmado = d.PedidosEnArmado || 0;
+        // Cotizador: lo que falta reponer y lo que quedo en el carrito
+        pintarGlobo('compras', (d.Reposicion || 0) + (d.EnCarrito || 0), false,
+                    (d.Reposicion || 0) + ' repuesto(s) para reponer' +
+                    (d.SinStock > 0 ? ', ' + d.SinStock + ' sin stock' : '') +
+                    (d.EnCarrito > 0 ? ' · ' + d.EnCarrito + ' en el carrito sin confirmar' : ''));
+        // Pedidos: los que estan en armado y falta cargar en la web del proveedor
+        pintarGlobo('pedidos', enArmado, false, enArmado + ' pedido(s) en armado sin enviar');
+        pintarItem('ListadoPedido.html', enArmado, enArmado + ' pedido(s) en armado: cargalos en la web del proveedor');
+        pintarItem('Carrito.html', d.EnCarrito || 0, (d.EnCarrito || 0) + ' repuesto(s) en el carrito sin confirmar');
+        pintarItem('PedidoNuevo.html', d.Reposicion || 0, (d.Reposicion || 0) + ' repuesto(s) para reponer');
 
-        // Ventas: clientes con deuda. En naranja, no en rojo: deber no
-        // es una urgencia, es informacion.
-        pintarGlobo('sec2', d.ClientesConDeuda, true,
-                    d.ClientesConDeuda + ' cliente(s) con saldo pendiente');
+        // Ventas: los encargos que piden accion van primero (en rojo).
+        // Si no hay, los clientes con deuda en naranja: deber no es una
+        // urgencia, es informacion.
+        var avisar = d.EncargosParaAvisar || 0, atrasados = d.EncargosAtrasados || 0, noRetiro = d.EncargosNoRetiro || 0;
+        var encargos = avisar + atrasados + noRetiro;
+        var txtEnc = [];
+        if (avisar) txtEnc.push(avisar + ' para avisar');
+        if (atrasados) txtEnc.push(atrasados + ' atrasado(s)');
+        if (noRetiro) txtEnc.push(noRetiro + ' sin retirar');
+        if (encargos > 0)
+          pintarGlobo('sec2', encargos, false, 'Encargos: ' + txtEnc.join(', ') +
+                      (d.ClientesConDeuda > 0 ? ' · ' + d.ClientesConDeuda + ' cliente(s) con deuda' : ''));
+        else
+          pintarGlobo('sec2', d.ClientesConDeuda, true,
+                      d.ClientesConDeuda + ' cliente(s) con saldo pendiente');
+        pintarItem('Encargos.html', encargos, 'Encargos: ' + txtEnc.join(', '));
       })
       .catch(function () { /* sin indicadores */ });
+  }
+
+  // Numero chico al lado de una opcion del menu desplegable
+  function pintarItem(href, cantidad, titulo) {
+    document.querySelectorAll('a.topnav-menu-item[href="' + href + '"]').forEach(function (a) {
+      var viejo = a.querySelector('.nav-item-num');
+      if (viejo) viejo.remove();
+      if (!cantidad || cantidad <= 0) return;
+      a.style.display = 'flex'; a.style.alignItems = 'center'; a.style.gap = '6px';
+      var n = document.createElement('span');
+      n.className = 'nav-item-num';
+      n.textContent = cantidad > 99 ? '99+' : cantidad;
+      n.title = titulo || '';
+      n.style.cssText = 'margin-left:auto;background:#ff3333;color:#fff;border-radius:10px;padding:0 7px;font-size:0.7rem;font-weight:700;line-height:18px;';
+      a.appendChild(n);
+    });
   }
 
   function pintarGlobo(claveSeccion, cantidad, suave, titulo) {

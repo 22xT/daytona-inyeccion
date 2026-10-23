@@ -83,3 +83,9 @@ $RECYCLE.BIN/
 node_modules/
 *.orig
 *.rej
+
+# Listas de precios de proveedores (datos comerciales, archivos grandes)
+Importaciones/
+
+# Generado por Visual Studio al publicar en Azure
+**/Properties/ServiceDependencies/

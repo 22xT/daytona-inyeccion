@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Inventario físico - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    /* =================================================================
+       INVENTARIO FISICO (script 79) — conteo ciego
+       Contar: no se ve el stock del sistema. Revisar: aparecen las
+       diferencias. Cerrar: se ajusta con motivo.
+       ================================================================= */
+    .inv-main { padding: 16px 24px 96px !important; max-width: none; width: 100%; }
+    .inv-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .inv-top h1 { font-size: 1.3rem; font-weight: 800; color: var(--navy); margin: 0; }
+    .inv-top p { margin: 3px 0 0; color: #5f6b7a; font-size: 0.9rem; max-width: 760px; }
+
+    .caja { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; margin-bottom: 14px; }
+    .caja-h { padding: 14px 18px 4px; font-weight: 700; color: var(--navy); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+    .caja-h small { font-weight: 400; color: #6b7685; font-size: 0.82rem; }
+    .caja-b { padding: 10px 18px 16px; }
+
+    .empezar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .empezar .f { flex: 1 1 240px; }
+    .empezar label { font-size: 0.8rem; font-weight: 600; color: #4a5568; }
+
+    .btn-p { height: 42px; border: none; border-radius: 10px; background: var(--navy); color: #fff; font-weight: 700; font-size: 0.92rem; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .btn-p:hover:not(:disabled) { background: #0b2c55; }
+    .btn-p:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-s { height: 42px; border-radius: 10px; border: 1px solid #c9d3e0; background: #fff; color: var(--navy); font-weight: 700; font-size: 0.88rem; padding: 0 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+    .btn-s:hover { border-color: var(--nav-accent); background: #f0f6ff; }
+    .btn-s.peligro { color: #a8281e; }
+    .btn-s.peligro:hover { border-color: #f1b8b4; background: #fdeceb; }
+
+    /* Conteo en curso */
+    .curso { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 14px 18px; }
+    .curso .tit { font-weight: 800; color: var(--navy); font-size: 1.05rem; }
+    .curso .det { font-size: 0.82rem; color: #6b7685; }
+    .prog { flex: 1 1 260px; }
+    .prog .bar { height: 10px; background: #eef1f5; border-radius: 999px; overflow: hidden; }
+    .prog .bar span { display: block; height: 100%; background: #2f855a; transition: width .2s; }
+    .prog .txt { font-size: 0.82rem; color: #4a5568; margin-top: 4px; }
+    .ciego { display: inline-flex; gap: 6px; align-items: center; font-size: 0.78rem; font-weight: 700; color: #4a5568; background: #eef1f5; border-radius: 999px; padding: 3px 10px; }
+
+    .filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 4px 18px 10px; }
+    .filtros .buscar { position: relative; flex: 1 1 320px; max-width: 520px; }
+    .filtros .buscar i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #8a94a3; }
+    .filtros .buscar input { padding-left: 34px; height: 40px; }
+    .chip { border: 1px solid #c9d3e0; background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 0.82rem; font-weight: 600; color: #4a5568; }
+    .chip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .chip .c { opacity: .75; margin-left: 3px; }
+
+    .fila { display: grid; grid-template-columns: minmax(0, 1fr) 170px 150px 36px; column-gap: 16px; align-items: center; padding: 10px 18px; border-top: 1px solid #f0f2f5; }
+    .fila.cab { font-size: 0.76rem; font-weight: 600; color: #6b7685; background: #fafbfc; border-top: 1px solid #edf0f4; padding-top: 8px; padding-bottom: 8px; }
+    .fila.contado { background: #f6fbf8; }
+    .fila.foco { box-shadow: inset 3px 0 0 var(--nav-accent); }
+    .desc { font-size: 0.92rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+    .meta { font-size: 0.78rem; color: #6b7685; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .inv-marca { display: inline-block; background: var(--navy); color: #fff; font-weight: 800; font-size: 0.7rem; letter-spacing: 0.4px; border-radius: 5px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; }
+    .cod { font-family: Consolas, 'Courier New', monospace; font-weight: 700; color: var(--text); }
+    .agregado { font-size: 0.7rem; font-weight: 700; background: #fff3d1; color: #7a5600; border-radius: 5px; padding: 1px 6px; }
+
+    .cant { display: inline-flex; }
+    .cant button { width: 34px; height: 38px; border: 1px solid #c9d3e0; background: #fff; color: #374151; font-weight: 700; }
+    .cant button:first-child { border-radius: 8px 0 0 8px; } .cant button:last-child { border-radius: 0 8px 8px 0; }
+    .cant input { width: 70px; height: 38px; border: 1px solid #c9d3e0; border-left: none; border-right: none; text-align: center; font-weight: 800; font-size: 1rem; }
+    .cant input:focus { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
+    .estado { font-size: 0.78rem; color: #6b7685; }
+    .estado.ok { color: #146c43; font-weight: 700; }
+    .estado.err { color: #a8281e; font-weight: 700; }
+    .borrar { width: 32px; height: 32px; border: 1px solid transparent; background: none; border-radius: 7px; color: #8a94a3; }
+    .borrar:hover { border-color: #f1b8b4; background: #fdeceb; color: #a8281e; }
+    .mas { text-align: center; padding: 12px; border-top: 1px solid #f0f2f5; }
+    .vacio { text-align: center; padding: 30px 20px; color: #6b7685; }
+    .vacio i { font-size: 1.8rem; color: #b8c6d9; display: block; margin-bottom: 6px; }
+
+    /* Revision */
+    .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+    .kpi { border: 1px solid #e3e8ef; border-radius: 10px; padding: 10px 12px; }
+    .kpi .t { font-size: 0.76rem; color: #6b7685; font-weight: 600; }
+    .kpi .v { font-size: 1.3rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+    .kpi.rojo .v { color: #a8281e; } .kpi.verde .v { color: #146c43; }
+    .aviso { border-radius: 9px; padding: 10px 14px; font-size: 0.86rem; margin-top: 12px; display: flex; gap: 10px; align-items: flex-start; background: #fff8e1; color: #6b4f00; border: 1px solid #f3dc9a; }
+    .tabla { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    .tabla th { font-size: 0.74rem; font-weight: 600; color: #6b7685; background: #fafbfc; padding: 8px 12px; border-bottom: 1px solid #edf0f4; text-align: left; white-space: nowrap; }
+    .tabla td { padding: 9px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+    .tabla .der { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .dif { font-weight: 800; }
+    .dif.mas { color: #146c43; } .dif.menos { color: #a8281e; }
+    .tabla input.mot { min-width: 220px; height: 34px; font-size: 0.84rem; }
+    .lnk { border: none; background: none; color: var(--nav-accent); font-size: 0.82rem; font-weight: 600; padding: 0; white-space: nowrap; }
+
+    .est { font-size: 0.74rem; font-weight: 700; border-radius: 5px; padding: 2px 7px; }
+    .est.ABIERTO { background: #e8f1fd; color: #1d4f91; } .est.CERRADO { background: #d1f0df; color: #146c43; } .est.ANULADO { background: #eef1f5; color: #6b7685; }
+    tr.click { cursor: pointer; } tr.click:hover td { background: #f8fafd; }
+
+    .barra { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #dde3ea; padding: 10px 24px; display: flex; align-items: center; gap: 12px; z-index: 20; box-shadow: 0 -4px 14px rgba(15, 35, 70, 0.06); }
+    .barra .txt { flex: 1; font-size: 0.86rem; color: #4a5568; min-width: 0; }
+    .oculto { display: none !important; }
+
+    @media (max-width: 991px) {
+      .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .fila { grid-template-columns: 1fr auto; row-gap: 8px; }
+      .fila.cab { display: none; }
+      .fila > :first-child { grid-column: 1 / -1; }
+      .inv-main { padding: 12px 12px 130px !important; }
+      .barra { flex-wrap: wrap; padding: 10px 12px; }
+    }
+  </style>
+</head>
+
+<body data-page="inventario">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content inv-main">
+    <div class="inv-top">
+      <div>
+        <h1>Inventario físico</h1>
+        <p>Conteo ciego: mientras contás no se ve cuánto dice el sistema. Al terminar se revisan las diferencias y se ajusta el stock con motivo.</p>
+      </div>
+      <a class="btn-s" href="AjusteStock.html"><i class="bi bi-sliders"></i> Ajuste de un repuesto</a>
+    </div>
+
+    <!-- SIN CONTEO ABIERTO -->
+    <section class="caja oculto" id="secEmpezar">
+      <div class="caja-h">Empezar un conteo<small>Contá un rubro por vez o todo el local. Conviene hacerlo sin ventas en el medio.</small></div>
+      <div class="caja-b">
+        <div class="empezar">
+          <div class="f">
+            <label for="selRubro">Qué contar</label>
+            <select id="selRubro" class="form-select"><option value="">Todo el local</option></select>
+          </div>
+          <div class="f">
+            <label for="txtObs">Nota (opcional)</label>
+            <input id="txtObs" class="form-control" maxlength="250" placeholder="Ej.: estantería del fondo">
+          </div>
+          <button type="button" class="btn-p" id="btnEmpezar"><i class="bi bi-clipboard-check"></i> Empezar conteo</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTANDO -->
+    <section class="caja oculto" id="secContar">
+      <div class="curso">
+        <div>
+          <div class="tit" id="cTitulo">Conteo</div>
+          <div class="det" id="cDetalle"></div>
+        </div>
+        <div class="prog"><div class="bar"><span id="cBar" style="width:0%"></span></div><div class="txt" id="cProg"></div></div>
+        <span class="ciego" title="El stock del sistema aparece recién al revisar"><i class="bi bi-eye-slash"></i> Conteo ciego</span>
+      </div>
+      <div class="filtros">
+        <div class="buscar"><i class="bi bi-search"></i>
+          <input type="search" id="busca" class="form-control" placeholder="Código, código de fábrica o descripción" aria-label="Buscar en el conteo"></div>
+        <button type="button" class="chip on" data-f="sin">Sin contar <span class="c" id="nSin"></span></button>
+        <button type="button" class="chip" data-f="con">Contados <span class="c" id="nCon"></span></button>
+        <button type="button" class="chip" data-f="todos">Todos</button>
+      </div>
+      <div class="fila cab"><span>Repuesto</span><span>Contado</span><span></span><span></span></div>
+      <div id="lista"></div>
+      <div class="mas oculto" id="mas"><button type="button" class="btn-s" id="btnMas">Mostrar más</button></div>
+    </section>
+
+    <!-- REVISAR -->
+    <section class="caja oculto" id="secRevisar">
+      <div class="caja-h">Diferencias<small>Lo contado contra lo que decía el sistema en el momento de contar cada repuesto.</small></div>
+      <div class="caja-b">
+        <div class="kpis" id="kpis"></div>
+        <div id="avisoSinContar"></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tabla">
+          <thead><tr><th>Repuesto</th><th class="der">Sistema</th><th class="der">Contado</th><th class="der">Diferencia</th><th class="der">Valor (costo)</th><th>Motivo de esta diferencia</th><th></th></tr></thead>
+          <tbody id="tbDif"></tbody>
+        </table>
+      </div>
+      <div class="caja-b">
+        <label for="motGeneral" class="form-label" style="font-size:.84rem;font-weight:600;color:#4a5568">Motivo general <small class="text-muted fw-normal">(para las diferencias sin motivo propio)</small></label>
+        <input id="motGeneral" class="form-control" maxlength="200" placeholder="Ej.: recuento mensual del rubro, faltantes sin explicar">
+      </div>
+    </section>
+
+    <!-- HISTORIAL -->
+    <section class="caja" id="secHistorial">
+      <div class="caja-h">Conteos anteriores</div>
+      <div style="overflow-x:auto">
+        <table class="tabla">
+          <thead><tr><th>N°</th><th>Fecha</th><th>Qué se contó</th><th>Por</th><th class="der">Contados</th><th class="der">Con diferencia</th><th class="der">Valor de la diferencia</th><th>Estado</th></tr></thead>
+          <tbody id="tbHist"><tr><td colspan="8" class="vacio">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="barra oculto" id="barra">
+    <div class="txt" id="barraTxt"></div>
+    <button type="button" class="btn-s peligro" id="btnAnular"><i class="bi bi-x-circle"></i> Anular conteo</button>
+    <button type="button" class="btn-s oculto" id="btnVolver"><i class="bi bi-arrow-left"></i> Volver a contar</button>
+    <button type="button" class="btn-p" id="btnAccion"></button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+    var api = API_BASE;
+    var usuario = Auth.getUsuario() || {};
+    var puedeCerrar = ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
+    var POR_PAGINA = 150;
+
+    var conteo = null, renglones = [], etapa = "nada";   // nada | contar | revisar
+    var filtro = "sin", texto = "", limite = POR_PAGINA;
+    var revision = null;
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function pedir(url, op) {
+      return fetchAuth(url, op).then(function (r) {
+        return r.text().then(function (t) {
+          var d = null; try { d = t ? JSON.parse(t) : null; } catch (e) { d = t; }
+          if (!r.ok) throw new Error((d && (d.Message || d.message)) || t || ("Error " + r.status));
+          return d;
+        });
+      });
+    }
+    function n(v) { return Number(v || 0).toLocaleString("es-AR"); }
+    function fecha(f) { return f ? new Date(f).toLocaleDateString("es-AR") : ""; }
+    function hora(f) { return f ? new Date(f).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : ""; }
+    function norm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[-.\s/]/g, ""); }
+    function mostrar(id, si) { document.getElementById(id).classList.toggle("oculto", !si); }
+
+    /* ---------------- Carga ---------------- */
+    function cargar() {
+      pedir(api + "Inventario/Abierto").then(function (d) {
+        if (d && d.Conteo && d.Conteo.length) {
+          conteo = d.Conteo[0];
+          renglones = (d.Renglones || []).map(function (r) { r._k = norm(r.Codigo + " " + r.CodigoFabricante + " " + r.Descripcion + " " + r.Marca); return r; });
+          irA("contar");
+        } else {
+          conteo = null; renglones = []; irA("nada");
+        }
+      }).catch(function (e) { Swal.fire({ icon: "error", title: "No se pudo cargar", text: e.message }); });
+      cargarHistorial();
+    }
+
+    function cargarRubros() {
+      pedir(api + "Rubro").then(function (d) {
+        var sel = document.getElementById("selRubro");
+        (d || []).slice().sort(function (a, b) { return String(a.Nombre).localeCompare(String(b.Nombre)); }).forEach(function (r) {
+          var o = document.createElement("option"); o.value = r.Id; o.textContent = r.Nombre; sel.appendChild(o);
+        });
+      }).catch(function () { });
+    }
+
+    function cargarHistorial() {
+      pedir(api + "Inventario").then(function (d) {
+        var tb = document.getElementById("tbHist");
+        d = d || [];
+        tb.innerHTML = d.length ? d.map(function (c) {
+          var v = Number(c.ValorDiferencia || 0);
+          return '<tr class="click" data-id="' + c.Id + '"><td><b>' + c.Id + '</b></td><td>' + fecha(c.FechaInicio) + '</td><td>' + esc(c.Alcance) + '</td><td>' + esc(c.Usuario || "") + '</td>' +
+            '<td class="der">' + n(c.Contados) + ' de ' + n(c.Repuestos) + '</td><td class="der">' + n(c.ConDiferencia) + '</td>' +
+            '<td class="der"><span class="dif ' + (v < 0 ? "menos" : (v > 0 ? "mas" : "")) + '">' + (c.Estado === "ABIERTO" ? "—" : formatearMoneda(v)) + '</span></td>' +
+            '<td><span class="est ' + c.Estado + '">' + ({ ABIERTO: "En curso", CERRADO: "Ajustado", ANULADO: "Anulado" }[c.Estado] || c.Estado) + '</span></td></tr>';
+        }).join("") : '<tr><td colspan="8"><div class="vacio"><i class="bi bi-clipboard"></i>Todavía no se hizo ningún conteo.</div></td></tr>';
+        tb.querySelectorAll("tr.click").forEach(function (tr) {
+          tr.addEventListener("click", function () {
+            var id = Number(tr.getAttribute("data-id"));
+            if (conteo && conteo.Id === id) return;
+            verConteo(id);
+          });
+        });
+      }).catch(function () { document.getElementById("tbHist").innerHTML = '<tr><td colspan="8" class="vacio">No se pudo cargar el historial.</td></tr>'; });
+    }
+
+    /* ---------------- Etapas ---------------- */
+    function irA(e) {
+      etapa = e;
+      mostrar("secEmpezar", e === "nada" && puedeCerrar);
+      mostrar("secContar", e === "contar");
+      mostrar("secRevisar", e === "revisar");
+      mostrar("secHistorial", e !== "revisar");
+      mostrar("barra", e !== "nada");
+      mostrar("btnVolver", e === "revisar");
+      mostrar("btnAnular", e !== "nada" && puedeCerrar);
+      if (e === "contar") { pintarCabecera(); pintarLista(); }
+      actualizarBarra();
+    }
+
+    function contados() { return renglones.filter(function (r) { return r.Contado !== null && r.Contado !== undefined; }).length; }
+
+    function pintarCabecera() {
+      document.getElementById("cTitulo").textContent = "Conteo N° " + conteo.Id + " · " + conteo.Alcance;
+      document.getElementById("cDetalle").textContent = "Empezado el " + fecha(conteo.FechaInicio) + " a las " + hora(conteo.FechaInicio) +
+        (conteo.Usuario ? " por " + conteo.Usuario : "") + (conteo.Observacion ? " · " + conteo.Observacion : "");
+      var c = contados(), t = renglones.length;
+      document.getElementById("cBar").style.width = (t ? c / t * 100 : 0) + "%";
+      document.getElementById("cProg").innerHTML = "<b>" + n(c) + "</b> de " + n(t) + " repuestos contados";
+      document.getElementById("nSin").textContent = n(t - c);
+      document.getElementById("nCon").textContent = n(c);
+    }
+
+    function visibles() {
+      var q = norm(texto);
+      return renglones.filter(function (r) {
+        var es = r.Contado !== null && r.Contado !== undefined;
+        if (filtro === "sin" && es) return false;
+        if (filtro === "con" && !es) return false;
+        return !q || r._k.indexOf(q) >= 0;
+      });
+    }
+
+    function pintarLista() {
+      var v = visibles(), cont = document.getElementById("lista");
+      if (!v.length) {
+        var msg = texto ? 'Ningún repuesto del conteo coincide con "' + esc(texto) + '".' +
+                  (texto.length >= 3 ? '<div class="mt-2"><button type="button" class="btn-s" id="btnAgregar"><i class="bi bi-plus-lg"></i> Está en la estantería: agregarlo al conteo</button></div>' : '')
+                : (filtro === "sin" ? '<i class="bi bi-check2-all"></i>Contaste todo. Ya podés revisar las diferencias.' : "Nada para mostrar.");
+        cont.innerHTML = '<div class="vacio">' + msg + '</div>';
+        var b = document.getElementById("btnAgregar"); if (b) b.addEventListener("click", agregarDeEstanteria);
+        mostrar("mas", false);
+        return;
+      }
+      cont.innerHTML = v.slice(0, limite).map(fila).join("");
+      mostrar("mas", v.length > limite);
+      cont.querySelectorAll(".fila").forEach(enganchar);
+    }
+
+    function fila(r) {
+      var es = r.Contado !== null && r.Contado !== undefined;
+      return '<div class="fila' + (es ? ' contado' : '') + '" data-id="' + r.IdRepuesto + '">' +
+        '<div><div class="desc">' + (r.Marca ? '<span class="inv-marca">' + esc(r.Marca) + '</span>' : '') + esc(r.Descripcion) + '</div>' +
+          '<div class="meta"><span class="cod">' + esc(r.Codigo) + '</span>' + (r.CodigoFabricante ? '<span>fáb. ' + esc(r.CodigoFabricante) + '</span>' : '') +
+          '<span>' + esc(r.Rubro) + '</span>' + (r.Agregado ? '<span class="agregado">Agregado al contar</span>' : '') + '</div></div>' +
+        '<div class="cant"><button type="button" class="menos" aria-label="Uno menos">−</button>' +
+          '<input type="number" min="0" max="100000" inputmode="numeric" value="' + (es ? r.Contado : '') + '" placeholder="—" aria-label="Cantidad contada de ' + esc(r.Codigo) + '">' +
+          '<button type="button" class="masuno" aria-label="Uno más">+</button></div>' +
+        '<div class="estado' + (es ? ' ok' : '') + '">' + (es ? '<i class="bi bi-check2"></i> Contado ' + hora(r.FechaConteo) : 'Sin contar') + '</div>' +
+        '<button type="button" class="borrar' + (es ? '' : ' invisible') + '" title="Borrar lo contado" aria-label="Borrar lo contado"><i class="bi bi-x-lg"></i></button></div>';
+    }
+
+    function enganchar(el) {
+      var id = Number(el.getAttribute("data-id"));
+      var inp = el.querySelector("input");
+      var original = inp.value;
+      function guardar() {
+        if (inp.value === original) return;
+        var v = inp.value === "" ? null : parseInt(inp.value, 10);
+        if (v !== null && (isNaN(v) || v < 0 || v > 100000)) { inp.value = original; return; }
+        contar(id, v, el);
+        original = inp.value;
+      }
+      inp.addEventListener("change", guardar);
+      inp.addEventListener("focus", function () { el.classList.add("foco"); inp.select(); });
+      inp.addEventListener("blur", function () { el.classList.remove("foco"); });
+      inp.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault(); guardar();
+          // Siguiente sin contar de la lista
+          var sig = el.nextElementSibling;
+          while (sig && sig.classList.contains("contado") && filtro !== "sin") sig = sig.nextElementSibling;
+          if (sig && sig.querySelector("input")) sig.querySelector("input").focus();
+          else document.getElementById("busca").focus();
+        }
+      });
+      el.querySelector(".menos").addEventListener("click", function () { inp.value = Math.max(0, (parseInt(inp.value, 10) || 0) - 1); guardar(); });
+      el.querySelector(".masuno").addEventListener("click", function () { inp.value = (parseInt(inp.value, 10) || 0) + 1; guardar(); });
+      el.querySelector(".borrar").addEventListener("click", function () { inp.value = ""; guardar(); });
+    }
+
+    function contar(idRepuesto, valor, el) {
+      var est = el ? el.querySelector(".estado") : null;
+      if (est) { est.className = "estado"; est.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando'; }
+      return pedir(api + "Inventario/" + conteo.Id + "/Contar", { method: "PUT", body: JSON.stringify({ IdRepuesto: idRepuesto, Contado: valor }) })
+        .then(function () {
+          var r = renglones.find(function (x) { return x.IdRepuesto === idRepuesto; });
+          if (r) { r.Contado = valor; r.FechaConteo = valor === null ? null : new Date().toISOString(); }
+          if (el) {
+            el.classList.toggle("contado", valor !== null);
+            el.querySelector(".borrar").classList.toggle("invisible", valor === null);
+            est.className = "estado" + (valor !== null ? " ok" : "");
+            est.innerHTML = valor !== null ? '<i class="bi bi-check2"></i> Contado ' + hora(new Date()) : "Sin contar";
+          }
+          pintarCabecera(); actualizarBarra();
+        })
+        .catch(function (e) {
+          if (est) { est.className = "estado err"; est.textContent = "No se guardó: " + e.message; }
+        });
+    }
+
+    // Algo que esta en la estanteria y no figuraba en la lista del conteo
+    function agregarDeEstanteria() {
+      pedir(api + "Busqueda?texto=" + encodeURIComponent(texto) + "&origen=REVISION").then(function (ds) {
+        var propios = Array.isArray(ds) ? (ds[0] || []) : ((ds && ds.Table) || []);
+        var enConteo = {}; renglones.forEach(function (r) { enConteo[r.IdRepuesto] = true; });
+        var cand = (propios || []).filter(function (r) { return !enConteo[r.Id]; }).slice(0, 12);
+        if (!cand.length) { Swal.fire({ icon: "info", title: "No está en el catálogo", text: "Primero hay que darlo de alta como repuesto." }); return; }
+        var opts = {}; cand.forEach(function (r) { opts[r.Id] = (r.Codigo || "") + " · " + r.Descripcion + (r.MarcaFabricante ? " (" + r.MarcaFabricante + ")" : ""); });
+        return Swal.fire({
+          title: "¿Cuál es?", input: "select", inputOptions: opts, showCancelButton: true,
+          confirmButtonText: "Agregar", cancelButtonText: "Cancelar", html: '<input id="swCant" type="number" min="0" class="swal2-input" placeholder="Cantidad contada">',
+          preConfirm: function () {
+            var c = parseInt(document.getElementById("swCant").value, 10);
+            if (isNaN(c) || c < 0) { Swal.showValidationMessage("Escribí la cantidad contada."); return false; }
+            return c;
+          }
+        }).then(function (res) {
+          if (!res.isConfirmed) return;
+          var sel = document.querySelector(".swal2-select");
+          var idRep = Number(sel ? sel.value : Object.keys(opts)[0]);
+          var r = cand.find(function (x) { return x.Id === idRep; });
+          return contar(idRep, res.value, null).then(function () {
+            if (!renglones.some(function (x) { return x.IdRepuesto === idRep; })) {
+              renglones.push({ IdRepuesto: idRep, Codigo: r.Codigo, Descripcion: r.Descripcion, Marca: r.MarcaFabricante, CodigoFabricante: r.CodigoFabricante,
+                               Rubro: r.Rubro, Agregado: true, Contado: res.value, FechaConteo: new Date().toISOString(),
+                               _k: norm(r.Codigo + " " + r.CodigoFabricante + " " + r.Descripcion + " " + r.MarcaFabricante) });
+            }
+            pintarCabecera(); pintarLista(); actualizarBarra();
+          });
+        });
+      }).catch(function (e) { Swal.fire({ icon: "error", title: "No se pudo buscar", text: e.message }); });
+    }
+
+    /* ---------------- Revisar ---------------- */
+    function revisar() {
+      pedir(api + "Inventario/" + conteo.Id + "/Diferencias").then(function (d) {
+        revision = d; irA("revisar"); pintarRevision();
+      }).catch(function (e) { Swal.fire({ icon: "error", title: "No se pudieron calcular", text: e.message }); });
+    }
+
+    function pintarRevision() {
+      var r = (revision.Resumen && revision.Resumen[0]) || {};
+      var vf = Number(r.ValorFaltante || 0), vs = Number(r.ValorSobrante || 0);
+      document.getElementById("kpis").innerHTML = [
+        { t: "Contados", v: n(r.Contados) + " / " + n(r.Repuestos) },
+        { t: "Coinciden", v: n(r.Coinciden), c: "verde" },
+        { t: "Sobran", v: n(r.Sobran) },
+        { t: "Faltan", v: n(r.Faltan), c: Number(r.Faltan) ? "rojo" : "" },
+        { t: "Valor faltante", v: formatearMoneda(vf), c: vf ? "rojo" : "" },
+        { t: "Valor sobrante", v: formatearMoneda(vs) }
+      ].map(function (k) { return '<div class="kpi ' + (k.c || "") + '"><div class="t">' + k.t + '</div><div class="v">' + k.v + '</div></div>'; }).join("");
+
+      var sin = Number(r.Repuestos || 0) - Number(r.Contados || 0);
+      document.getElementById("avisoSinContar").innerHTML = sin > 0
+        ? '<div class="aviso"><i class="bi bi-info-circle"></i><div><b>' + n(sin) + '</b> repuesto(s) quedaron sin contar: no se ajustan. Si querés, volvé a contar antes de cerrar.</div></div>' : "";
+
+      var dif = revision.Diferencias || [];
+      var tb = document.getElementById("tbDif");
+      tb.innerHTML = dif.length ? dif.map(function (x) {
+        var d = Number(x.Diferencia);
+        return '<tr data-r="' + x.IdRenglon + '" data-id="' + x.IdRepuesto + '"><td><div class="desc">' + (x.Marca ? '<span class="inv-marca">' + esc(x.Marca) + '</span>' : '') + esc(x.Descripcion) + '</div>' +
+          '<div class="meta"><span class="cod">' + esc(x.Codigo) + '</span><span>' + esc(x.Rubro) + '</span></div></td>' +
+          '<td class="der">' + n(x.StockAlContar) + '</td><td class="der"><b>' + n(x.Contado) + '</b></td>' +
+          '<td class="der"><span class="dif ' + (d > 0 ? "mas" : "menos") + '">' + (d > 0 ? "+" : "") + n(d) + '</span><div class="meta" style="justify-content:flex-end">' + (d > 0 ? "sobra" : "falta") + '</div></td>' +
+          '<td class="der">' + formatearMoneda(x.Valor) + '</td>' +
+          '<td><input class="form-control mot" maxlength="200" value="' + esc(x.Motivo || "") + '" placeholder="Opcional: rotura, mal cargado…"></td>' +
+          '<td><button type="button" class="lnk recontar">Recontar</button></td></tr>';
+      }).join("") : '<tr><td colspan="7"><div class="vacio"><i class="bi bi-check2-circle"></i>Todo lo contado coincide con el sistema.</div></td></tr>';
+
+      tb.querySelectorAll("tr[data-r]").forEach(function (tr) {
+        var idR = Number(tr.getAttribute("data-r")), idRep = Number(tr.getAttribute("data-id"));
+        var inp = tr.querySelector("input.mot"), orig = inp.value;
+        inp.addEventListener("change", function () {
+          if (inp.value.trim() === orig) return;
+          pedir(api + "Inventario/Renglon/" + idR + "/Motivo", { method: "PUT", body: JSON.stringify({ Motivo: inp.value.trim() || null }) })
+            .then(function () {
+              orig = inp.value.trim();
+              var x = dif.find(function (z) { return z.IdRenglon === idR; }); if (x) x.Motivo = orig || null;
+              actualizarBarra();
+            })
+            .catch(function (e) { Swal.fire({ icon: "error", title: "No se guardó el motivo", text: e.message }); });
+        });
+        tr.querySelector(".recontar").addEventListener("click", function () {
+          var r = renglones.find(function (z) { return z.IdRepuesto === idRep; });
+          contar(idRep, null, null).then(function () {
+            filtro = "sin"; texto = r ? r.Codigo : "";
+            document.getElementById("busca").value = texto;
+            document.querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("on", c.getAttribute("data-f") === "sin"); });
+            irA("contar");
+            var i = document.querySelector("#lista input"); if (i) i.focus();
+          });
+        });
+      });
+      actualizarBarra();
+    }
+
+    function faltanMotivos() {
+      if (!revision) return 0;
+      return (revision.Diferencias || []).filter(function (x) { return !x.Motivo; }).length;
+    }
+
+    function cerrar() {
+      var dif = (revision && revision.Diferencias) || [];
+      var mg = document.getElementById("motGeneral").value.trim();
+      if (faltanMotivos() && !mg) {
+        Swal.fire({ icon: "warning", title: "Falta el motivo", text: "Escribí un motivo general o uno en cada diferencia." });
+        document.getElementById("motGeneral").focus();
+        return;
+      }
+      Swal.fire({
+        icon: "question", title: "¿Cerrar el conteo y ajustar el stock?",
+        html: dif.length ? "Se ajustan <b>" + n(dif.length) + "</b> repuesto(s). Queda en el historial de movimientos con tu usuario y el motivo." : "No hay diferencias: el conteo se cierra sin tocar el stock.",
+        showCancelButton: true, confirmButtonText: "Cerrar y ajustar", cancelButtonText: "Cancelar"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        pedir(api + "Inventario/" + conteo.Id + "/Cerrar", { method: "POST", body: JSON.stringify({ MotivoGeneral: mg || null }) })
+          .then(function () {
+            Swal.fire({ icon: "success", title: "Conteo cerrado", text: dif.length ? "El stock quedó ajustado." : "No hubo diferencias.", timer: 2200, showConfirmButton: false });
+            revision = null; document.getElementById("motGeneral").value = ""; cargar();
+          })
+          .catch(function (e) { Swal.fire({ icon: "error", title: "No se pudo cerrar", text: e.message }); });
+      });
+    }
+
+    function anular() {
+      Swal.fire({
+        icon: "warning", title: "¿Anular el conteo?", text: "Se descarta lo contado y el stock no se toca.",
+        showCancelButton: true, confirmButtonText: "Anular", cancelButtonText: "Seguir contando", confirmButtonColor: "#a8281e"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        pedir(api + "Inventario/" + conteo.Id + "/Anular", { method: "POST" }).then(cargar)
+          .catch(function (e) { Swal.fire({ icon: "error", title: "No se pudo anular", text: e.message }); });
+      });
+    }
+
+    /* ---------------- Un conteo anterior ---------------- */
+    function verConteo(id) {
+      pedir(api + "Inventario/" + id).then(function (d) {
+        var c = d.Conteo[0], rs = (d.Renglones || []).filter(function (r) { return r.Contado !== null && r.Diferencia; });
+        var html = '<div class="text-start" style="font-size:.86rem"><p class="mb-2">' + esc(c.Alcance) + ' · ' + fecha(c.FechaInicio) + (c.Usuario ? ' · ' + esc(c.Usuario) : '') +
+          (c.Observacion ? '<br><span class="text-muted">' + esc(c.Observacion) + '</span>' : '') + '</p>';
+        html += rs.length ? '<table class="tabla"><thead><tr><th>Repuesto</th><th class="der">Sistema</th><th class="der">Contado</th><th class="der">Dif.</th><th class="der">Quedó</th></tr></thead><tbody>' +
+          rs.map(function (r) {
+            return '<tr><td><span class="cod">' + esc(r.Codigo) + '</span> ' + esc(r.Descripcion) + (r.Motivo ? '<div class="meta">' + esc(r.Motivo) + '</div>' : '') + '</td>' +
+              '<td class="der">' + n(r.StockAlContar) + '</td><td class="der">' + n(r.Contado) + '</td>' +
+              '<td class="der"><span class="dif ' + (r.Diferencia > 0 ? "mas" : "menos") + '">' + (r.Diferencia > 0 ? "+" : "") + n(r.Diferencia) + '</span></td>' +
+              '<td class="der">' + (r.StockDespues !== null && r.StockDespues !== undefined ? n(r.StockDespues) : "—") + '</td></tr>';
+          }).join("") + '</tbody></table>' : '<p class="text-muted">Sin diferencias.</p>';
+        Swal.fire({ title: "Conteo N° " + c.Id, html: html + '</div>', width: 820, confirmButtonText: "Cerrar" });
+      }).catch(function (e) { Swal.fire({ icon: "error", title: "No se pudo abrir", text: e.message }); });
+    }
+
+    /* ---------------- Barra ---------------- */
+    function actualizarBarra() {
+      var txt = document.getElementById("barraTxt"), btn = document.getElementById("btnAccion");
+      if (etapa === "contar") {
+        var c = contados(), t = renglones.length;
+        txt.innerHTML = "<b>" + n(c) + "</b> de " + n(t) + " contados. " + (puedeCerrar ? "Cuando termines, revisá las diferencias." : "Cuando termines, avisá a un supervisor para revisar.");
+        btn.innerHTML = '<i class="bi bi-list-check"></i> Revisar diferencias';
+        btn.disabled = !puedeCerrar || c === 0;
+        mostrar("btnAccion", puedeCerrar);
+      } else if (etapa === "revisar") {
+        var dif = (revision && revision.Diferencias) || [];
+        var f = faltanMotivos();
+        txt.innerHTML = dif.length ? "<b>" + n(dif.length) + "</b> diferencia(s)" + (f ? ", " + n(f) + " sin motivo propio (usan el general)" : "") + "." : "Sin diferencias.";
+        btn.innerHTML = '<i class="bi bi-check2-circle"></i> Cerrar y ajustar stock';
+        btn.disabled = false;
+        mostrar("btnAccion", true);
+      }
+    }
+
+    document.getElementById("btnAccion").addEventListener("click", function () {
+      if (etapa === "contar") revisar(); else if (etapa === "revisar") cerrar();
+    });
+    document.getElementById("btnVolver").addEventListener("click", function () { irA("contar"); });
+    document.getElementById("btnAnular").addEventListener("click", anular);
+    document.getElementById("btnMas").addEventListener("click", function () { limite += POR_PAGINA; pintarLista(); });
+    document.querySelectorAll(".chip").forEach(function (c) {
+      c.addEventListener("click", function () {
+        document.querySelectorAll(".chip").forEach(function (x) { x.classList.toggle("on", x === c); });
+        filtro = c.getAttribute("data-f"); limite = POR_PAGINA; pintarLista();
+      });
+    });
+    var tB = null;
+    document.getElementById("busca").addEventListener("input", function (e) {
+      clearTimeout(tB); tB = setTimeout(function () { texto = e.target.value.trim(); limite = POR_PAGINA; pintarLista(); }, 150);
+    });
+    document.getElementById("busca").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); var i = document.querySelector("#lista input"); if (i) i.focus(); }
+    });
+    document.getElementById("btnEmpezar").addEventListener("click", function () {
+      var sel = document.getElementById("selRubro");
+      var idRubro = sel.value ? Number(sel.value) : null;
+      var alcance = sel.options[sel.selectedIndex].text;
+      Swal.fire({
+        icon: "question", title: "¿Empezar el conteo?", html: "Se va a contar: <b>" + esc(alcance) + "</b>.<br><small>Mientras se cuenta no se muestra el stock del sistema.</small>",
+        showCancelButton: true, confirmButtonText: "Empezar", cancelButtonText: "Cancelar"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        pedir(api + "Inventario", { method: "POST", body: JSON.stringify({ IdRubro: idRubro, Observacion: document.getElementById("txtObs").value.trim() || null }) })
+          .then(function () { filtro = "sin"; texto = ""; cargar(); })
+          .catch(function (e) { Swal.fire({ icon: "error", title: "No se pudo empezar", text: e.message }); });
+      });
+    });
+
+    cargarRubros();
+    cargar();
+  </script>
+</body>
+</html>

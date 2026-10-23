@@ -57,8 +57,125 @@ namespace WebApi.Controllers
             {
                 Items = ds.Tables[0],
                 Alternativas = ds.Tables[1],
-                CubiertosEnCamino = ds.Tables.Count > 2 && ds.Tables[2].Rows.Count > 0 ? ds.Tables[2].Rows[0]["CubiertosEnCamino"] : 0
+                CubiertosEnCamino = ds.Tables.Count > 2 && ds.Tables[2].Rows.Count > 0 ? ds.Tables[2].Rows[0]["CubiertosEnCamino"] : 0,
+                // Script 69: en que pedido esta lo que ya se pidio y cuando llega
+                EnCamino = ds.Tables.Count > 3 ? ds.Tables[3] : new DataTable()
             });
+        }
+
+        public class GenerarPedidosDto { public List<PedidoLoteLinea> Lineas { get; set; } }
+        public class PedirDto { public int IdProveedor { get; set; } public int IdRepuesto { get; set; } public int Cantidad { get; set; } }
+
+        // POST api/Compras/Pedir — desde el buscador: suma al pedido en armado del proveedor
+        [HttpPost, Route("api/Compras/Pedir")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Pedir([FromBody] PedirDto d)
+        {
+            if (d == null || d.IdProveedor <= 0 || d.IdRepuesto <= 0) return BadRequest("Faltan el proveedor o el repuesto.");
+            try
+            {
+                DataTable t = new Compras().Pedir(d.IdProveedor, d.IdRepuesto, d.Cantidad);
+                DataRow r = t.Rows[0];
+                return Ok(new { IdPedido = r["IdPedido"], Proveedor = r["Proveedor"], Total = r["Total"], Renglones = r["Renglones"] });
+            }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo sumar al pedido.")); }
+        }
+
+        // POST api/Compras/Pedido/5/Enviar — ya se cargo en la web del proveedor
+        [HttpPost, Route("api/Compras/Pedido/{id:int}/Enviar")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Enviar(int id)
+        {
+            try
+            {
+                DataRow r = new Compras().EnviarPedido(id).Rows[0];
+                return Ok(new { FechaEnvio = r["FechaEnvio"], LlegadaEstimada = r["LlegadaEstimada"] });
+            }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo marcar como enviado.")); }
+        }
+
+        /* ---------- Carrito de compras ---------- */
+        public class CarritoDto { public int IdRepuesto { get; set; } public int Cantidad { get; set; } public int? IdProveedor { get; set; } public string Origen { get; set; } }
+
+        // GET api/Compras/Carrito — renglones y opciones de compra de cada uno
+        [HttpGet, Route("api/Compras/Carrito")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Carrito()
+        {
+            DataSet ds = new Compras().CarritoGet();
+            return Ok(new { Items = ds.Tables[0], Opciones = ds.Tables.Count > 1 ? ds.Tables[1] : new DataTable() });
+        }
+
+        // POST api/Compras/Carrito — sumar (si ya estaba, suma la cantidad)
+        [HttpPost, Route("api/Compras/Carrito")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult CarritoAgregar([FromBody] CarritoDto d)
+        {
+            if (d == null || d.IdRepuesto <= 0) return BadRequest("Falta el repuesto.");
+            try
+            {
+                DataRow r = new Compras().CarritoAgregar(d.IdRepuesto, d.Cantidad, d.IdProveedor, d.Origen).Rows[0];
+                return Ok(new { Renglones = r["Renglones"], Unidades = r["Unidades"] });
+            }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo sumar al carrito.")); }
+        }
+
+        // PUT api/Compras/Carrito/5 — cambiar cantidad o proveedor (0 = sacarlo)
+        [HttpPut, Route("api/Compras/Carrito/{idRepuesto:int}")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult CarritoCambiar(int idRepuesto, [FromBody] CarritoDto d)
+        {
+            if (d == null) return BadRequest("Faltan los datos.");
+            try { new Compras().CarritoCambiar(idRepuesto, d.Cantidad, d.IdProveedor); return Ok(); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo cambiar.")); }
+        }
+
+        // POST api/Compras/Carrito/Confirmar — todo a los pedidos en armado
+        [HttpPost, Route("api/Compras/Carrito/Confirmar")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult CarritoConfirmar()
+        {
+            try { return Ok(new Compras().CarritoConfirmar()); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo confirmar el carrito.")); }
+        }
+
+        // DELETE api/Compras/Pedido/Renglon/5 — sacar un renglon de un pedido en armado
+        [HttpDelete, Route("api/Compras/Pedido/Renglon/{id:int}")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult QuitarRenglon(int id)
+        {
+            try
+            {
+                DataRow r = new Compras().QuitarRenglon(id).Rows[0];
+                return Ok(new { IdPedido = r["IdPedido"], RenglonesQuedan = r["RenglonesQuedan"] });
+            }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo sacar del pedido.")); }
+        }
+
+        // GET api/Compras/Pedido/5/ListaWeb — codigos y cantidades para cargar en la web
+        [HttpGet, Route("api/Compras/Pedido/{id:int}/ListaWeb")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public DataTable ListaWeb(int id)
+        {
+            return new Compras().ListaWeb(id);
+        }
+
+        // GET api/Compras/Repuesto/5/Opciones — a quien se le puede comprar
+        [HttpGet, Route("api/Compras/Repuesto/{id:int}/Opciones")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public DataTable Opciones(int id)
+        {
+            return new Compras().OpcionesCompra(id);
+        }
+
+        // POST api/Compras/Pedidos/Generar — reposicion: un pedido por proveedor, todo o nada
+        [HttpPost, Route("api/Compras/Pedidos/Generar")]
+        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult GenerarPedidos([FromBody] GenerarPedidosDto d)
+        {
+            if (d == null || d.Lineas == null || d.Lineas.Count == 0) return BadRequest("No hay nada para pedir.");
+            try { return Ok(new Compras().GenerarPedidos(d.Lineas)); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudieron generar los pedidos. No se creó ninguno.")); }
         }
 
         // GET api/Compras/ResumenRecepcion — para marcar los parciales en el listado

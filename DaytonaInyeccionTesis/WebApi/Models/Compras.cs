@@ -88,6 +88,15 @@ namespace WebApi.Models
         public decimal? PrecioUnitario { get; set; }
     }
 
+    // Un renglon de la reposicion: a que proveedor, que repuesto, cuanto y a que precio
+    public class PedidoLoteLinea
+    {
+        public int IdProveedor { get; set; }
+        public int IdRepuesto { get; set; }
+        public int Cantidad { get; set; }
+        public decimal PrecioUnitario { get; set; }
+    }
+
     public class PagoProveedorDto
     {
         public int IdProveedor { get; set; }
@@ -118,6 +127,97 @@ namespace WebApi.Models
         public DataSet ReposicionSugerida()
         {
             return ConsultarDs("SP_Reposicion_Sugerida", c => { });
+        }
+
+        // Crea un pedido por proveedor con todos sus renglones, en una sola
+        // transaccion: o quedan todos completos o no se crea ninguno.
+        public DataTable GenerarPedidos(List<PedidoLoteLinea> lineas)
+        {
+            DataTable t = new DataTable();
+            t.Columns.Add("IdProveedor", typeof(int));
+            t.Columns.Add("IdRepuesto", typeof(int));
+            t.Columns.Add("Cantidad", typeof(int));
+            t.Columns.Add("PrecioUnitario", typeof(decimal));
+            foreach (PedidoLoteLinea l in lineas) t.Rows.Add(l.IdProveedor, l.IdRepuesto, l.Cantidad, l.PrecioUnitario);
+
+            return ConsultarDs("SP_Pedido_GenerarLote", c =>
+            {
+                SqlParameter p = c.Parameters.AddWithValue("@Lineas", t);
+                p.SqlDbType = SqlDbType.Structured; p.TypeName = "dbo.PedidoLoteLineaType";
+            }).Tables[0];
+        }
+
+        /* ---------- Pedidos en armado ---------- */
+
+        // Suma un renglon al pedido en armado del proveedor (lo crea si no hay)
+        public DataTable Pedir(int idProveedor, int idRepuesto, int cantidad)
+        {
+            return ConsultarDs("SP_Pedido_Pedir", c =>
+            {
+                c.Parameters.Add("@IdProveedor", SqlDbType.Int).Value = idProveedor;
+                c.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = idRepuesto;
+                c.Parameters.Add("@Cantidad", SqlDbType.Int).Value = cantidad;
+            }).Tables[0];
+        }
+
+        /* ---------- Carrito de compras (script 76) ---------- */
+
+        public DataSet CarritoGet()
+        {
+            return ConsultarDs("SP_Carrito_Get", c => { });
+        }
+
+        public DataTable CarritoAgregar(int idRepuesto, int cantidad, int? idProveedor, string origen)
+        {
+            return ConsultarDs("SP_Carrito_Agregar", c =>
+            {
+                c.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = idRepuesto;
+                c.Parameters.Add("@Cantidad", SqlDbType.Int).Value = cantidad;
+                c.Parameters.Add("@IdProveedor", SqlDbType.Int).Value = idProveedor.HasValue ? (object)idProveedor.Value : DBNull.Value;
+                c.Parameters.Add("@Origen", SqlDbType.VarChar, 20).Value = string.IsNullOrEmpty(origen) ? "REPOSICION" : origen;
+            }).Tables[0];
+        }
+
+        public void CarritoCambiar(int idRepuesto, int cantidad, int? idProveedor)
+        {
+            ConsultarDs("SP_Carrito_Cambiar", c =>
+            {
+                c.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = idRepuesto;
+                c.Parameters.Add("@Cantidad", SqlDbType.Int).Value = cantidad;
+                c.Parameters.Add("@IdProveedor", SqlDbType.Int).Value = idProveedor.HasValue ? (object)idProveedor.Value : DBNull.Value;
+            });
+        }
+
+        // Pasa todo el carrito a los pedidos en armado (un pedido por proveedor)
+        public DataTable CarritoConfirmar()
+        {
+            DataSet ds = ConsultarDs("SP_Carrito_Confirmar", c => { });
+            // El resumen de pedidos es el ultimo resultado (antes puede haber otros)
+            return ds.Tables.Count > 0 ? ds.Tables[ds.Tables.Count - 1] : new DataTable();
+        }
+
+        // Saca un renglon de un pedido en armado (script 73)
+        public DataTable QuitarRenglon(int idDetalle)
+        {
+            return ConsultarDs("SP_Pedido_QuitarRenglon", c =>
+            {
+                c.Parameters.Add("@IdDetalle", SqlDbType.Int).Value = idDetalle;
+            }).Tables[0];
+        }
+
+        public DataTable EnviarPedido(int idPedido)
+        {
+            return ConsultarDs("SP_Pedido_Enviar", c => c.Parameters.Add("@Id", SqlDbType.Int).Value = idPedido).Tables[0];
+        }
+
+        public DataTable ListaWeb(int idPedido)
+        {
+            return ConsultarDs("SP_Pedido_ListaWeb", c => c.Parameters.Add("@Id", SqlDbType.Int).Value = idPedido).Tables[0];
+        }
+
+        public DataTable OpcionesCompra(int idRepuesto)
+        {
+            return ConsultarDs("SP_Repuesto_OpcionesCompra", c => c.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = idRepuesto).Tables[0];
         }
 
         public DataTable ResumenRecepcion()

@@ -43,6 +43,65 @@ namespace WebApi.Models
             return ds;
         }
 
+        /* ----------------------------------------------------------
+           Registro de busquedas (script 78). Anota que se busco y
+           que encontro: con stock, sin stock, en proveedores o nada.
+           Se guardan los ids que se mostraron para saber despues si
+           la busqueda termino en venta.
+           ---------------------------------------------------------- */
+        public void Registrar(int idUsuario, string texto, string origen, DataSet resultado)
+        {
+            int local = 0, conStock = 0, proveedor = 0;
+            System.Text.StringBuilder ids = new System.Text.StringBuilder(" ");
+
+            if (resultado != null && resultado.Tables.Count > 0)
+            {
+                DataTable t = resultado.Tables[0];
+                foreach (DataRow r in t.Rows)
+                {
+                    // Las fichas armadas al vincular no cuentan como del local
+                    if (t.Columns.Contains("EnLocal") && r["EnLocal"] != DBNull.Value && Convert.ToInt32(r["EnLocal"]) == 0)
+                        continue;
+                    local++;
+                    if (t.Columns.Contains("Stock") && r["Stock"] != DBNull.Value && Convert.ToDecimal(r["Stock"]) > 0) conStock++;
+                    if (t.Columns.Contains("Id") && r["Id"] != DBNull.Value && ids.Length < 780)
+                        ids.Append(Convert.ToString(r["Id"])).Append(' ');
+                }
+            }
+            if (resultado != null && resultado.Tables.Count > 1) proveedor = resultado.Tables[1].Rows.Count;
+
+            using (SqlConnection cnn = new SqlConnection(connectionstring))
+            using (SqlCommand cmd = new SqlCommand("SP_Busqueda_Registrar", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 10;
+                cmd.Parameters.Add("@IdUsuario", SqlDbType.Int).Value = idUsuario > 0 ? (object)idUsuario : DBNull.Value;
+                cmd.Parameters.Add("@Texto", SqlDbType.VarChar, 200).Value =
+                    texto != null && texto.Length > 200 ? texto.Substring(0, 200) : (object)texto ?? DBNull.Value;
+                cmd.Parameters.Add("@Origen", SqlDbType.VarChar, 20).Value = string.IsNullOrEmpty(origen) ? "BUSCADOR" : origen;
+                cmd.Parameters.Add("@ResultadosLocal", SqlDbType.Int).Value = local;
+                cmd.Parameters.Add("@ConStock", SqlDbType.Int).Value = conStock;
+                cmd.Parameters.Add("@ResultadosProveedor", SqlDbType.Int).Value = proveedor;
+                cmd.Parameters.Add("@IdsMostrados", SqlDbType.VarChar, 800).Value = ids.Length > 1 ? (object)ids.ToString() : DBNull.Value;
+                cnn.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        public DataSet Reporte(int dias)
+        {
+            using (SqlConnection cnn = new SqlConnection(connectionstring))
+            using (SqlCommand cmd = new SqlCommand("SP_Busqueda_Reporte", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 120;
+                cmd.Parameters.Add("@Dias", SqlDbType.Int).Value = dias > 0 ? dias : 30;
+                DataSet ds = new DataSet();
+                new SqlDataAdapter(cmd).Fill(ds);
+                return ds;
+            }
+        }
+
         // Repuestos que estan mas baratos en otro proveedor
         public DataTable Oportunidades(decimal diferenciaMinima)
         {

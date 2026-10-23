@@ -284,6 +284,88 @@ namespace WebApi.Models
             return Id;
         }
 
+        /* ----------------------------------------------------------
+           Vinculacion y equivalencias (script 65)
+           ---------------------------------------------------------- */
+
+        // Repuesto + candidatos ordenados por parecido + equivalentes actuales
+        public DataSet Vinculacion(string texto)
+        {
+            SqlConnection sqlCnn = new SqlConnection(connectionstring);
+            SqlCommand sqlCom = new SqlCommand("SP_Repuesto_Vinculacion", sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+            sqlCom.CommandTimeout = 60;
+            sqlCom.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = Id;
+            sqlCom.Parameters.Add("@Texto", SqlDbType.VarChar, 100).Value =
+                string.IsNullOrWhiteSpace(texto) ? (object)DBNull.Value : texto.Trim();
+
+            SqlDataAdapter da = new SqlDataAdapter(sqlCom);
+            DataSet ds = new DataSet();
+            sqlCnn.Open();
+            da.Fill(ds);
+            sqlCnn.Close();
+            return ds;
+        }
+
+        public DataTable Equivalentes()
+        {
+            SqlConnection sqlCnn = new SqlConnection(connectionstring);
+            SqlCommand sqlCom = new SqlCommand("SP_Repuesto_Equivalentes", sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+            sqlCom.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = Id;
+
+            SqlDataAdapter da = new SqlDataAdapter(sqlCom);
+            DataSet ds = new DataSet();
+            sqlCnn.Open();
+            da.Fill(ds);
+            sqlCnn.Close();
+            return ds.Tables[0];
+        }
+
+        // Suma un articulo de lista (o el repuesto al que esta vinculado) al grupo
+        public void AgregarEquivalente(int idProveedorRepuesto)
+        {
+            SqlConnection sqlCnn = new SqlConnection(connectionstring);
+            SqlCommand sqlCom = new SqlCommand("SP_Equivalencia_Agregar", sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+            sqlCom.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value = Id;
+            sqlCom.Parameters.Add("@IdProveedorRepuesto", SqlDbType.Int).Value = idProveedorRepuesto;
+
+            sqlCnn.Open();
+            sqlCom.ExecuteNonQuery();
+            sqlCnn.Close();
+        }
+
+        // Repuestos agrupados con su stock disponible (script 66)
+        public static DataTable MapaEquivalencias()
+        {
+            SqlConnection sqlCnn = new SqlConnection(Config.Conexion);
+            SqlCommand sqlCom = new SqlCommand("SP_Equivalencia_Mapa", sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+
+            SqlDataAdapter da = new SqlDataAdapter(sqlCom);
+            DataSet ds = new DataSet();
+            sqlCnn.Open();
+            da.Fill(ds);
+            sqlCnn.Close();
+            return ds.Tables[0];
+        }
+
+        public static void QuitarEquivalencia(int? idRepuesto, int? idProveedorRepuesto)
+        {
+            SqlConnection sqlCnn = new SqlConnection(Config.Conexion);
+            SqlCommand sqlCom = new SqlCommand("SP_Equivalencia_Quitar", sqlCnn);
+            sqlCom.CommandType = CommandType.StoredProcedure;
+            sqlCom.Parameters.Add("@IdRepuesto", SqlDbType.Int).Value =
+                idRepuesto.HasValue ? (object)idRepuesto.Value : DBNull.Value;
+            sqlCom.Parameters.Add("@IdProveedorRepuesto", SqlDbType.Int).Value =
+                idProveedorRepuesto.HasValue ? (object)idProveedorRepuesto.Value : DBNull.Value;
+
+            sqlCnn.Open();
+            sqlCom.ExecuteNonQuery();
+            sqlCnn.Close();
+        }
+
         // Candidatos a ser el mismo repuesto en otros proveedores.
         // Solo sugiere: el enlace lo confirma una persona.
         public DataTable BuscarEnOtrosProveedores()
@@ -322,4 +404,10 @@ namespace WebApi.Models
         }
     }
 
+    // Cuerpo de las llamadas de equivalencias
+    public class EquivalenciaDatos
+    {
+        public int? IdRepuesto { get; set; }
+        public int? IdProveedorRepuesto { get; set; }
+    }
 }

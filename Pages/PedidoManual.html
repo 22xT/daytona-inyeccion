@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pedido manual - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+
+    .required { color:#dc3545; font-weight:bold; }
+    .is-invalid { border-color:#dc3545 !important; }
+    .is-valid { border-color:#198754 !important; }
+    .cant-input { width:80px; text-align:center; }
+    .precio-input { width:130px; text-align:right; }
+    .item-dup { background:#fff8e1; }
+    .precio-alerta { border-color:#ffc107 !important; background:#fffdf5; }
+    .pm-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .pm-top h1 { font-size: 1.3rem; font-weight: 800; color: var(--navy); margin: 0; }
+    .pm-top p { margin: 3px 0 0; color: #5f6b7a; font-size: 0.9rem; max-width: 760px; }
+    .pm-volver { font-size: 0.86rem; font-weight: 600; color: var(--navy); text-decoration: none; white-space: nowrap; }
+    .pm-volver:hover { text-decoration: underline; }
+  </style>
+</head>
+
+<body data-page="pedido-manual">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="pm-top">
+      <div>
+        <h1>Pedido manual</h1>
+        <p>Para un proveedor que no tiene lista cargada o una compra puntual, con el precio que te pasaron.
+           Lo que está en las listas de los proveedores se pide desde el <a href="Carrito.html">carrito</a>.</p>
+      </div>
+      <a href="ListadoPedido.html" class="pm-volver" id="linkVolver"><i class="bi bi-arrow-left"></i> Volver al listado</a>
+    </div>
+    
+
+    <div class="panel">
+      <div class="panel-header"><span class="num">1</span> Proveedor</div>
+      <div class="panel-body">
+        <label class="form-label">Proveedor <span class="required">*</span></label>
+        <select id="proveedor" class="form-select" required>
+          <option value="">Seleccione proveedor…</option>
+        </select>
+        <div class="invalid-feedback" id="fb-proveedor">Seleccione un proveedor de la lista.</div>
+        <div class="form-text">Todo pedido debe estar asociado a un proveedor.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span class="num">2</span> Agregar repuestos al pedido</div>
+      <div class="panel-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Filtrar por rubro</label>
+            <select id="rubro" class="form-select"><option value="">Todos</option></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Filtrar por marca</label>
+            <select id="marca" class="form-select"><option value="">Todas</option></select>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="btnFiltrar" type="button" class="btn btn-primary w-100">
+              <i class="bi bi-funnel"></i> Aplicar filtros
+            </button>
+          </div>
+        </div>
+
+        <input type="text" id="busqueda" class="form-control mb-3" placeholder="Buscar por descripción, marca o rubro...">
+
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Descripción</th><th>Marca</th><th>Rubro</th>
+                <th class="text-end">Precio</th><th class="text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tablaRepuestos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header" id="headerDetalle"><span class="num">3</span> Detalle del pedido</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th>Repuesto</th>
+              <th class="text-center">Cantidad</th>
+              <th class="text-end">Precio Unit.</th>
+              <th class="text-end">Subtotal</th>
+              <th class="text-center">Quitar</th>
+            </tr>
+          </thead>
+          <tbody id="tablaDetalle"></tbody>
+        </table>
+        <div id="detalleVacio" class="cart-empty">
+          <div class="icon"><i class="bi bi-inbox"></i></div>
+          <p class="mb-0">No agregaste ningún repuesto al pedido.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="total-bar">
+      <span class="total-label">Total del pedido:</span>
+      <span class="total-amount" id="totalLabel">$0,00</span>
+    </div>
+
+    <div class="actions">
+      <a href="ListadoPedido.html" class="btn btn-outline-secondary" id="btnCancelar">Cancelar</a>
+      <button id="btnGuardar" type="button" class="btn btn-primary btn-lg">
+        <i class="bi bi-check2-circle"></i> <span id="btnTexto">Finalizar pedido</span>
+      </button>
+    </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+<script>
+
+  if (!Auth.requireSession()) { /* redirect */ }
+
+  const api = API_BASE;
+  let pedidoItems = [];
+  let repuestosCache = [];
+  let guardadoOk = false;
+
+  /* ===================== LÍMITES DE NEGOCIO ===================== */
+  const CANT_MAX = 500;            // tope duro de unidades por ítem
+  const CANT_ADVERTENCIA = 100;    // a partir de acá avisa (no bloquea)
+  const FACTOR_MAX = 5;            // el precio no puede superar 5x el de lista
+  const FACTOR_MIN = 0.1;          // ni bajar del 10% del de lista
+  const FACTOR_ADVERTENCIA = 2;    // a partir de 2x avisa (no bloquea)
+  const PRECIO_TOPE = 50000000;    // tope absoluto por si no hay precio de lista
+  const TOTAL_ADVERTENCIA = 2000000;
+
+  const usuario = Auth.getUsuario();
+  const rolesCrear = ["Administrador", "Supervisor", "Vendedor"];
+  const puedeCrear = usuario && rolesCrear.indexOf(usuario.Rol) !== -1;
+  if (!puedeCrear) {
+    Swal.fire({ icon: "info", title: "Solo lectura", text: "Podés consultar los pedidos, pero no crear nuevos." });
+  }
+
+  /* ===================== HELPERS ===================== */
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+  }
+  // Se mantiene el nombre corto, pero el formato ahora vive en precio.js
+  function fmt(n) {
+    return formatearMoneda(n);
+  }
+  function marcarInvalido(el, fbId, msg) {
+    el.classList.add("is-invalid");
+    el.classList.remove("is-valid");
+    if (fbId && msg) { const fb = document.getElementById(fbId); if (fb) fb.textContent = msg; }
+  }
+  function limpiarMarca(el) { el.classList.remove("is-invalid", "is-valid"); }
+
+  document.getElementById("proveedor").addEventListener("change", function () {
+    if (this.value) { this.classList.remove("is-invalid"); this.classList.add("is-valid"); }
+    else limpiarMarca(this);
+  });
+
+  /* ===================== CARGA DE COMBOS ===================== */
+  function cargarCombos() {
+    fetchAuth(api + "Proveedor").then(r => {
+      if (!r.ok) throw new Error("No se pudieron cargar los proveedores.");
+      return r.json();
+    }).then(datos => {
+      const sel = document.getElementById("proveedor");
+      const activos = datos.filter(p => p.Activo !== false && p.Activo !== 0);
+      if (activos.length === 0) {
+        sel.innerHTML = "<option value=''>No hay proveedores activos</option>";
+        Swal.fire({
+          icon: "warning",
+          title: "Sin proveedores activos",
+          text: "Para cargar un pedido primero tenés que registrar al menos un proveedor activo."
+        });
+        return;
+      }
+      let html = "<option value=''>Seleccione proveedor…</option>";
+      activos.forEach(p => {
+        html += "<option value='" + p.Id + "'>" + escapeHtml(p.RazonSocial) + "</option>";
+      });
+      sel.innerHTML = html;
+    }).catch(err => {
+      document.getElementById("proveedor").innerHTML = "<option value=''>Error al cargar</option>";
+      Swal.fire("Error", err.message || "No se pudieron cargar los proveedores.", "error");
+    });
+
+    fetchAuth(api + "Rubro").then(r => r.json()).then(datos => {
+      const sel = document.getElementById("rubro");
+      datos.forEach(r => sel.innerHTML += "<option value='" + r.Id + "'>" + escapeHtml(r.Nombre) + "</option>");
+    }).catch(() => {});
+
+    fetchAuth(api + "Marca").then(r => r.json()).then(datos => {
+      const sel = document.getElementById("marca");
+      datos.forEach(m => sel.innerHTML += "<option value='" + m.Id + "'>" + escapeHtml(m.Nombre) + "</option>");
+    }).catch(() => {});
+  }
+
+  /* ===================== REPUESTOS ===================== */
+  function cargarRepuestos(filtrar) {
+    let url = api + "Repuesto";
+    const idRubro = document.getElementById("rubro").value;
+    const idMarca = document.getElementById("marca").value;
+    if (filtrar && idRubro && idMarca) url = api + "Repuesto/Filtrar?IdRubro=" + idRubro + "&IdMarca=" + idMarca;
+
+    const tbody = document.getElementById("tablaRepuestos");
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="5" class="text-center p-3">' +
+                      '<span class="spinner-border spinner-border-sm"></span> Cargando repuestos…</td></tr>';
+
+    fetchAuth(url).then(r => {
+      if (!r.ok) throw new Error("No se pudieron cargar los repuestos.");
+      return r.json();
+    }).then(datos => {
+      repuestosCache = datos;
+      mostrarRepuestos(datos);
+    }).catch(() => {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger p-3">' +
+                        'Error al cargar repuestos. ' +
+                        '<button class="btn btn-sm btn-outline-danger ms-2" onclick="cargarRepuestos()">Reintentar</button></td></tr>';
+    });
+  }
+
+  function mostrarRepuestos(datos) {
+    const tbody = document.getElementById("tablaRepuestos");
+    if (!datos || datos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-3">No se encontraron repuestos con ese criterio.</td></tr>';
+      return;
+    }
+    let html = "";
+    datos.slice(0, 50).forEach(r => {
+      const yaEsta = pedidoItems.some(i => i.IdRepuesto === r.Id);
+      const precio = parseFloat(r.PrecioDeVenta) || 0;
+      html += '<tr' + (yaEsta ? ' class="item-dup"' : '') + '>' +
+        '<td>' + escapeHtml(r.Descripcion) +
+          (yaEsta ? ' <span class="badge bg-warning text-dark ms-1">En el pedido</span>' : '') + '</td>' +
+        '<td>' + escapeHtml(r.Marca || "-") + '</td>' +
+        '<td><span class="badge-rubro">' + escapeHtml(r.Rubro || "-") + '</span></td>' +
+        '<td class="text-end precio">' + fmt(precio) + '</td>' +
+        '<td class="text-center">' +
+          '<button type="button" class="btn btn-sm btn-success" ' + (!puedeCrear ? 'disabled' : '') +
+          ' title="Agregar al pedido" onclick="agregar(' + r.Id + ')"><i class="bi bi-plus-circle"></i></button>' +
+        '</td></tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  document.addEventListener("input", function (e) {
+    if (e.target.id !== "busqueda") return;
+    const texto = e.target.value.toLowerCase().trim();
+    const filtrados = repuestosCache.filter(r =>
+      (r.Descripcion || "").toLowerCase().includes(texto) ||
+      (r.Marca && r.Marca.toLowerCase().includes(texto)) ||
+      (r.Rubro && r.Rubro.toLowerCase().includes(texto))
+    );
+    mostrarRepuestos(filtrados);
+  });
+
+  /* ===================== AGREGAR ÍTEM ===================== */
+  function agregar(idRepuesto) {
+    const rep = repuestosCache.find(r => r.Id === idRepuesto);
+    if (!rep) return;
+
+    const precioSugerido = parseFloat(rep.PrecioDeVenta) || 0;
+    const existente = pedidoItems.find(i => i.IdRepuesto === idRepuesto);
+
+    const rangoTxt = precioSugerido > 0
+      ? "Rango admitido: " + fmt(precioSugerido * FACTOR_MIN) + " a " + fmt(precioSugerido * FACTOR_MAX) + "."
+      : "";
+
+    Swal.fire({
+      title: existente ? "Ya está en el pedido" : "Agregar al pedido",
+      html:
+        '<div style="text-align:left;">' +
+          '<strong>' + escapeHtml(rep.Descripcion) + '</strong>' +
+          (existente ? '<div class="text-warning small mt-1">Ya cargaste ' + existente.Cantidad +
+                       ' unidad(es). Lo que ingreses se suma a esa cantidad.</div>' : '') +
+          '<div class="mt-3"><label class="form-label mb-1">Cantidad</label>' +
+          '<input type="number" id="swCant" class="form-control" min="1" max="' + CANT_MAX + '" value="1"></div>' +
+          '<div class="mt-2"><label class="form-label mb-1">Precio de compra unitario</label>' +
+          '<div class="input-group">' +
+            '<span class="input-group-text">$</span>' +
+            '<input type="text" inputmode="decimal" id="swPrecio" class="form-control text-end" ' +
+            'value="' + numeroAPrecio(precioSugerido) + '">' +
+          '</div>' +
+          '<div class="form-text">Precio de lista: ' + fmt(precioSugerido) + '. ' + rangoTxt + '</div></div>' +
+        '</div>',
+      showCancelButton: true,
+      confirmButtonText: existente ? "Sumar cantidad" : "Agregar",
+      cancelButtonText: "Cancelar",
+      focusConfirm: false,
+      didOpen: () => { activarInputPrecio("swPrecio", PRECIO_TOPE); },
+      preConfirm: () => {
+        const cant = parseInt(document.getElementById("swCant").value, 10);
+        const precio = precioANumero(document.getElementById("swPrecio").value);
+
+        if (isNaN(cant) || cant <= 0) {
+          Swal.showValidationMessage("La cantidad debe ser un número entero mayor a cero.");
+          return false;
+        }
+        if (cant > CANT_MAX) {
+          Swal.showValidationMessage("La cantidad máxima por ítem es " + CANT_MAX + " unidades.");
+          return false;
+        }
+        if (isNaN(precio) || precio <= 0) {
+          Swal.showValidationMessage("El precio debe ser mayor a cero.");
+          return false;
+        }
+        if (precio > PRECIO_TOPE) {
+          Swal.showValidationMessage("El precio no puede superar " + fmt(PRECIO_TOPE) + ".");
+          return false;
+        }
+        if (precioSugerido > 0) {
+          if (precio > precioSugerido * FACTOR_MAX) {
+            Swal.showValidationMessage(
+              "El precio no puede superar " + FACTOR_MAX + " veces el de lista (máximo " +
+              fmt(precioSugerido * FACTOR_MAX) + "). Verificá el monto ingresado.");
+            return false;
+          }
+          if (precio < precioSugerido * FACTOR_MIN) {
+            Swal.showValidationMessage(
+              "El precio es demasiado bajo respecto al de lista (mínimo " +
+              fmt(precioSugerido * FACTOR_MIN) + ").");
+            return false;
+          }
+        }
+        return { cant: cant, precio: precio };
+      }
+    }).then(res => {
+      if (!res.isConfirmed || !res.value) return;
+
+      const cant = res.value.cant;
+      const precio = res.value.precio;
+
+      if (existente) {
+        const nuevaCant = existente.Cantidad + cant;
+        if (nuevaCant > CANT_MAX) {
+          Swal.fire("Cantidad excedida",
+            "Ya tenés " + existente.Cantidad + " unidades. Sumando " + cant +
+            " superás el máximo de " + CANT_MAX + " por ítem.", "warning");
+          return;
+        }
+        existente.Cantidad = nuevaCant;
+        existente.PrecioUnitario = precio;
+      } else {
+        pedidoItems.push({
+          IdRepuesto: idRepuesto,
+          Descripcion: rep.Descripcion,
+          Cantidad: cant,
+          PrecioUnitario: precio,
+          PrecioLista: precioSugerido
+        });
+      }
+      actualizarTabla();
+      mostrarRepuestos(repuestosCache);
+    });
+  }
+
+  /* ===================== TABLA DE DETALLE (editable) ===================== */
+  function actualizarTabla() {
+    const tbody = document.getElementById("tablaDetalle");
+    const vacio = document.getElementById("detalleVacio");
+    let total = 0;
+
+    document.getElementById("headerDetalle").innerHTML =
+      '<span class="num">3</span> Detalle del pedido' +
+      (pedidoItems.length > 0 ? ' (' + pedidoItems.length + ' ítem' + (pedidoItems.length === 1 ? '' : 's') + ')' : '');
+
+    if (pedidoItems.length === 0) {
+      tbody.innerHTML = "";
+      vacio.style.display = "block";
+      document.getElementById("totalLabel").textContent = "$0,00";
+      return;
+    }
+
+    vacio.style.display = "none";
+    let html = "";
+    pedidoItems.forEach((item, index) => {
+      const subtotal = item.Cantidad * item.PrecioUnitario;
+      total += subtotal;
+      const lista = item.PrecioLista || 0;
+      const alerta = (lista > 0 && item.PrecioUnitario > lista * FACTOR_ADVERTENCIA) ? " precio-alerta" : "";
+      const tituloAlerta = alerta
+        ? ' title="Precio ' + (item.PrecioUnitario / lista).toFixed(1) + 'x el de lista (' + fmt(lista) + ')"'
+        : "";
+
+      html += '<tr>' +
+        '<td>' + escapeHtml(item.Descripcion) + '</td>' +
+        '<td class="text-center">' +
+          '<input type="number" class="form-control form-control-sm cant-input" min="1" max="' + CANT_MAX + '" ' +
+          'value="' + item.Cantidad + '" onchange="cambiarCantidad(' + index + ', this)"></td>' +
+        '<td class="text-end">' +
+          '<input type="text" inputmode="decimal" class="form-control form-control-sm precio-input' + alerta + '" ' +
+          'value="' + numeroAPrecio(item.PrecioUnitario) + '"' + tituloAlerta +
+          ' onchange="cambiarPrecio(' + index + ', this)"></td>' +
+        '<td class="text-end precio"><strong>' + fmt(subtotal) + '</strong></td>' +
+        '<td class="text-center">' +
+          '<button type="button" class="btn btn-sm btn-outline-danger" title="Quitar del pedido" ' +
+          'onclick="eliminarItem(' + index + ')"><i class="bi bi-trash"></i></button></td>' +
+      '</tr>';
+    });
+    tbody.innerHTML = html;
+    document.getElementById("totalLabel").textContent = fmt(total);
+  }
+
+  function cambiarCantidad(index, input) {
+    const v = parseInt(input.value, 10);
+    if (isNaN(v) || v <= 0) {
+      Swal.fire("Cantidad inválida", "La cantidad debe ser un número entero mayor a cero.", "warning");
+      input.value = pedidoItems[index].Cantidad;
+      return;
+    }
+    if (v > CANT_MAX) {
+      Swal.fire("Cantidad excedida", "El máximo por ítem es " + CANT_MAX + " unidades.", "warning");
+      input.value = pedidoItems[index].Cantidad;
+      return;
+    }
+    pedidoItems[index].Cantidad = v;
+    actualizarTabla();
+  }
+
+  function cambiarPrecio(index, input) {
+    const v = precioANumero(input.value);
+    const item = pedidoItems[index];
+    const lista = item.PrecioLista || 0;
+
+    if (isNaN(v) || v <= 0) {
+      Swal.fire("Precio inválido", "El precio unitario debe ser mayor a cero.", "warning");
+      input.value = numeroAPrecio(item.PrecioUnitario);
+      return;
+    }
+
+    if (v > PRECIO_TOPE) {
+      Swal.fire("Precio fuera de rango",
+        "El precio unitario no puede superar " + fmt(PRECIO_TOPE) + ".", "warning");
+      input.value = numeroAPrecio(item.PrecioUnitario);
+      return;
+    }
+
+    if (lista > 0) {
+      if (v > lista * FACTOR_MAX) {
+        Swal.fire({
+          icon: "warning",
+          title: "Precio fuera de rango",
+          html: 'El precio de lista de <strong>' + escapeHtml(item.Descripcion) + '</strong> es ' + fmt(lista) + '.<br><br>' +
+                'No se admite un precio mayor a ' + fmt(lista * FACTOR_MAX) + ' (' + FACTOR_MAX + 'x el de lista).<br><br>' +
+                '<span class="text-muted">Si el proveedor realmente aumentó tanto, actualizá primero el precio del repuesto en el catálogo.</span>'
+        });
+        input.value = numeroAPrecio(item.PrecioUnitario);
+        return;
+      }
+      if (v < lista * FACTOR_MIN) {
+        Swal.fire("Precio demasiado bajo",
+          "El precio de lista es " + fmt(lista) + ". No se admite un precio menor a " +
+          fmt(lista * FACTOR_MIN) + ".", "warning");
+        input.value = numeroAPrecio(item.PrecioUnitario);
+        return;
+      }
+    }
+
+    item.PrecioUnitario = v;
+    actualizarTabla();
+  }
+
+  function eliminarItem(i) {
+    const item = pedidoItems[i];
+    Swal.fire({
+      title: "¿Quitar del pedido?",
+      html: '<strong>' + escapeHtml(item.Descripcion) + '</strong><br>' +
+            '<span class="text-muted">' + item.Cantidad + ' x ' + fmt(item.PrecioUnitario) + '</span>',
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, quitar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#c0392b"
+    }).then(res => {
+      if (!res.isConfirmed) return;
+      pedidoItems.splice(i, 1);
+      actualizarTabla();
+      mostrarRepuestos(repuestosCache);
+    });
+  }
+
+  /* ===================== VALIDACIÓN COMPLETA ===================== */
+  function validarPedido() {
+    const errores = [];
+    const selProv = document.getElementById("proveedor");
+    limpiarMarca(selProv);
+
+    // 1) Proveedor obligatorio
+    if (!selProv.value) {
+      errores.push({ el: selProv, fbId: "fb-proveedor",
+        msg: "Debe seleccionar un proveedor para finalizar la carga." });
+    }
+
+    // 2) Al menos un ítem
+    if (pedidoItems.length === 0) {
+      errores.push({ el: null, fbId: null,
+        msg: "El pedido debe tener al menos un repuesto. Agregá ítems desde la tabla de arriba." });
+    }
+
+    // 3) Cantidades y precios de cada ítem
+    pedidoItems.forEach(item => {
+      if (!Number.isInteger(item.Cantidad) || item.Cantidad <= 0)
+        errores.push({ el: null, fbId: null, msg: '"' + item.Descripcion + '": la cantidad debe ser un entero mayor a cero.' });
+      else if (item.Cantidad > CANT_MAX)
+        errores.push({ el: null, fbId: null, msg: '"' + item.Descripcion + '": la cantidad supera el máximo de ' + CANT_MAX + '.' });
+
+      if (isNaN(item.PrecioUnitario) || item.PrecioUnitario <= 0)
+        errores.push({ el: null, fbId: null, msg: '"' + item.Descripcion + '": el precio unitario debe ser mayor a cero.' });
+
+      const lista = item.PrecioLista || 0;
+      if (lista > 0 && item.PrecioUnitario > lista * FACTOR_MAX)
+        errores.push({ el: null, fbId: null,
+          msg: '"' + item.Descripcion + '": el precio (' + fmt(item.PrecioUnitario) +
+               ') supera el máximo permitido de ' + fmt(lista * FACTOR_MAX) + '.' });
+
+      if (item.PrecioUnitario > PRECIO_TOPE)
+        errores.push({ el: null, fbId: null,
+          msg: '"' + item.Descripcion + '": el precio supera el tope de ' + fmt(PRECIO_TOPE) + '.' });
+    });
+
+    // 4) Sin duplicados
+    const ids = pedidoItems.map(i => i.IdRepuesto);
+    if (new Set(ids).size !== ids.length)
+      errores.push({ el: null, fbId: null, msg: "Hay repuestos repetidos en el detalle. Unificá las cantidades en un solo ítem." });
+
+    // 5) Total > 0
+    const total = pedidoItems.reduce((s, i) => s + (i.Cantidad * i.PrecioUnitario), 0);
+    if (pedidoItems.length > 0 && total <= 0)
+      errores.push({ el: null, fbId: null, msg: "El total del pedido debe ser mayor a cero." });
+
+    return errores;
+  }
+
+  /* ===================== ADVERTENCIAS (no bloquean) ===================== */
+  function detectarAdvertencias() {
+    const avisos = [];
+    const total = pedidoItems.reduce((s, i) => s + (i.Cantidad * i.PrecioUnitario), 0);
+
+    pedidoItems.forEach(item => {
+      if (item.Cantidad >= CANT_ADVERTENCIA)
+        avisos.push('"' + item.Descripcion + '": estás pidiendo ' + item.Cantidad + ' unidades. Verificá que sea correcto.');
+
+      const lista = item.PrecioLista || 0;
+      if (lista > 0 && item.PrecioUnitario > lista * FACTOR_ADVERTENCIA) {
+        const veces = (item.PrecioUnitario / lista).toFixed(1);
+        avisos.push('"' + item.Descripcion + '": el precio de compra (' + fmt(item.PrecioUnitario) +
+                    ') es ' + veces + ' veces el precio de lista (' + fmt(lista) + ').');
+      }
+    });
+
+    if (total >= TOTAL_ADVERTENCIA)
+      avisos.push("El total del pedido es " + fmt(total) + ", un monto inusualmente alto.");
+
+    return avisos;
+  }
+
+  function setLoading(loading) {
+    document.getElementById("btnGuardar").disabled = loading;
+    document.getElementById("btnTexto").innerHTML = loading
+      ? '<span class="spinner-border spinner-border-sm"></span> Guardando…'
+      : "Finalizar pedido";
+  }
+
+  /* ===================== GUARDAR ===================== */
+  function guardarPedido() {
+    if (!puedeCrear) {
+      Swal.fire("Sin permisos", "Tu rol no permite crear pedidos.", "info");
+      return;
+    }
+
+    const errores = validarPedido();
+
+    if (errores.length > 0) {
+      errores.forEach(e => { if (e.el) marcarInvalido(e.el, e.fbId, e.msg); });
+
+      const primero = errores.find(e => e.el);
+      if (primero) {
+        primero.el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => primero.el.focus(), 300);
+      }
+
+      const lista = errores.map(e => "• " + escapeHtml(e.msg)).join("<br>");
+      Swal.fire({
+        icon: "warning",
+        title: "No se puede finalizar el pedido",
+        html: '<div style="text-align:left; font-size:0.9rem;">' + lista + '</div>',
+        confirmButtonText: "Entendido"
+      });
+      return;
+    }
+
+    const avisos = detectarAdvertencias();
+    if (avisos.length > 0) {
+      const lista = avisos.map(a => "• " + escapeHtml(a)).join("<br><br>");
+      Swal.fire({
+        icon: "warning",
+        title: "Revisá estos datos",
+        html: '<div style="text-align:left; font-size:0.9rem;">' + lista +
+              '<br><br><em style="color:#6c757d;">Podés continuar si está todo bien.</em></div>',
+        showCancelButton: true,
+        confirmButtonText: "Finalizar igual",
+        cancelButtonText: "Revisar",
+        confirmButtonColor: "#1F3864"
+      }).then(res => { if (res.isConfirmed) confirmarYEnviar(); });
+      return;
+    }
+
+    confirmarYEnviar();
+  }
+
+  function confirmarYEnviar() {
+    const selProv = document.getElementById("proveedor");
+    const nombreProv = selProv.options[selProv.selectedIndex].text;
+    const total = pedidoItems.reduce((s, i) => s + (i.Cantidad * i.PrecioUnitario), 0);
+
+    Swal.fire({
+      title: "¿Confirmar el pedido?",
+      html: '<div style="text-align:left;">' +
+            '<strong>Proveedor:</strong> ' + escapeHtml(nombreProv) + '<br>' +
+            '<strong>Ítems:</strong> ' + pedidoItems.length + '<br>' +
+            '<strong>Total:</strong> ' + fmt(total) + '<br><br>' +
+            '<span class="text-muted">El pedido queda en armado: cargalo en la web del proveedor y marcalo como enviado desde el listado.</span>' +
+            '</div>',
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, finalizar pedido",
+      cancelButtonText: "Volver"
+    }).then(res => { if (res.isConfirmed) enviarPedido(total); });
+  }
+
+  function enviarPedido(total) {
+    const idProveedor = parseInt(document.getElementById("proveedor").value, 10);
+    setLoading(true);
+
+    fetchAuth(api + "Pedido", {
+      method: "POST",
+      body: JSON.stringify({ IdProveedor: idProveedor, Total: total, IdEstado: 1 })
+    }).then(r => {
+      if (!r.ok) return r.text().then(t => { throw new Error(extraerMensaje(t) || "No se pudo crear el pedido."); });
+      return r.json();
+    }).then(idPedido => {
+      const promesas = pedidoItems.map(item =>
+        fetchAuth(api + "DetallePedido", {
+          method: "POST",
+          body: JSON.stringify({
+            IdPedido: idPedido, IdRepuesto: item.IdRepuesto,
+            Cantidad: item.Cantidad, PrecioUnitario: item.PrecioUnitario
+          })
+        }).then(r => {
+          if (!r.ok) throw new Error('No se pudo agregar "' + item.Descripcion + '" al pedido.');
+          return true;
+        })
+      );
+
+      return Promise.all(promesas).then(() => {
+        guardadoOk = true;
+        Swal.fire({
+          icon: "success",
+          title: "Pedido N° " + idPedido + " creado",
+          text: "El pedido quedó registrado en estado Pendiente.",
+          timer: 1800, showConfirmButton: false
+        }).then(() => window.location.href = "ListadoPedido.html");
+      }).catch(err => {
+        Swal.fire({
+          icon: "error",
+          title: "Pedido incompleto",
+          html: 'Se creó el pedido N° ' + idPedido + ' pero hubo un problema al cargar el detalle:<br><br>' +
+                '<strong>' + escapeHtml(err.message) + '</strong><br><br>' +
+                'Revisá el pedido en el listado y completalo o cancelalo.',
+          confirmButtonText: "Ir al listado"
+        }).then(() => window.location.href = "ListadoPedido.html");
+      });
+    }).catch(err => {
+      setLoading(false);
+      Swal.fire("No se pudo guardar", err.message || "Ocurrió un error al crear el pedido.", "error");
+    });
+  }
+
+  function extraerMensaje(text) {
+    try { const d = JSON.parse(text); return d.Message || d.message || null; }
+    catch { return text || null; }
+  }
+
+  /* ===================== SALIR CON CARGA PENDIENTE ===================== */
+  function confirmarSalida(destino) {
+    if (guardadoOk || pedidoItems.length === 0) { window.location.href = destino; return; }
+    Swal.fire({
+      icon: "question",
+      title: "¿Descartar el pedido?",
+      text: "Tenés " + pedidoItems.length + " ítem(s) cargados sin guardar. Si salís ahora se pierden.",
+      showCancelButton: true,
+      confirmButtonText: "Sí, descartar",
+      cancelButtonText: "Seguir cargando",
+      confirmButtonColor: "#c0392b"
+    }).then(res => { if (res.isConfirmed) window.location.href = destino; });
+  }
+
+  function initManual() {
+    activarInputsPrecioPorClase("precio-input", PRECIO_TOPE);
+
+    cargarCombos();
+    cargarRepuestos();
+    actualizarTabla();
+
+    document.getElementById("btnFiltrar").onclick = () => cargarRepuestos(true);
+    document.getElementById("btnGuardar").onclick = guardarPedido;
+
+    ["linkVolver", "btnCancelar"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        confirmarSalida(this.getAttribute("href") || "ListadoPedido.html");
+      });
+    });
+  }
+
+  /* ============ INICIO ============ */
+  window.onload = initManual;
+</script>
+</body>
+</html>

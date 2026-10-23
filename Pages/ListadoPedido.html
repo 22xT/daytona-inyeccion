@@ -68,6 +68,9 @@
     /* Estados: icono + texto, nunca solo color */
     .est { display:inline-flex; align-items:center; gap:5px; font-size:0.76rem; font-weight:700; border-radius:7px; padding:3px 9px; white-space:nowrap; }
     .est-pend { background:#FEF3C7; color:#92400E; }
+    .est-arm { background:#E0E7FF; color:#3730A3; }
+    .btn-enviar { background:#3730A3; color:#fff; border-color:#3730A3; }
+    .btn-enviar:hover { background:#312E81; color:#fff; }
     .est-parc { background:#E0EAFF; color:#1E40AF; }
     .est-rec  { background:#DCFCE7; color:#166534; }
     .est-canc { background:#F3F4F6; color:#6B7280; }
@@ -134,7 +137,7 @@
         <h2>Pedidos de compra</h2>
         <p>Gestioná, recibí y consultá los pedidos realizados a proveedores.</p>
       </div>
-      <a href="PedidoNuevo.html" class="btn-ped"><i class="bi bi-plus-lg"></i> Pedido</a>
+      <a href="PedidoManual.html" class="btn-ped" title="Para un proveedor sin lista cargada. Lo demás se pide desde el carrito"><i class="bi bi-plus-lg"></i> Pedido manual</a>
     </div>
 
     <!-- Resumen: cada tarjeta filtra el listado -->
@@ -166,6 +169,7 @@
       <select id="filtroProveedor" class="form-select f-prov" aria-label="Proveedor"><option value="">Todos los proveedores</option></select>
       <select id="filtroEstado" class="form-select f-est" aria-label="Estado">
         <option value="">Todos los estados</option>
+        <option value="armado">En armado</option>
         <option value="pendiente">Pendientes</option>
         <option value="parcial">Parciales</option>
         <option value="recibido">Recibidos</option>
@@ -209,7 +213,7 @@
           <div class="table-responsive">
             <table class="table mb-0">
               <thead>
-                <tr><th>Repuesto</th><th class="text-center">Cantidad</th><th class="text-end">Precio unit.</th><th class="text-end">Subtotal</th></tr>
+                <tr><th>Repuesto</th><th class="text-center">Cantidad</th><th class="text-end">Precio unit.</th><th class="text-end">Subtotal</th><th style="width:44px;"></th></tr>
               </thead>
               <tbody id="detalleTabla"></tbody>
             </table>
@@ -252,6 +256,8 @@
     // Estado que ve el usuario: el de la base mas el parcial derivado de lo recibido
     function estadoVisible(p) {
       const rr = resumenRecep[p.Id];
+      // Sin enviar todavia: se le siguen sumando renglones
+      if (p.EnArmado === 1 || p.EnArmado === true) return "armado";
       if (p.Estado === "Pendiente" && rr && rr.Recibidas > 0) return "parcial";
       return (p.Estado || "").toLowerCase();
     }
@@ -264,7 +270,13 @@
                '<div class="prog" title="' + pct + '% recibido"><div style="width:' + pct + '%"></div></div>' +
                '<div class="prog-txt">' + pct + '% recibido</div>';
       }
-      if (e === "pendiente") return '<span class="est est-pend"><i class="bi bi-hourglass-split"></i> Pendiente</span>';
+      if (e === "armado")
+        return '<span class="est est-arm"><i class="bi bi-pencil-square"></i> En armado</span>' +
+               '<div class="prog-txt">Sin cargar en la web' + (p.Encargos > 0 ? ' · ' + p.Encargos + ' encargo' + (p.Encargos === 1 ? '' : 's') : '') + '</div>';
+      if (e === "pendiente")
+        return '<span class="est est-pend"><i class="bi bi-hourglass-split"></i> Pendiente</span>' +
+               (p.LlegadaEstimada ? '<div class="prog-txt">Llega aprox. ' + new Date(p.LlegadaEstimada).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "numeric" }) + '</div>' : '') +
+               (p.Encargos > 0 ? '<div class="prog-txt">' + p.Encargos + ' encargo' + (p.Encargos === 1 ? '' : 's') + '</div>' : '');
       if (e === "recibido") {
         const nota = rr && rr.Cerradas > 0 ? '<div class="prog-txt">' + rr.Recibidas + ' de ' + rr.Pedidas + ' · resto cerrado</div>' : '';
         return '<span class="est est-rec"><i class="bi bi-check-circle"></i> Recibido</span>' + nota;
@@ -350,13 +362,16 @@
 
         // Una accion visible por fila; el resto, en el menu
         let acciones = `<button class="btn-ico" onclick="verDetalle(${p.Id})" title="Ver pedido"><i class="bi bi-eye"></i></button>`;
+        if (e === "armado")
+          acciones += ` <button class="btn-ico" onclick="copiarListaWeb(${p.Id})" title="Códigos y cantidades para cargar en la web del proveedor"><i class="bi bi-clipboard"></i><span class="txt">Lista</span></button>` +
+                      ` <button class="btn-ico btn-enviar" onclick="enviarPedido(${p.Id})" title="Ya lo cargué en la web del proveedor"><i class="bi bi-send"></i><span class="txt">Enviar</span></button>`;
         if (puedeRecibir && abierto)
           acciones += ` <a class="btn-ico btn-recibir" href="RecepcionPedido.html?id=${p.Id}" title="Registrar lo que llegó"><i class="bi bi-box-arrow-in-down"></i><span class="txt">Recibir</span></a>`;
 
         let menu = `<li><a class="dropdown-item" href="#" onclick="verDetalle(${p.Id});return false;"><i class="bi bi-eye"></i> Ver detalle</a></li>
                     <li><a class="dropdown-item" href="RecepcionPedido.html?id=${p.Id}"><i class="bi bi-receipt"></i> Recepciones y facturas</a></li>`;
         // Cancelar solo si no llego nada: si llego algo, lo que falta se cierra desde Recibir
-        if (esAdmin && e === "pendiente")
+        if (esAdmin && (e === "pendiente" || e === "armado"))
           menu += `<li><hr class="dropdown-divider"></li>
                    <li><a class="dropdown-item peligro" href="#" onclick="actualizarEstado(${p.Id}, 3, ${p.Total});return false;"><i class="bi bi-x-circle"></i> Cancelar pedido</a></li>`;
         acciones += ` <div class="dropdown"><button class="btn-ico menu-acc" data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones"><i class="bi bi-three-dots-vertical"></i></button>
@@ -379,6 +394,50 @@
     }
 
     /* ---------- Cancelar (Recibir ya no pasa por aca: es un documento aparte) ---------- */
+    /* ---------- Pedidos en armado ---------- */
+
+    // Lista para cargar en la web del proveedor: codigo, cantidad y descripcion
+    function copiarListaWeb(id) {
+      fetchAuth(api + "Compras/Pedido/" + id + "/ListaWeb").then(r => r.ok ? r.json() : Promise.reject())
+        .then(lineas => {
+          const texto = lineas.map(l => l.Codigo + "\t" + l.Cantidad + "\t" + l.Descripcion).join("\n");
+          const filas = lineas.map(l =>
+            `<tr><td class="font-monospace">${escapeHtml(l.Codigo)}</td><td class="text-center">${l.Cantidad}</td>` +
+            `<td>${escapeHtml(l.Descripcion)}${l.ParaCliente ? ' <span class="est est-arm" style="font-size:0.7rem;">encargo · ' + escapeHtml(l.ParaCliente) + '</span>' : ''}</td></tr>`).join("");
+          Swal.fire({
+            title: "Pedido " + nroPedido(id) + " para cargar en la web",
+            width: 700,
+            html: `<div style="max-height:340px;overflow-y:auto;text-align:left;"><table class="table table-sm">
+                     <thead><tr><th>Código</th><th class="text-center">Cant.</th><th>Descripción</th></tr></thead><tbody>${filas}</tbody></table></div>`,
+            showDenyButton: true, denyButtonText: '<i class="bi bi-clipboard"></i> Copiar', denyButtonColor: "#3730A3",
+            confirmButtonText: "Listo, lo cargué: Enviar", confirmButtonColor: "#28a745",
+            showCancelButton: true, cancelButtonText: "Cerrar",
+            preDeny: () => {
+              const ok = navigator.clipboard ? navigator.clipboard.writeText(texto) : Promise.reject();
+              return ok.then(() => { Swal.showValidationMessage("Copiado: pegalo en la web del proveedor."); return false; })
+                       .catch(() => { Swal.showValidationMessage("No se pudo copiar automáticamente."); return false; });
+            }
+          }).then(res => { if (res.isConfirmed) enviarPedido(id, true); });
+        }).catch(() => Swal.fire("Error", "No se pudo armar la lista.", "error"));
+    }
+
+    function enviarPedido(id, sinConfirmar) {
+      const hacer = () => fetchAuth(api + "Compras/Pedido/" + id + "/Enviar", { method: "POST" })
+        .then(r => r.ok ? r.json() : r.text().then(t => { let m = t; try { m = JSON.parse(t).Message || t; } catch (e) {} throw new Error(m || "No se pudo enviar."); }))
+        .then(d => {
+          Swal.fire({ icon: "success", title: "Pedido " + nroPedido(id) + " enviado",
+                      text: "Llega aprox. el " + new Date(d.LlegadaEstimada).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "numeric" }) +
+                            ". Lo próximo que pidas a este proveedor arranca un pedido nuevo.",
+                      timer: 3500 });
+          cargarPedidos();
+        }).catch(err => Swal.fire("No se pudo enviar", err.message, "error"));
+      if (sinConfirmar) return hacer();
+      Swal.fire({ title: "¿Ya lo cargaste en la web del proveedor?",
+                  text: "Queda como enviado y empieza a contar la llegada estimada.",
+                  icon: "question", showCancelButton: true, confirmButtonText: "Sí, enviado", cancelButtonText: "Todavía no" })
+        .then(r => { if (r.isConfirmed) hacer(); });
+    }
+
     function actualizarEstado(id, nuevoEstado, total) {
       if (nuevoEstado === 2) { location.href = "RecepcionPedido.html?id=" + id; return; }
 
@@ -438,9 +497,11 @@
            <div><div class="l">Recibido</div><div class="v">${rr ? rr.Recibidas + " de " + rr.Pedidas + " u." : "—"}</div></div>`;
 
         const tbody = document.getElementById("detalleTabla");
+        // En armado (todavia no cargado en la web del proveedor) se pueden sacar renglones
+        const enArmado = (enLista.EnArmado === 1 || enLista.EnArmado === true) && e === "pendiente";
         let total = 0;
         if (detalle.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted p-3">Sin detalle.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-3">Sin detalle.</td></tr>';
         } else {
           tbody.innerHTML = detalle.map(d => {
             const subtotal = Number(d.Subtotal || 0);
@@ -450,6 +511,10 @@
               <td class="text-center">${d.Cantidad}</td>
               <td class="text-end">${moneda(d.PrecioUnitario || 0)}</td>
               <td class="text-end">${moneda(subtotal)}</td>
+              <td class="text-end">${enArmado
+                ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-bs-toggle="tooltip" data-bs-placement="left"
+                     title="Sacar del pedido" aria-label="Sacar del pedido" onclick="quitarRenglon(${d.Id}, ${pedido.Id})"><i class="bi bi-x-lg"></i></button>`
+                : ''}</td>
             </tr>`;
           }).join("");
         }
@@ -461,10 +526,36 @@
         // El PDF sirve en cualquier estado: para mandarlo al proveedor o archivarlo
         document.getElementById("btnPDF").style.display = e !== "cancelado" ? "inline-flex" : "none";
 
-        new bootstrap.Modal(document.getElementById("detalleModal")).show();
+        tbody.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => bootstrap.Tooltip.getOrCreateInstance(el));
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("detalleModal")).show();
       }).catch(err => {
         console.error("Error en verDetalle:", err);
         Swal.fire("Error", "No se pudo cargar el detalle del pedido.", "error");
+      });
+    }
+
+    /* Sacar un renglon de un pedido en armado. Si era el ultimo, el pedido
+       se borra (no se habia mandado a nadie). */
+    function quitarRenglon(idDetalle, idPedido) {
+      document.querySelectorAll(".tooltip").forEach(x => x.remove());
+      const d = (pedidoActual && pedidoActual.detalle || []).find(x => x.Id === idDetalle) || {};
+      Swal.fire({
+        icon: "question",
+        title: "¿Sacar del pedido?",
+        html: `<div style="font-size:0.92rem;"><strong>${escapeHtml(d.Repuesto || "")}</strong> × ${d.Cantidad || ""}</div>`,
+        showCancelButton: true, confirmButtonText: "Sacar", cancelButtonText: "Cancelar", confirmButtonColor: "#b02a37",
+        preConfirm: () => fetchAuth(api + "Compras/Pedido/Renglon/" + idDetalle, { method: "DELETE" })
+          .then(r => r.ok ? r.json() : r.text().then(t => { let m = t; try { const j = JSON.parse(t); m = j.Message || j.message || t; } catch (e) { } throw new Error(m); }))
+          .catch(err => { Swal.showValidationMessage(err.message || "No se pudo sacar."); return false; })
+      }).then(res => {
+        if (!res.isConfirmed || !res.value) return;
+        cargarPedidos();
+        if (Number(res.value.RenglonesQuedan) === 0) {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById("detalleModal")).hide();
+          Swal.fire({ icon: "success", title: "Pedido vacío: se borró", timer: 1500, showConfirmButton: false });
+        } else {
+          verDetalle(idPedido);
+        }
       });
     }
 

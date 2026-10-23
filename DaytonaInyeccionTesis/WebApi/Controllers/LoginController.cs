@@ -8,8 +8,10 @@ namespace WebApi.Controllers
 {
     public class LoginController : ApiController
     {
-        private string connectionstring =
-            @"Data Source=CAT1913\NATIONALSOFT;Initial Catalog=DaytonaInyeccion;Integrated Security=True";
+        // La conexion sale de Web.config (en Azure, de la configuracion del App Service),
+        // igual que en el resto de los modelos. Antes estaba escrita aca y en Azure
+        // el login buscaba el SQL Server de la PC de desarrollo.
+        private string connectionstring = Config.Conexion;
 
         // POST: api/Usuario/Login
         [HttpPost]

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Búsquedas - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    /* =================================================================
+       REPORTE DE BUSQUEDAS (script 78)
+       Que se busca en el mostrador, que no tenemos y cuanto se vende.
+       ================================================================= */
+    .rb-main { padding: 16px 24px 28px !important; max-width: none; width: 100%; }
+    .rb-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .rb-top h1 { font-size: 1.3rem; font-weight: 800; color: var(--navy); margin: 0; }
+    .rb-top p { margin: 3px 0 0; color: #5f6b7a; font-size: 0.9rem; }
+    .periodo { display: inline-flex; border: 1px solid #c9d3e0; border-radius: 9px; overflow: hidden; background: #fff; }
+    .periodo button { border: none; background: none; padding: 7px 14px; font-size: 0.84rem; font-weight: 600; color: #4a5568; }
+    .periodo button + button { border-left: 1px solid #c9d3e0; }
+    .periodo button.on { background: var(--navy); color: #fff; }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    @media (max-width: 860px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .kpi { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; padding: 12px 14px; }
+    .kpi .t { font-size: 0.78rem; color: #6b7685; font-weight: 600; }
+    .kpi .v { font-size: 1.5rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.25; }
+    .kpi .s { font-size: 0.76rem; color: #8a94a3; }
+    .kpi.rojo .v { color: #a8281e; }
+    .kpi.verde .v { color: #146c43; }
+
+    .barra-res { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: #eef1f5; margin: 4px 0 6px; }
+    .barra-res span { display: block; height: 100%; }
+    .c-stock { background: #2f855a; } .c-prov { background: #d69e2e; } .c-sin { background: #c05621; } .c-nada { background: #a8281e; }
+    .leyenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.78rem; color: #4a5568; }
+    .leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+    .grid2 { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+    .caja { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; margin-bottom: 14px; }
+    .caja-h { padding: 14px 18px 2px; font-weight: 700; color: var(--navy); }
+    .caja-h small { display: block; font-weight: 400; color: #6b7685; font-size: 0.82rem; margin-top: 2px; }
+    .caja-b { padding: 8px 6px 10px; }
+
+    .tabla { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    .tabla th { font-size: 0.74rem; font-weight: 600; color: #6b7685; padding: 7px 12px; border-bottom: 1px solid #edf0f4; text-align: left; white-space: nowrap; }
+    .tabla td { padding: 8px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; }
+    .tabla tr:last-child td { border-bottom: none; }
+    .tabla .der { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .txt { font-weight: 600; color: var(--text); }
+    .sub { font-size: 0.76rem; color: #8a94a3; }
+    .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; border-radius: 5px; padding: 1px 7px; white-space: nowrap; }
+    .tag.prov { background: #fff3d1; color: #7a5600; }
+    .tag.cat { background: #fde8e1; color: #8a3a12; }
+    .tag.nada { background: #fdeceb; color: #7f1d16; }
+    .tag.venta { background: #d1f0df; color: #146c43; }
+    .ir { width: 32px; height: 32px; border-radius: 7px; border: 1px solid transparent; color: var(--nav-accent); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+    .ir:hover { border-color: #c9d3e0; background: #f0f6ff; }
+    .vacio { text-align: center; padding: 26px 16px; color: #6b7685; font-size: 0.88rem; }
+    .vacio i { font-size: 1.8rem; color: #b8c6d9; display: block; margin-bottom: 6px; }
+
+    @media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .rb-main { padding: 12px !important; } }
+  </style>
+</head>
+
+<body data-page="rep-busquedas">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content rb-main">
+    <div class="rb-top">
+      <div>
+        <h1>Búsquedas del mostrador</h1>
+        <p>Qué se busca, qué no tenemos y cuántas búsquedas terminan en venta.</p>
+      </div>
+      <div class="periodo" role="group" aria-label="Período">
+        <button type="button" data-d="7">7 días</button>
+        <button type="button" data-d="30" class="on">30 días</button>
+        <button type="button" data-d="90">90 días</button>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="caja" id="cajaReparto">
+      <div class="caja-h">Qué encontraron<small>Cada búsqueda, según lo que había en ese momento.</small></div>
+      <div class="caja-b" style="padding:8px 18px 14px">
+        <div class="barra-res" id="barraRes"></div>
+        <div class="leyenda" id="leyenda"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <section class="caja">
+        <div class="caja-h">Lo que piden y no tenemos en stock
+          <small>Demanda que hoy se pierde. Si se repite, conviene tenerlo.</small></div>
+        <div class="caja-b"><table class="tabla">
+          <thead><tr><th>Búsqueda</th><th class="der">Veces</th><th>Dónde está</th><th class="der">Última</th><th></th></tr></thead>
+          <tbody id="tbNo"></tbody></table></div>
+      </section>
+
+      <div>
+        <section class="caja">
+          <div class="caja-h">Lo más buscado<small>Y cuántas veces terminó en venta.</small></div>
+          <div class="caja-b"><table class="tabla">
+            <thead><tr><th>Búsqueda</th><th class="der">Veces</th><th class="der">En venta</th><th></th></tr></thead>
+            <tbody id="tbMas"></tbody></table></div>
+        </section>
+
+        <section class="caja">
+          <div class="caja-h">No apareció en ningún lado
+            <small>Ni en el local ni en las listas. Puede ser cómo lo escriben: un sinónimo que falta o un error.</small></div>
+          <div class="caja-b"><table class="tabla">
+            <thead><tr><th>Búsqueda</th><th class="der">Veces</th><th class="der">Última</th><th></th></tr></thead>
+            <tbody id="tbNada"></tbody></table></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+    var api = API_BASE;
+    var dias = 30;
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function n(v) { return Number(v || 0).toLocaleString("es-AR"); }
+    function porc(a, b) { return b > 0 ? Math.round(a / b * 100) + "%" : "—"; }
+    function cuando(f) {
+      if (!f) return "";
+      var d = new Date(f), hoy = new Date();
+      var dd = Math.floor((new Date(hoy.toDateString()) - new Date(d.toDateString())) / 86400000);
+      if (dd <= 0) return "hoy";
+      if (dd === 1) return "ayer";
+      if (dd < 7) return "hace " + dd + " días";
+      return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+    }
+    function ir(texto) {
+      return '<a class="ir" href="Buscador.html?q=' + encodeURIComponent(texto) + '" title="Buscarlo ahora en el Buscador" aria-label="Buscar ' + esc(texto) + '"><i class="bi bi-search"></i></a>';
+    }
+    function vacio(cols, txt) { return '<tr><td colspan="' + cols + '"><div class="vacio">' + txt + '</div></td></tr>'; }
+
+    function cargar() {
+      ["tbNo", "tbMas", "tbNada"].forEach(function (id) {
+        document.getElementById(id).innerHTML = vacio(5, '<span class="spinner-border spinner-border-sm"></span> Cargando…');
+      });
+      fetchAuth(api + "Busqueda/Reporte?dias=" + dias)
+        .then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { try { t = JSON.parse(t).Message || t; } catch (e) { } throw new Error(t); });
+          return r.json();
+        })
+        .then(pintar)
+        .catch(function (e) {
+          document.getElementById("kpis").innerHTML = "";
+          document.getElementById("tbNo").innerHTML = vacio(5, '<i class="bi bi-exclamation-triangle"></i>No se pudo cargar el reporte. ' + esc(e.message));
+          document.getElementById("tbMas").innerHTML = ""; document.getElementById("tbNada").innerHTML = "";
+        });
+    }
+
+    function pintar(d) {
+      var r = (d.Resumen && d.Resumen[0]) || {};
+      var tot = Number(r.Busquedas || 0);
+      var noStock = Number(r.SoloEnProveedor || 0) + Number(r.SinStockNiProveedor || 0) + Number(r.SinResultados || 0);
+
+      document.getElementById("kpis").innerHTML = [
+        { t: "Búsquedas", v: n(tot), s: "en " + dias + " días · " + n(r.Usuarios) + " usuario(s)" },
+        { t: "Terminaron en venta", v: porc(Number(r.TerminaronEnVenta || 0), tot), s: n(r.TerminaronEnVenta) + " búsquedas", c: "verde" },
+        { t: "No lo teníamos en stock", v: porc(noStock, tot), s: n(noStock) + " búsquedas", c: noStock ? "rojo" : "" },
+        { t: "No apareció en ningún lado", v: n(r.SinResultados), s: "ni en el local ni en las listas" }
+      ].map(function (k) {
+        return '<div class="kpi ' + (k.c || "") + '"><div class="t">' + k.t + '</div><div class="v">' + k.v + '</div><div class="s">' + k.s + '</div></div>';
+      }).join("");
+
+      var partes = [
+        { k: "ConStock", t: "Con stock en el local", c: "c-stock" },
+        { k: "SoloEnProveedor", t: "Sin stock, pero en proveedores", c: "c-prov" },
+        { k: "SinStockNiProveedor", t: "En el catálogo, sin stock ni proveedor", c: "c-sin" },
+        { k: "SinResultados", t: "En ningún lado", c: "c-nada" }
+      ];
+      document.getElementById("barraRes").innerHTML = tot ? partes.map(function (p) {
+        var v = Number(r[p.k] || 0);
+        return v ? '<span class="' + p.c + '" style="width:' + (v / tot * 100) + '%" title="' + p.t + ': ' + n(v) + '"></span>' : "";
+      }).join("") : "";
+      document.getElementById("leyenda").innerHTML = partes.map(function (p) {
+        return '<span><i class="' + p.c + '"></i>' + p.t + ' · <b>' + n(r[p.k]) + '</b> (' + porc(Number(r[p.k] || 0), tot) + ')</span>';
+      }).join("");
+
+      if (!tot) {
+        var msg = '<i class="bi bi-search"></i>Todavía no hay búsquedas en este período. Se anotan solas desde el Buscador y desde la Venta.';
+        document.getElementById("tbNo").innerHTML = vacio(5, msg);
+        document.getElementById("tbMas").innerHTML = vacio(4, "—");
+        document.getElementById("tbNada").innerHTML = vacio(4, "—");
+        return;
+      }
+
+      var no = d.NoTenemos || [];
+      document.getElementById("tbNo").innerHTML = no.length ? no.map(function (x) {
+        var donde = Number(x.EnProveedores) > 0 ? '<span class="tag prov">En proveedores</span>'
+                  : (Number(x.EnCatalogo) > 0 ? '<span class="tag cat">En el catálogo, sin stock</span>' : '<span class="tag nada">En ningún lado</span>');
+        return '<tr><td><div class="txt">' + esc(x.ComoLoEscribieron) + '</div>' +
+          (Number(x.TerminaronEnVenta) > 0 ? '<span class="tag venta">' + n(x.TerminaronEnVenta) + ' terminaron en venta</span>' : '') + '</td>' +
+          '<td class="der"><b>' + n(x.Veces) + '</b></td><td>' + donde + '</td>' +
+          '<td class="der sub">' + cuando(x.Ultima) + '</td><td>' + ir(x.ComoLoEscribieron) + '</td></tr>';
+      }).join("") : vacio(5, '<i class="bi bi-check2-circle"></i>Todo lo que se buscó estaba en stock.');
+
+      var mas = d.MasBuscados || [];
+      document.getElementById("tbMas").innerHTML = mas.length ? mas.map(function (x) {
+        return '<tr><td><div class="txt">' + esc(x.ComoLoEscribieron) + '</div>' +
+          (Number(x.ConStock) === 0 ? '<div class="sub">nunca tuvo stock al buscarlo</div>' : '') + '</td>' +
+          '<td class="der"><b>' + n(x.Veces) + '</b></td><td class="der">' + porc(Number(x.TerminaronEnVenta || 0), Number(x.Veces || 0)) + '</td>' +
+          '<td>' + ir(x.ComoLoEscribieron) + '</td></tr>';
+      }).join("") : vacio(4, "—");
+
+      var nada = d.SinResultados || [];
+      document.getElementById("tbNada").innerHTML = nada.length ? nada.map(function (x) {
+        return '<tr><td class="txt">' + esc(x.ComoLoEscribieron) + '</td><td class="der"><b>' + n(x.Veces) + '</b></td>' +
+          '<td class="der sub">' + cuando(x.Ultima) + '</td><td>' + ir(x.ComoLoEscribieron) + '</td></tr>';
+      }).join("") : vacio(4, '<i class="bi bi-check2-circle"></i>Todo lo buscado apareció en algún lado.');
+    }
+
+    document.querySelectorAll(".periodo button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll(".periodo button").forEach(function (x) { x.classList.toggle("on", x === b); });
+        dias = Number(b.getAttribute("data-d")); cargar();
+      });
+    });
+    cargar();
+  </script>
+</body>
+</html>

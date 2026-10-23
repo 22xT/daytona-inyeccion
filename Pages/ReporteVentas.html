@@ -40,6 +40,7 @@
     .stat-num { font-size:1.9rem; font-weight:700; line-height:1.1; }
     .stat-label { font-size:0.76rem; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px; }
     .barra-dia { background:#2E5496; height:22px; border-radius:4px; min-width:2px; }
+      .stat-det { font-size: 0.75rem; color: #6c757d; margin-top: 2px; min-height: 1em; }
   </style>
 </head>
 
@@ -90,7 +91,8 @@
 
     <div class="row g-3 mb-4">
       <div class="col-md-3"><div class="stat-card stat-total">
-        <div class="stat-num" id="numTotal">—</div><div class="stat-label">Total facturado</div></div></div>
+        <div class="stat-num" id="numTotal">—</div><div class="stat-label">Total facturado</div>
+        <div class="stat-det" id="numTotalDet"></div></div></div>
       <div class="col-md-3"><div class="stat-card stat-cant">
         <div class="stat-num" id="numCant">—</div><div class="stat-label">Ventas confirmadas</div></div></div>
       <div class="col-md-3"><div class="stat-card stat-ticket">
@@ -199,6 +201,11 @@
 
     function render() {
       document.getElementById("numTotal").textContent = fmt(resumen.TotalFacturado);
+      // Si hubo notas, el total ya las descuenta: se muestra de donde sale
+      const nc = Number(resumen.NotasCredito || 0), nd = Number(resumen.NotasDebito || 0);
+      document.getElementById("numTotalDet").innerHTML = (nc > 0 || nd > 0)
+        ? "Ventas " + fmt(resumen.VentasBrutas) + (nc > 0 ? " · NC −" + fmt(nc) : "") + (nd > 0 ? " · ND +" + fmt(nd) : "")
+        : "";
       document.getElementById("numCant").textContent = resumen.CantidadVentas;
       document.getElementById("numTicket").textContent = fmt(resumen.TicketPromedio);
       document.getElementById("numAnul").textContent = resumen.VentasAnuladas;
@@ -284,6 +291,9 @@
       if (datosDia.length === 0) { Swal.fire("Sin datos", "Consultá un período con ventas antes de exportar.", "info"); return; }
 
       const resHoja = [{
+        "Ventas": Number(resumen.VentasBrutas || resumen.TotalFacturado),
+        "Notas de crédito": Number(resumen.NotasCredito || 0),
+        "Notas de débito": Number(resumen.NotasDebito || 0),
         "Total facturado": Number(resumen.TotalFacturado),
         "Ventas confirmadas": resumen.CantidadVentas,
         "Ticket promedio": Number(resumen.TicketPromedio),
@@ -292,12 +302,13 @@
       const diaHoja = datosDia.map(d => ({
         "Fecha": new Date(d.Dia).toLocaleDateString("es-AR"),
         "Cantidad de ventas": d.CantidadVentas,
+        "Notas de crédito": Number(d.NotasCredito || 0),
         "Total del día": Number(d.TotalDia)
       }));
 
       const wb = XLSX.utils.book_new();
-      const ws1 = XLSX.utils.json_to_sheet(resHoja); ws1["!cols"]=[{wch:18},{wch:18},{wch:16},{wch:16}];
-      const ws2 = XLSX.utils.json_to_sheet(diaHoja); ws2["!cols"]=[{wch:14},{wch:18},{wch:16}];
+      const ws1 = XLSX.utils.json_to_sheet(resHoja); ws1["!cols"]=[{wch:16},{wch:16},{wch:16},{wch:16},{wch:18},{wch:16},{wch:16}];
+      const ws2 = XLSX.utils.json_to_sheet(diaHoja); ws2["!cols"]=[{wch:14},{wch:18},{wch:16},{wch:16}];
       XLSX.utils.book_append_sheet(wb, ws1, "Resumen");
       XLSX.utils.book_append_sheet(wb, ws2, "Por día");
       XLSX.writeFile(wb, "Ventas_Daytona_" + new Date().toISOString().slice(0,10) + ".xlsx");

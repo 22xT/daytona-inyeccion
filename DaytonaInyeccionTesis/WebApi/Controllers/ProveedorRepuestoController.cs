@@ -44,12 +44,33 @@ namespace WebApi.Controllers
             return oPR.SugerirEnlaces(idProveedor);
         }
 
+        // PUT: api/ProveedorRepuesto/5/Desvincular
+        // Deshace un enlace hecho por error. Tu repuesto no cambia.
+        [HttpPut]
+        [Route("api/ProveedorRepuesto/{id:int}/Desvincular")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Analista")]
+        public IHttpActionResult Desvincular(int id)
+        {
+            ProveedorRepuesto oPR = new ProveedorRepuesto();
+            oPR.Id = id;
+            try
+            {
+                oPR.Desvincular();
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                if (ex.Number >= 50000) return BadRequest(ex.Message);
+                return BadRequest("No se pudo desvincular el artículo.");
+            }
+        }
+
         // PUT: api/ProveedorRepuesto/5/Enlazar
         // Confirma el enlace. Se hace de a uno y con intervencion humana:
         // un enlace erroneo fusiona repuestos distintos y corrompe el stock.
         [HttpPut]
         [Route("api/ProveedorRepuesto/{id:int}/Enlazar")]
-        [AuthorizeJwt(Roles = "Administrador,Analista")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Analista")]
         public IHttpActionResult Enlazar(int id, [FromBody] ProveedorRepuesto datos)
         {
             if (datos == null || !datos.IdRepuesto.HasValue || datos.IdRepuesto.Value <= 0)

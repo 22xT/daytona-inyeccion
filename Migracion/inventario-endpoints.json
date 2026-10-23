@@ -1,0 +1,2375 @@
+[
+ {
+  "ctrl": "Analisis",
+  "verb": "GET",
+  "route": "api/Analisis/Pronostico",
+  "metodo": "Pronostico",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "int mesesHistoria = 6, int mesesProyectar = 3",
+  "usadoPor": [
+   "Dashboard.html"
+  ]
+ },
+ {
+  "ctrl": "Analisis",
+  "verb": "GET",
+  "route": "api/Analisis/PuntoEquilibrio",
+  "metodo": "PuntoEquilibrio",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "ReporteVentas.html"
+  ]
+ },
+ {
+  "ctrl": "Analisis",
+  "verb": "GET",
+  "route": "api/Analisis/MapaCalor",
+  "metodo": "MapaCalor",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Analisis",
+  "verb": "GET",
+  "route": "api/Analisis/Periodo",
+  "metodo": "Periodo",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "Dashboard.html"
+  ]
+ },
+ {
+  "ctrl": "Busqueda",
+  "verb": "GET",
+  "route": "api/Busqueda",
+  "metodo": "Get",
+  "ret": "DataSet",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "string texto, int idProveedor = 0,",
+  "usadoPor": [
+   "Buscador.html",
+   "mobile:app/venta/index.tsx"
+  ]
+ },
+ {
+  "ctrl": "Busqueda",
+  "verb": "GET",
+  "route": "api/Busqueda/Oportunidades",
+  "metodo": "Oportunidades",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "decimal diferenciaMinima = 5",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Busqueda",
+  "verb": "GET",
+  "route": "api/Busqueda/Cobertura",
+  "metodo": "Cobertura",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "int dias = 120",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Cliente",
+  "verb": "GET",
+  "route": "api/Cliente",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "",
+  "usadoPor": [
+   "CargarVenta.html",
+   "ClienteForm.html",
+   "ClientesListado.html",
+   "mobile:app/venta/confirmar.tsx"
+  ]
+ },
+ {
+  "ctrl": "Cliente",
+  "verb": "GET",
+  "route": "api/Cliente/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "CargarVenta.html",
+   "ClienteForm.html",
+   "ClientesListado.html",
+   "mobile:app/venta/confirmar.tsx"
+  ]
+ },
+ {
+  "ctrl": "Cliente",
+  "verb": "POST",
+  "route": "api/Cliente",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] Cliente cliente",
+  "usadoPor": [
+   "CargarVenta.html",
+   "mobile:app/venta/confirmar.tsx"
+  ]
+ },
+ {
+  "ctrl": "Cliente",
+  "verb": "PUT",
+  "route": "api/Cliente/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "int id, [FromBody] Cliente cliente",
+  "usadoPor": [
+   "CargarVenta.html",
+   "ClientesListado.html"
+  ]
+ },
+ {
+  "ctrl": "Cliente",
+  "verb": "DELETE",
+  "route": "api/Cliente/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "ClientesListado.html"
+  ]
+ },
+ {
+  "ctrl": "Cliente",
+  "verb": "PUT",
+  "route": "api/Cliente/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "ClientesListado.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "GET",
+  "route": "api/Compras/Pedido/{id:int}/Recepcion",
+  "metodo": "ParaRecepcion",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/StockMinimo",
+  "metodo": "StockMinimo",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "[FromBody] StockMinimoDto d",
+  "usadoPor": [
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "GET",
+  "route": "api/Compras/Reposicion",
+  "metodo": "Reposicion",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "",
+  "usadoPor": [
+   "PedidoNuevo.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "GET",
+  "route": "api/Compras/ResumenRecepcion",
+  "metodo": "ResumenRecepcion",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "",
+  "usadoPor": [
+   "ListadoPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Pedido/{id:int}/Recibir",
+  "metodo": "Recibir",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "int id, [FromBody] Recepcion r",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Pedido/{id:int}/Iniciar",
+  "metodo": "Iniciar",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id, [FromBody] RecepcionInicio r",
+  "usadoPor": [
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Recepcion/{id:int}/Confirmar",
+  "metodo": "Confirmar",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id, [FromBody] ControlDto d",
+  "usadoPor": [
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "GET",
+  "route": "api/Compras/Incidencias",
+  "metodo": "Incidencias",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "int? idProveedor = null",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Recepcion/{id:int}/Anular",
+  "metodo": "AnularRecepcion",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] MotivoDto m",
+  "usadoPor": [
+   "CuentaProveedores.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Pedido/{id:int}/CerrarFaltantes",
+  "metodo": "CerrarFaltantes",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "int id, [FromBody] MotivoDto m",
+  "usadoPor": [
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Pedido/{id:int}/LeerFactura",
+  "metodo": "LeerFactura",
+  "ret": "Task<IHttpActionResult>",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id, [FromBody] LeerFacturaDto d",
+  "usadoPor": [
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "GET",
+  "route": "api/Compras/Facturas",
+  "metodo": "Facturas",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "int? idProveedor = null",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/CuentasProveedor/{id:int}/SaldoInicial",
+  "metodo": "SaldoInicial",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] List<SaldoInicialLinea> lineas",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Recepcion/{id:int}/Adjunto",
+  "metodo": "CambiarAdjunto",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "int id, [FromBody] AdjuntoRecepcionDto d",
+  "usadoPor": [
+   "CuentaProveedores.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Proveedor/{id:int}/DiasPago",
+  "metodo": "DiasPago",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] DiasPagoDto d",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Incidencias/Reclamar",
+  "metodo": "Reclamar",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] ReclamoDto d",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/NotasCredito",
+  "metodo": "NotaCredito",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "[FromBody] NotaCreditoDto n",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Incidencias/{id:int}/Resolver",
+  "metodo": "Resolver",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "int id, [FromBody] ResolverDto d",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "GET",
+  "route": "api/Compras/CuentasProveedor",
+  "metodo": "Saldos",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "GET",
+  "route": "api/Compras/CuentasProveedor/{id:int}",
+  "metodo": "Movimientos",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/CuentasProveedor/{id:int}/Ajuste",
+  "metodo": "Ajuste",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] AjusteDto a",
+  "usadoPor": [
+   "CuentaProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Pagos",
+  "metodo": "Pagar",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "[FromBody] PagoProveedorDto p",
+  "usadoPor": [
+   "CuentaProveedores.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Compras",
+  "verb": "POST",
+  "route": "api/Compras/Pagos/{id:int}/Anular",
+  "metodo": "AnularPago",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] MotivoDto m",
+  "usadoPor": [
+   "CuentaProveedores.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Configuracion",
+  "verb": "GET",
+  "route": "api/Configuracion/Parametros",
+  "metodo": "Parametros",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador",
+  "params": "",
+  "usadoPor": [
+   "Configuracion.html"
+  ]
+ },
+ {
+  "ctrl": "Configuracion",
+  "verb": "PUT",
+  "route": "api/Configuracion/Parametro",
+  "metodo": "GuardarParametro",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "[FromBody] Configuracion conf",
+  "usadoPor": [
+   "Configuracion.html"
+  ]
+ },
+ {
+  "ctrl": "Configuracion",
+  "verb": "GET",
+  "route": "api/Configuracion/Venta",
+  "metodo": "ParametrosVenta",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "",
+  "usadoPor": [
+   "CargarVenta.html",
+   "layout.js",
+   "mobile:app/venta/carrito.tsx"
+  ]
+ },
+ {
+  "ctrl": "Configuracion",
+  "verb": "GET",
+  "route": "api/Configuracion/Margenes",
+  "metodo": "Margenes",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador",
+  "params": "bool soloConMargen = true, string texto = null",
+  "usadoPor": [
+   "Configuracion.html"
+  ]
+ },
+ {
+  "ctrl": "Configuracion",
+  "verb": "PUT",
+  "route": "api/Configuracion/Margen",
+  "metodo": "GuardarMargen",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "[FromBody] Configuracion conf",
+  "usadoPor": [
+   "Configuracion.html"
+  ]
+ },
+ {
+  "ctrl": "CuentaCorriente",
+  "verb": "GET",
+  "route": "api/CuentaCorriente",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "bool soloConSaldo = true, string texto = null",
+  "usadoPor": [
+   "CargarVenta.html",
+   "CuentaCorriente.html",
+   "layout.js"
+  ]
+ },
+ {
+  "ctrl": "CuentaCorriente",
+  "verb": "GET",
+  "route": "api/CuentaCorriente/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "CargarVenta.html",
+   "CuentaCorriente.html",
+   "layout.js"
+  ]
+ },
+ {
+  "ctrl": "CuentaCorriente",
+  "verb": "GET",
+  "route": "api/CuentaCorriente/{id:int}/Movimientos",
+  "metodo": "Movimientos",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id, string desde = null, string hasta = null",
+  "usadoPor": [
+   "CuentaCorriente.html",
+   "layout.js"
+  ]
+ },
+ {
+  "ctrl": "CuentaCorriente",
+  "verb": "POST",
+  "route": "api/CuentaCorriente/{id:int}/Pago",
+  "metodo": "RegistrarPago",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id, [FromBody] CuentaCorriente datos",
+  "usadoPor": [
+   "CargarVenta.html",
+   "CuentaCorriente.html"
+  ]
+ },
+ {
+  "ctrl": "CuentaCorriente",
+  "verb": "POST",
+  "route": "api/CuentaCorriente/{id:int}/Ajuste",
+  "metodo": "RegistrarAjuste",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] CuentaCorriente datos",
+  "usadoPor": [
+   "CuentaCorriente.html",
+   "layout.js"
+  ]
+ },
+ {
+  "ctrl": "DetallePedido",
+  "verb": "GET",
+  "route": "api/DetallePedido",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor",
+  "params": "int idPedido",
+  "usadoPor": [
+   "PedidoNuevo.html"
+  ]
+ },
+ {
+  "ctrl": "DetallePedido",
+  "verb": "POST",
+  "route": "api/DetallePedido",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] DetallePedido detalle",
+  "usadoPor": [
+   "PedidoNuevo.html"
+  ]
+ },
+ {
+  "ctrl": "DetallePedido",
+  "verb": "DELETE",
+  "route": "api/DetallePedido/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "DetallePresupuesto",
+  "verb": "POST",
+  "route": "api/DetallePresupuesto",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] DetallePresupuesto detalle",
+  "usadoPor": [
+   "CargarVenta.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoPedido",
+  "verb": "GET",
+  "route": "api/EstadoPedido",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "",
+  "usadoPor": [
+   "EstadoPedidoForm.html",
+   "EstadosPedidoListado.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoPedido",
+  "verb": "GET",
+  "route": "api/EstadoPedido/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "EstadoPedidoForm.html",
+   "EstadosPedidoListado.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoPedido",
+  "verb": "POST",
+  "route": "api/EstadoPedido",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "[FromBody] EstadoPedido estado",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "EstadoPedido",
+  "verb": "PUT",
+  "route": "api/EstadoPedido/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id, [FromBody] EstadoPedido estado",
+  "usadoPor": [
+   "EstadosPedidoListado.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoPedido",
+  "verb": "DELETE",
+  "route": "api/EstadoPedido/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "EstadosPedidoListado.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoPedido",
+  "verb": "PUT",
+  "route": "api/EstadoPedido/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "EstadosPedidoListado.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoVenta",
+  "verb": "GET",
+  "route": "api/EstadoVenta",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "",
+  "usadoPor": [
+   "EstadosVentaListado.html",
+   "EstadoVentaForm.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoVenta",
+  "verb": "GET",
+  "route": "api/EstadoVenta/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "EstadosVentaListado.html",
+   "EstadoVentaForm.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoVenta",
+  "verb": "POST",
+  "route": "api/EstadoVenta",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "[FromBody] EstadoVenta estado",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "EstadoVenta",
+  "verb": "PUT",
+  "route": "api/EstadoVenta/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id, [FromBody] EstadoVenta estado",
+  "usadoPor": [
+   "EstadosVentaListado.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoVenta",
+  "verb": "DELETE",
+  "route": "api/EstadoVenta/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "EstadosVentaListado.html"
+  ]
+ },
+ {
+  "ctrl": "EstadoVenta",
+  "verb": "PUT",
+  "route": "api/EstadoVenta/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "EstadosVentaListado.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "GET",
+  "route": "api/Finanzas/Cuentas",
+  "metodo": "Cuentas",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "",
+  "usadoPor": [
+   "CuentaProveedores.html",
+   "Gastos.html",
+   "MovimientosEspeciales.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "POST",
+  "route": "api/Finanzas/Adjunto",
+  "metodo": "SubirAdjunto",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "[FromBody] ArchivoDto a",
+  "usadoPor": [
+   "CuentaProveedores.html",
+   "Gastos.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "GET",
+  "route": "api/Finanzas/Adjunto/{id:int}",
+  "metodo": "VerAdjunto",
+  "ret": "HttpResponseMessage",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "CuentaProveedores.html",
+   "Gastos.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "GET",
+  "route": "api/Finanzas/TiposGasto",
+  "metodo": "TiposGasto",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "",
+  "usadoPor": [
+   "Gastos.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "GET",
+  "route": "api/Finanzas/Gastos",
+  "metodo": "Gastos",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null, string estado = null",
+  "usadoPor": [
+   "Gastos.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "GET",
+  "route": "api/Finanzas/Gastos/Resumen",
+  "metodo": "ResumenGastos",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "Gastos.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "POST",
+  "route": "api/Finanzas/Gastos",
+  "metodo": "RegistrarGasto",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "[FromBody] Gasto g",
+  "usadoPor": [
+   "Gastos.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "POST",
+  "route": "api/Finanzas/Gastos/{id:int}/Pagar",
+  "metodo": "PagarGasto",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] PagoGastoDto p",
+  "usadoPor": [
+   "Gastos.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "POST",
+  "route": "api/Finanzas/Gastos/{id:int}/AnularPago",
+  "metodo": "AnularPagoGasto",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] MotivoDto m",
+  "usadoPor": [
+   "Gastos.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "POST",
+  "route": "api/Finanzas/Gastos/{id:int}/Anular",
+  "metodo": "AnularGasto",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "int id, [FromBody] MotivoDto m",
+  "usadoPor": [
+   "Gastos.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "GET",
+  "route": "api/Finanzas/MovimientosEspeciales",
+  "metodo": "MovimientosEspeciales",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "MovimientosEspeciales.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "POST",
+  "route": "api/Finanzas/MovimientosEspeciales",
+  "metodo": "RegistrarMovimientoEspecial",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "[FromBody] MovimientoEspecial m",
+  "usadoPor": [
+   "MovimientosEspeciales.html"
+  ]
+ },
+ {
+  "ctrl": "Finanzas",
+  "verb": "POST",
+  "route": "api/Finanzas/MovimientosEspeciales/{id:int}/Anular",
+  "metodo": "AnularMovimientoEspecial",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño",
+  "params": "int id, [FromBody] MotivoDto m",
+  "usadoPor": [
+   "MovimientosEspeciales.html"
+  ]
+ },
+ {
+  "ctrl": "Indicador",
+  "verb": "GET",
+  "route": "api/Indicador",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "",
+  "usadoPor": [
+   "layout.js"
+  ]
+ },
+ {
+  "ctrl": "Login",
+  "verb": "POST",
+  "route": "api/Usuario/Login",
+  "metodo": "Login",
+  "ret": "IHttpActionResult",
+  "roles": "anónimo",
+  "params": "[FromBody] LoginRequest req",
+  "usadoPor": [
+   "Login.html",
+   "mobile:app/index.tsx"
+  ]
+ },
+ {
+  "ctrl": "Marca",
+  "verb": "GET",
+  "route": "api/Marca",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "",
+  "usadoPor": [
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "MarcaForm.html",
+   "MarcasListado.html",
+   "ModeloForm.html",
+   "ModelosListado.html",
+   "PedidoNuevo.html",
+   "ReporteStockCritico.html",
+   "mobile:app/index.tsx",
+   "mobile:app/recuperar.tsx",
+   "mobile:components/Marca.tsx"
+  ]
+ },
+ {
+  "ctrl": "Marca",
+  "verb": "GET",
+  "route": "api/Marca/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "MarcaForm.html",
+   "MarcasListado.html",
+   "ModeloForm.html",
+   "ModelosListado.html",
+   "PedidoNuevo.html",
+   "ReporteStockCritico.html",
+   "mobile:app/index.tsx",
+   "mobile:app/recuperar.tsx",
+   "mobile:components/Marca.tsx"
+  ]
+ },
+ {
+  "ctrl": "Marca",
+  "verb": "POST",
+  "route": "api/Marca",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "[FromBody] Marca marca",
+  "usadoPor": [
+   "CargarVenta.html",
+   "PedidoNuevo.html",
+   "mobile:app/index.tsx",
+   "mobile:app/recuperar.tsx"
+  ]
+ },
+ {
+  "ctrl": "Marca",
+  "verb": "PUT",
+  "route": "api/Marca/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id, [FromBody] Marca marca",
+  "usadoPor": [
+   "CargarVenta.html",
+   "MarcasListado.html",
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Marca",
+  "verb": "DELETE",
+  "route": "api/Marca/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "MarcasListado.html",
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Marca",
+  "verb": "PUT",
+  "route": "api/Marca/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "MarcasListado.html",
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "MedioPago",
+  "verb": "GET",
+  "route": "api/MedioPago",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "",
+  "usadoPor": [
+   "Caja.html",
+   "CargarVenta.html"
+  ]
+ },
+ {
+  "ctrl": "MedioPago",
+  "verb": "GET",
+  "route": "api/MedioPago/Venta/{idVenta:int}",
+  "metodo": "PagosDeVenta",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "int idVenta",
+  "usadoPor": [
+   "CargarVenta.html"
+  ]
+ },
+ {
+  "ctrl": "MedioPago",
+  "verb": "GET",
+  "route": "api/MedioPago/Cuentas",
+  "metodo": "Cuentas",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "MedioPago",
+  "verb": "GET",
+  "route": "api/MedioPago/Resumen",
+  "metodo": "Resumen",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "Modelo",
+  "verb": "GET",
+  "route": "api/Modelo",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "",
+  "usadoPor": [
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "ModeloForm.html",
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Modelo",
+  "verb": "GET",
+  "route": "api/Modelo/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "ModeloForm.html",
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Modelo",
+  "verb": "GET",
+  "route": "api/Modelo/Uno/{id:int}",
+  "metodo": "GetUno",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "ModeloForm.html"
+  ]
+ },
+ {
+  "ctrl": "Modelo",
+  "verb": "POST",
+  "route": "api/Modelo",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "[FromBody] Modelo modelo",
+  "usadoPor": [
+   "CargarVenta.html"
+  ]
+ },
+ {
+  "ctrl": "Modelo",
+  "verb": "PUT",
+  "route": "api/Modelo/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id, [FromBody] Modelo modelo",
+  "usadoPor": [
+   "CargarVenta.html",
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Modelo",
+  "verb": "DELETE",
+  "route": "api/Modelo/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Modelo",
+  "verb": "PUT",
+  "route": "api/Modelo/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "ModelosListado.html"
+  ]
+ },
+ {
+  "ctrl": "MovimientoCaja",
+  "verb": "GET",
+  "route": "api/MovimientoCaja",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador,Vendedor,Dueño",
+  "params": "",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "MovimientoCaja",
+  "verb": "GET",
+  "route": "api/MovimientoCaja/Saldo",
+  "metodo": "GetSaldo",
+  "ret": "DataTable",
+  "roles": "Administrador,Vendedor,Dueño",
+  "params": "",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "MovimientoCaja",
+  "verb": "POST",
+  "route": "api/MovimientoCaja",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Vendedor",
+  "params": "[FromBody] MovimientoCaja mov",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "MovimientoStock",
+  "verb": "GET",
+  "route": "api/MovimientoStock",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador,Analista,Dueño,Vendedor",
+  "params": "",
+  "usadoPor": [
+   "AjusteStock.html"
+  ]
+ },
+ {
+  "ctrl": "MovimientoStock",
+  "verb": "GET",
+  "route": "api/MovimientoStock/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador,Analista,Dueño,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "AjusteStock.html"
+  ]
+ },
+ {
+  "ctrl": "MovimientoStock",
+  "verb": "POST",
+  "route": "api/MovimientoStock",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista,Vendedor",
+  "params": "[FromBody] MovimientoStock mov",
+  "usadoPor": [
+   "AjusteStock.html"
+  ]
+ },
+ {
+  "ctrl": "NotasCliente",
+  "verb": "GET",
+  "route": "api/NotasCliente/Venta/{id:int}",
+  "metodo": "ParaDevolucion",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "int id",
+  "usadoPor": [
+   "DevolucionVenta.html"
+  ]
+ },
+ {
+  "ctrl": "NotasCliente",
+  "verb": "GET",
+  "route": "api/NotasCliente/Cuentas",
+  "metodo": "Cuentas",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "",
+  "usadoPor": [
+   "DevolucionVenta.html"
+  ]
+ },
+ {
+  "ctrl": "NotasCliente",
+  "verb": "POST",
+  "route": "api/NotasCliente/Credito",
+  "metodo": "Credito",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "[FromBody] NotaCreditoClienteDto d",
+  "usadoPor": [
+   "DevolucionVenta.html"
+  ]
+ },
+ {
+  "ctrl": "NotasCliente",
+  "verb": "POST",
+  "route": "api/NotasCliente/Debito",
+  "metodo": "Debito",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "[FromBody] NotaDebitoClienteDto d",
+  "usadoPor": [
+   "CuentaCorriente.html"
+  ]
+ },
+ {
+  "ctrl": "NotasCliente",
+  "verb": "GET",
+  "route": "api/NotasCliente",
+  "metodo": "Listar",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "CuentaCorriente.html",
+   "DevolucionVenta.html"
+  ]
+ },
+ {
+  "ctrl": "Notificacion",
+  "verb": "GET",
+  "route": "api/Notificacion/Resumen",
+  "metodo": "GetResumen",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador",
+  "params": "",
+  "usadoPor": [
+   "layout.js"
+  ]
+ },
+ {
+  "ctrl": "Pedido",
+  "verb": "GET",
+  "route": "api/Pedido",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor",
+  "params": "",
+  "usadoPor": [
+   "Index.html",
+   "layout.js",
+   "ListadoPedido.html",
+   "PedidoNuevo.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Pedido",
+  "verb": "GET",
+  "route": "api/Pedido/{id}",
+  "metodo": "Get",
+  "ret": "DataSet",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "Index.html",
+   "layout.js",
+   "ListadoPedido.html",
+   "PedidoNuevo.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Pedido",
+  "verb": "POST",
+  "route": "api/Pedido",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor,Sistema",
+  "params": "[FromBody] Pedido pedido",
+  "usadoPor": [
+   "PedidoNuevo.html",
+   "RecepcionPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Pedido",
+  "verb": "PUT",
+  "route": "api/Pedido/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "int id, [FromBody] Pedido pedido",
+  "usadoPor": [
+   "ListadoPedido.html"
+  ]
+ },
+ {
+  "ctrl": "Pedido",
+  "verb": "DELETE",
+  "route": "api/Pedido/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Presupuesto",
+  "verb": "GET",
+  "route": "api/Presupuesto",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "string desde = null, string hasta = null,",
+  "usadoPor": [
+   "CargarVenta.html",
+   "ListadoPresupuestos.html",
+   "ProveedorForm.html"
+  ]
+ },
+ {
+  "ctrl": "Presupuesto",
+  "verb": "GET",
+  "route": "api/Presupuesto/{id}",
+  "metodo": "Get",
+  "ret": "DataSet",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "CargarVenta.html",
+   "ListadoPresupuestos.html",
+   "ProveedorForm.html"
+  ]
+ },
+ {
+  "ctrl": "Presupuesto",
+  "verb": "POST",
+  "route": "api/Presupuesto",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] Presupuesto presupuesto",
+  "usadoPor": [
+   "CargarVenta.html"
+  ]
+ },
+ {
+  "ctrl": "Presupuesto",
+  "verb": "PUT",
+  "route": "api/Presupuesto/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor,Sistema",
+  "params": "int id, [FromBody] Presupuesto presupuesto",
+  "usadoPor": [
+   "CargarVenta.html"
+  ]
+ },
+ {
+  "ctrl": "Presupuesto",
+  "verb": "DELETE",
+  "route": "api/Presupuesto/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "int id",
+  "usadoPor": [
+   "ListadoPresupuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Proveedor",
+  "verb": "GET",
+  "route": "api/Proveedor",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "",
+  "usadoPor": [
+   "Buscador.html",
+   "CatalogoProveedores.html",
+   "CuentaProveedores.html",
+   "Gastos.html",
+   "ListadoPedido.html",
+   "PedidoNuevo.html",
+   "ProveedoresListado.html",
+   "ProveedorForm.html"
+  ]
+ },
+ {
+  "ctrl": "Proveedor",
+  "verb": "GET",
+  "route": "api/Proveedor/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "Buscador.html",
+   "CatalogoProveedores.html",
+   "CuentaProveedores.html",
+   "Gastos.html",
+   "ListadoPedido.html",
+   "PedidoNuevo.html",
+   "ProveedoresListado.html",
+   "ProveedorForm.html"
+  ]
+ },
+ {
+  "ctrl": "Proveedor",
+  "verb": "POST",
+  "route": "api/Proveedor",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "[FromBody] Proveedor proveedor",
+  "usadoPor": [
+   "CatalogoProveedores.html",
+   "CuentaProveedores.html",
+   "Gastos.html",
+   "PedidoNuevo.html"
+  ]
+ },
+ {
+  "ctrl": "Proveedor",
+  "verb": "PUT",
+  "route": "api/Proveedor/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id, [FromBody] Proveedor proveedor",
+  "usadoPor": [
+   "Buscador.html",
+   "CatalogoProveedores.html",
+   "ListadoPedido.html",
+   "ProveedoresListado.html"
+  ]
+ },
+ {
+  "ctrl": "Proveedor",
+  "verb": "DELETE",
+  "route": "api/Proveedor/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "ProveedoresListado.html"
+  ]
+ },
+ {
+  "ctrl": "Proveedor",
+  "verb": "PUT",
+  "route": "api/Proveedor/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "ProveedoresListado.html"
+  ]
+ },
+ {
+  "ctrl": "ProveedorRepuesto",
+  "verb": "GET",
+  "route": "api/ProveedorRepuesto",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "",
+  "usadoPor": [
+   "Buscador.html",
+   "CatalogoProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "ProveedorRepuesto",
+  "verb": "GET",
+  "route": "api/ProveedorRepuesto/Buscar",
+  "metodo": "Buscar",
+  "ret": "DataTable",
+  "roles": "Administrador,Supervisor,Analista",
+  "params": "int idProveedor = 0, string texto = null,",
+  "usadoPor": [
+   "Buscador.html",
+   "CatalogoProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "ProveedorRepuesto",
+  "verb": "GET",
+  "route": "api/ProveedorRepuesto/Sugerencias",
+  "metodo": "Sugerencias",
+  "ret": "DataTable",
+  "roles": "Administrador,Analista",
+  "params": "int idProveedor",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "ProveedorRepuesto",
+  "verb": "PUT",
+  "route": "api/ProveedorRepuesto/{id:int}/Enlazar",
+  "metodo": "Enlazar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id, [FromBody] ProveedorRepuesto datos",
+  "usadoPor": [
+   "Buscador.html",
+   "CatalogoProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Reporte",
+  "verb": "GET",
+  "route": "api/Reporte/StockCritico",
+  "metodo": "StockCritico",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "",
+  "usadoPor": [
+   "ReporteStockCritico.html"
+  ]
+ },
+ {
+  "ctrl": "Reporte",
+  "verb": "GET",
+  "route": "api/Reporte/VentasResumen",
+  "metodo": "VentasResumen",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "DateTime desde, DateTime hasta",
+  "usadoPor": [
+   "ReporteVentas.html"
+  ]
+ },
+ {
+  "ctrl": "Reporte",
+  "verb": "GET",
+  "route": "api/Reporte/VentasPorDia",
+  "metodo": "VentasPorDia",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "DateTime desde, DateTime hasta",
+  "usadoPor": [
+   "ReporteVentas.html"
+  ]
+ },
+ {
+  "ctrl": "Reporte",
+  "verb": "GET",
+  "route": "api/Reporte/CajaResumen",
+  "metodo": "CajaResumen",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador",
+  "params": "DateTime desde, DateTime hasta",
+  "usadoPor": [
+   "ReporteCaja.html"
+  ]
+ },
+ {
+  "ctrl": "Reporte",
+  "verb": "GET",
+  "route": "api/Reporte/CajaPorConcepto",
+  "metodo": "CajaPorConcepto",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador",
+  "params": "DateTime desde, DateTime hasta",
+  "usadoPor": [
+   "ReporteCaja.html"
+  ]
+ },
+ {
+  "ctrl": "Reporte",
+  "verb": "GET",
+  "route": "api/Reporte/Dashboard",
+  "metodo": "Dashboard",
+  "ret": "DataSet",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "DateTime desde, DateTime hasta",
+  "usadoPor": [
+   "Dashboard.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "GET",
+  "route": "api/Repuesto",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "",
+  "usadoPor": [
+   "AjusteStock.html",
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "Index.html",
+   "ListadoPedido.html",
+   "PedidoNuevo.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "GET",
+  "route": "api/Repuesto/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "AjusteStock.html",
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "Index.html",
+   "ListadoPedido.html",
+   "PedidoNuevo.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "POST",
+  "route": "api/Repuesto",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "[FromBody] Repuesto repuesto",
+  "usadoPor": [
+   "AjusteStock.html",
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "PedidoNuevo.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "PUT",
+  "route": "api/Repuesto/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id, [FromBody] Repuesto repuesto",
+  "usadoPor": [
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "ListadoPedido.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "DELETE",
+  "route": "api/Repuesto/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "GET",
+  "route": "api/Repuesto/Filtrar",
+  "metodo": "GetByFiltro",
+  "ret": "DataTable",
+  "roles": "Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int IdRubro, int IdMarca",
+  "usadoPor": [
+   "CargarVenta.html",
+   "PedidoNuevo.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "GET",
+  "route": "api/Repuesto/PrecioSugerido",
+  "metodo": "PrecioSugerido",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "int idRepuesto = 0",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "PUT",
+  "route": "api/Repuesto/{id:int}/AplicarPrecio",
+  "metodo": "AplicarPrecio",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "int id, [FromBody] Repuesto repuesto",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "POST",
+  "route": "api/Repuesto/IncorporarDesdeLista",
+  "metodo": "IncorporarDesdeLista",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "[FromBody] Repuesto repuesto",
+  "usadoPor": [
+   "CatalogoProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "GET",
+  "route": "api/Repuesto/{id:int}/OtrosProveedores",
+  "metodo": "OtrosProveedores",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "CatalogoProveedores.html"
+  ]
+ },
+ {
+  "ctrl": "Repuesto",
+  "verb": "PUT",
+  "route": "api/Repuesto/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Rol",
+  "verb": "GET",
+  "route": "api/Rol",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador",
+  "params": "",
+  "usadoPor": [
+   "RolesListado.html",
+   "RolForm.html",
+   "UsuarioForm.html"
+  ]
+ },
+ {
+  "ctrl": "Rol",
+  "verb": "GET",
+  "route": "api/Rol/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "RolesListado.html",
+   "RolForm.html",
+   "UsuarioForm.html"
+  ]
+ },
+ {
+  "ctrl": "Rol",
+  "verb": "POST",
+  "route": "api/Rol",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "[FromBody] Rol rol",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Rol",
+  "verb": "PUT",
+  "route": "api/Rol/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id, [FromBody] Rol rol",
+  "usadoPor": [
+   "RolesListado.html"
+  ]
+ },
+ {
+  "ctrl": "Rol",
+  "verb": "DELETE",
+  "route": "api/Rol/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "RolesListado.html"
+  ]
+ },
+ {
+  "ctrl": "Rol",
+  "verb": "PUT",
+  "route": "api/Rol/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "RolesListado.html"
+  ]
+ },
+ {
+  "ctrl": "Rubro",
+  "verb": "GET",
+  "route": "api/Rubro",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "",
+  "usadoPor": [
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "PedidoNuevo.html",
+   "ReporteStockCritico.html",
+   "RubroForm.html",
+   "RubrosListado.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Rubro",
+  "verb": "GET",
+  "route": "api/Rubro/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Due�o,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "CargarRepuesto.html",
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "PedidoNuevo.html",
+   "ReporteStockCritico.html",
+   "RubroForm.html",
+   "RubrosListado.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Rubro",
+  "verb": "POST",
+  "route": "api/Rubro",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "[FromBody] Rubro rubro",
+  "usadoPor": [
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "PedidoNuevo.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Rubro",
+  "verb": "PUT",
+  "route": "api/Rubro/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id, [FromBody] Rubro rubro",
+  "usadoPor": [
+   "CargarVenta.html",
+   "CatalogoProveedores.html",
+   "RubrosListado.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Rubro",
+  "verb": "DELETE",
+  "route": "api/Rubro/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "RubrosListado.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "Rubro",
+  "verb": "PUT",
+  "route": "api/Rubro/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Analista",
+  "params": "int id",
+  "usadoPor": [
+   "RubrosListado.html",
+   "StockRepuestos.html"
+  ]
+ },
+ {
+  "ctrl": "SesionCaja",
+  "verb": "GET",
+  "route": "api/SesionCaja/Actual",
+  "metodo": "Actual",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista",
+  "params": "",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "SesionCaja",
+  "verb": "POST",
+  "route": "api/SesionCaja/Abrir",
+  "metodo": "Abrir",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] AperturaDto a",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "SesionCaja",
+  "verb": "POST",
+  "route": "api/SesionCaja/Cerrar",
+  "metodo": "Cerrar",
+  "ret": "IHttpActionResult",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] CierreDto c",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "SesionCaja",
+  "verb": "GET",
+  "route": "api/SesionCaja/Historial",
+  "metodo": "Historial",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "SesionCaja",
+  "verb": "GET",
+  "route": "api/SesionCaja/Diferencias",
+  "metodo": "Diferencias",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Analista",
+  "params": "DateTime? desde = null, DateTime? hasta = null",
+  "usadoPor": [
+   "Caja.html"
+  ]
+ },
+ {
+  "ctrl": "SolicitudReset",
+  "verb": "POST",
+  "route": "api/SolicitudReset",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "anónimo",
+  "params": "[FromBody] SolicitudReset solicitud",
+  "usadoPor": [
+   "Login.html",
+   "mobile:app/recuperar.tsx"
+  ]
+ },
+ {
+  "ctrl": "SolicitudReset",
+  "verb": "GET",
+  "route": "api/SolicitudReset/Pendientes",
+  "metodo": "GetPendientes",
+  "ret": "DataTable",
+  "roles": "Administrador",
+  "params": "",
+  "usadoPor": [
+   "UsuariosListado.html"
+  ]
+ },
+ {
+  "ctrl": "SolicitudReset",
+  "verb": "GET",
+  "route": "api/SolicitudReset",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador",
+  "params": "",
+  "usadoPor": [
+   "Login.html",
+   "UsuariosListado.html",
+   "mobile:app/recuperar.tsx"
+  ]
+ },
+ {
+  "ctrl": "SolicitudReset",
+  "verb": "PUT",
+  "route": "api/SolicitudReset/{id:int}/Procesar",
+  "metodo": "Procesar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id, string estado = \"Procesada\"",
+  "usadoPor": [
+   "UsuariosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Stock",
+  "verb": "GET",
+  "route": "api/Stock",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "",
+  "usadoPor": [
+   "AjusteStock.html",
+   "CargarVenta.html",
+   "layout.js",
+   "PedidoNuevo.html",
+   "ReporteStockCritico.html"
+  ]
+ },
+ {
+  "ctrl": "Stock",
+  "verb": "GET",
+  "route": "api/Stock/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor,Analista,Sistema",
+  "params": "int id",
+  "usadoPor": [
+   "AjusteStock.html",
+   "CargarVenta.html",
+   "layout.js",
+   "PedidoNuevo.html",
+   "ReporteStockCritico.html"
+  ]
+ },
+ {
+  "ctrl": "Usuario",
+  "verb": "GET",
+  "route": "api/Usuario",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador",
+  "params": "",
+  "usadoPor": [
+   "CuentaCorriente.html",
+   "Login.html",
+   "UsuarioForm.html",
+   "UsuariosListado.html",
+   "mobile:app/index.tsx"
+  ]
+ },
+ {
+  "ctrl": "Usuario",
+  "verb": "GET",
+  "route": "api/Usuario/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "CuentaCorriente.html",
+   "Login.html",
+   "UsuarioForm.html",
+   "UsuariosListado.html",
+   "mobile:app/index.tsx"
+  ]
+ },
+ {
+  "ctrl": "Usuario",
+  "verb": "POST",
+  "route": "api/Usuario",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "[FromBody] Usuario usuario",
+  "usadoPor": [
+   "CuentaCorriente.html",
+   "Login.html",
+   "mobile:app/index.tsx"
+  ]
+ },
+ {
+  "ctrl": "Usuario",
+  "verb": "PUT",
+  "route": "api/Usuario/{id}",
+  "metodo": "Put",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id, [FromBody] Usuario usuario",
+  "usadoPor": [
+   "UsuariosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Usuario",
+  "verb": "DELETE",
+  "route": "api/Usuario/{id}",
+  "metodo": "Delete",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "UsuariosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Usuario",
+  "verb": "PUT",
+  "route": "api/Usuario/{id:int}/Activar",
+  "metodo": "Activar",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id",
+  "usadoPor": [
+   "UsuariosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Usuario",
+  "verb": "PUT",
+  "route": "api/Usuario/{id:int}/ResetClave",
+  "metodo": "ResetearClave",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador",
+  "params": "int id, [FromBody] Usuario usuario",
+  "usadoPor": [
+   "UsuariosListado.html"
+  ]
+ },
+ {
+  "ctrl": "Values",
+  "verb": "GET",
+  "route": "api/Values",
+  "metodo": "Get",
+  "ret": "IEnumerable<string>",
+  "roles": "SIN AUTH",
+  "params": "",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Values",
+  "verb": "GET",
+  "route": "api/Values/{id}",
+  "metodo": "Get",
+  "ret": "string",
+  "roles": "SIN AUTH",
+  "params": "int id",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Values",
+  "verb": "POST",
+  "route": "api/Values",
+  "metodo": "Post",
+  "ret": "void",
+  "roles": "SIN AUTH",
+  "params": "[FromBody] string value",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Values",
+  "verb": "PUT",
+  "route": "api/Values/{id}",
+  "metodo": "Put",
+  "ret": "void",
+  "roles": "SIN AUTH",
+  "params": "int id, [FromBody] string value",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Values",
+  "verb": "DELETE",
+  "route": "api/Values/{id}",
+  "metodo": "Delete",
+  "ret": "void",
+  "roles": "SIN AUTH",
+  "params": "int id",
+  "usadoPor": []
+ },
+ {
+  "ctrl": "Venta",
+  "verb": "GET",
+  "route": "api/Venta",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "",
+  "usadoPor": [
+   "CargarVenta.html",
+   "DevolucionVenta.html",
+   "Index.html",
+   "layout.js",
+   "ListadoVentas.html",
+   "mobile:app/_layout.tsx",
+   "mobile:app/venta/carrito.tsx",
+   "mobile:app/venta/confirmar.tsx",
+   "mobile:app/venta/index.tsx",
+   "mobile:app/ventas/index.tsx",
+   "mobile:app/ventas/[id].tsx"
+  ]
+ },
+ {
+  "ctrl": "Venta",
+  "verb": "GET",
+  "route": "api/Venta/{id}",
+  "metodo": "Get",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "CargarVenta.html",
+   "DevolucionVenta.html",
+   "Index.html",
+   "layout.js",
+   "ListadoVentas.html",
+   "mobile:app/_layout.tsx",
+   "mobile:app/venta/carrito.tsx",
+   "mobile:app/venta/confirmar.tsx",
+   "mobile:app/venta/index.tsx",
+   "mobile:app/ventas/index.tsx",
+   "mobile:app/ventas/[id].tsx"
+  ]
+ },
+ {
+  "ctrl": "Venta",
+  "verb": "GET",
+  "route": "api/Venta/{id:int}/Detalle",
+  "metodo": "Detalle",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "ListadoVentas.html",
+   "mobile:app/_layout.tsx",
+   "mobile:app/ventas/[id].tsx"
+  ]
+ },
+ {
+  "ctrl": "Venta",
+  "verb": "GET",
+  "route": "api/Venta/AnuladasRecientes",
+  "metodo": "AnuladasRecientes",
+  "ret": "DataTable",
+  "roles": "Dueño,Administrador,Supervisor",
+  "params": "",
+  "usadoPor": [
+   "ListadoVentas.html"
+  ]
+ },
+ {
+  "ctrl": "Venta",
+  "verb": "POST",
+  "route": "api/Venta",
+  "metodo": "Post",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "[FromBody] Venta venta",
+  "usadoPor": [
+   "CargarVenta.html",
+   "DevolucionVenta.html",
+   "mobile:app/venta/confirmar.tsx"
+  ]
+ },
+ {
+  "ctrl": "Venta",
+  "verb": "PUT",
+  "route": "api/Venta/{id:int}/Anular",
+  "metodo": "Anular",
+  "ret": "IHttpActionResult",
+  "roles": "Administrador,Supervisor,Vendedor",
+  "params": "int id",
+  "usadoPor": [
+   "ListadoVentas.html"
+  ]
+ }
+]

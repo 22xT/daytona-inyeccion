@@ -539,18 +539,100 @@
                               : leerError(x).then(m => Object.assign(res, { errorPago: m })));
           })
           .then(res => {
-            if (res.errorPago) Swal.fire("Recepción confirmada, pago no registrado", res.errorPago + "<br><small>Registralo desde Cuenta de proveedores.</small>", "warning");
-            else Swal.fire({ icon: res.Incidencias > 0 ? "info" : "success", title: "Recepción confirmada" + (res.pagado ? " y pagada" : ""),
+            let aviso;
+            if (res.errorPago) aviso = Swal.fire("Recepción confirmada, pago no registrado", res.errorPago + "<br><small>Registralo desde Cuenta de proveedores.</small>", "warning");
+            else aviso = Swal.fire({ icon: res.Incidencias > 0 ? "info" : "success", title: "Recepción confirmada" + (res.pagado ? " y pagada" : ""),
               html: res.Incidencias > 0
                 ? "Quedaron <strong>" + res.Incidencias + "</strong> reclamo(s) abiertos con el proveedor" +
                   (Number(res.ImporteAReclamar) > 0 ? ", por " + formatearMoneda(res.ImporteAReclamar) + " a acreditar." : ".") +
                   "<br><small>Se ven en Cuenta de proveedores.</small>"
                 : "Todo llegó bien. El stock ya está actualizado." });
             cargar();
+            // Despues del aviso: lo que hay que separar para clientes que lo encargaron
+            return aviso.then(() => mostrarParaSeparar());
           })
           .catch(m => Swal.fire("No se pudo confirmar", typeof m === "string" ? m : "Error de conexión.", "error"))
           .then(() => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check2-circle"></i> Confirmar recepción'; });
       });
+    }
+
+    /* ================= ENCARGOS PARA SEPARAR =================
+       Lo que llego y alguien encargo: se separa con el nombre del cliente
+       y se le avisa por WhatsApp desde aca mismo. */
+
+    function numeroWhatsApp(tel) {
+      let n = String(tel || "").replace(/\D/g, "");
+      if (n.indexOf("54") === 0) return n;
+      return "549" + n.replace(/^0+/, "");
+    }
+
+
+    /* ---------- Etiqueta para separar ----------
+       Un papelito para la bolsa con el repuesto: quien lo encargo, como
+       ubicarlo y cuanto hay que cobrarle al entregar. */
+    function imprimirEtiqueta(e, items) {
+      var resta = Math.max(0, Number(e.Total) - Number(e.Sena));
+      var w = window.open("", "_blank", "width=420,height=520");
+      if (!w) { Swal.fire("No se pudo abrir la etiqueta", "Permití las ventanas emergentes para este sitio.", "info"); return; }
+      var esc2 = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+      w.document.write(
+        '<!doctype html><html><head><meta charset="utf-8"><title>Encargo #' + e.Id + '</title>' +
+        '<style>@page{size:80mm auto;margin:4mm}body{font-family:Arial,sans-serif;width:72mm;margin:0;color:#000}' +
+        '.t{font-size:11px;letter-spacing:1px}.n{font-size:30px;font-weight:800;margin:2px 0}.c{font-size:17px;font-weight:700}' +
+        '.i{font-size:12px;margin:6px 0;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:5px 0}' +
+        '.r{font-size:14px}.r b{font-size:18px}</style></head><body>' +
+        '<div class="t">DAYTONA · ENCARGO</div><div class="n">#' + e.Id + '</div>' +
+        '<div class="c">' + esc2(e.Nombre) + '</div><div>' + esc2(e.Telefono) + '</div>' +
+        '<div class="i">' + esc2(items) + '</div>' +
+        (Number(e.Sena) > 0 ? '<div class="r">Seña: ' + formatearMoneda(e.Sena) + '</div>' : '') +
+        '<div class="r">A cobrar: <b>' + formatearMoneda(resta) + '</b></div>' +
+        '<div style="font-size:10px;margin-top:6px;">Tomado el ' + new Date(e.Fecha || Date.now()).toLocaleDateString("es-AR") + '</div>' +
+        '</' + 'body></' + 'html>');
+      w.document.close();
+      // Se imprime desde aca: un script dentro del texto cortaba el script de la pagina
+      setTimeout(function () { w.focus(); w.print(); }, 250);
+    }
+
+    function mostrarParaSeparar() {
+      return fetchAuth(API_BASE + "Encargos/ParaSeparar?idPedido=" + idPedido)
+        .then(r => r.ok ? r.json() : [])
+        .then(lista => {
+          if (!lista || lista.length === 0) return;
+          const filas = lista.map(e => {
+            const resta = Math.max(0, Number(e.Total) - Number(e.Sena));
+            return `<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;">
+                      <div style="text-align:left;"><strong>${escapeHtml(e.Nombre)}</strong> · encargo #${e.Id}<br>
+                        <small>${escapeHtml(e.Items)}</small><br>
+                        <small class="text-muted">${Number(e.Sena) > 0 ? "Dejó " + formatearMoneda(e.Sena) + " · " : ""}resta ${formatearMoneda(resta)}</small></div>
+                      <div style="display:flex;gap:6px;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-etq="${e.Id}" title="Etiqueta para la bolsa"><i class="bi bi-printer"></i></button>
+                        <button type="button" class="btn btn-sm btn-success" data-wa="${e.Id}" style="white-space:nowrap;"><i class="bi bi-whatsapp"></i> Avisar</button>
+                      </div>
+                    </div>`;
+          }).join("");
+          return Swal.fire({
+            icon: "info", title: "Separá para estos clientes", width: 620,
+            html: `<div style="font-size:0.88rem;">${filas}</div>
+                   <div class="text-muted mt-2" style="font-size:0.8rem;">Lo encargado ya quedó apartado: no se le puede vender a otro.</div>`,
+            confirmButtonText: "Listo", showCancelButton: true, cancelButtonText: "Ir a Encargos",
+            didOpen: () => {
+              document.querySelectorAll("[data-etq]").forEach(b => b.addEventListener("click", () => {
+                const e = lista.find(x => x.Id === parseInt(b.getAttribute("data-etq"), 10));
+                imprimirEtiqueta(e, e.Items);
+              }));
+              document.querySelectorAll("[data-wa]").forEach(b => b.addEventListener("click", () => {
+                const e = lista.find(x => x.Id === parseInt(b.getAttribute("data-wa"), 10));
+                const nombre = String(e.Nombre).split(",").pop().trim() || e.Nombre;
+                const resta = Math.max(0, Number(e.Total) - Number(e.Sena));
+                const msg = "Hola " + nombre + ", te escribimos de Daytona Repuestos. Ya llegó tu encargo #" + e.Id + ": " + e.Items + ". " +
+                            (Number(e.Sena) > 0 ? "Dejaste " + formatearMoneda(e.Sena) + " de seña; resta " : "Total: ") + formatearMoneda(resta) + ". ¡Te esperamos!";
+                window.open("https://wa.me/" + numeroWhatsApp(e.Telefono) + "?text=" + encodeURIComponent(msg), "_blank");
+                fetchAuth(API_BASE + "Encargos/" + e.Id + "/Avisado", { method: "POST" });
+                b.outerHTML = '<span class="text-success" style="white-space:nowrap;"><i class="bi bi-check2"></i> Avisado</span>';
+              }));
+            }
+          }).then(r => { if (r.dismiss === Swal.DismissReason.cancel) location.href = "Encargos.html"; });
+        }).catch(() => {});
     }
 
     /* ================= HISTORIAL Y ACCIONES ================= */

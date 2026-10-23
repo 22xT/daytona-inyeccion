@@ -57,6 +57,9 @@ namespace WebApi.Models
         // un doble clic o un reenvio creen dos ventas iguales.
         public Guid? TokenOperacion { get; set; }
 
+        // Si la venta entrega un encargo: el SP aplica la seña y lo cierra
+        public int? IdEncargo { get; set; }
+
         // Listar todas
         public DataTable ListarTodos()
         {
@@ -172,6 +175,9 @@ namespace WebApi.Models
             SqlParameter pPagos = sqlCom.Parameters.AddWithValue("@Pagos", tablaPagos);
             pPagos.SqlDbType = SqlDbType.Structured;
             pPagos.TypeName = "dbo.VentaPagoType";
+
+            sqlCom.Parameters.Add("@IdEncargo", SqlDbType.Int).Value =
+                IdEncargo.HasValue ? (object)IdEncargo.Value : DBNull.Value;
 
             // El SP devuelve IdVenta, Total, Descuento, Entrega y SaldoGenerado.
             // Se leen todos: el saldo generado es lo que hay que informarle

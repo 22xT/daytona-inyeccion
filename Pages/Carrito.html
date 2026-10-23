@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Carrito de compras - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    /* =================================================================
+       CARRITO DE COMPRAS
+       Segundo paso de la reposicion: lo que hay que pedir ya esta
+       decidido; aca solo se elige a quien y se confirma.
+       ================================================================= */
+    .car-main { padding: 16px 24px 28px !important; max-width: none; width: 100%; }
+    .car-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .car-top h1 { font-size: 1.3rem; font-weight: 800; color: var(--navy); margin: 0; }
+    .car-top p { margin: 3px 0 0; color: #5f6b7a; font-size: 0.9rem; }
+    .car-links { display: flex; gap: 8px; }
+    .btn-a { height: 36px; border-radius: 8px; padding: 0 12px; font-size: 0.84rem; font-weight: 700; white-space: nowrap;
+             display: inline-flex; align-items: center; gap: 6px; border: 1px solid #c9d3e0; background: #fff; color: var(--navy); text-decoration: none; }
+    .btn-a:hover { border-color: var(--nav-accent); background: #f0f6ff; color: var(--navy); }
+    .btn-a:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+
+    .car-cuerpo { display: flex; gap: 16px; align-items: flex-start; }
+    .car-lista { flex: 1 1 auto; min-width: 0; background: #fff; border: 1px solid #dde3ea; border-radius: 12px; }
+    .car-panel { flex: 0 0 340px; position: sticky; top: 12px; background: #fff; border: 1px solid #dde3ea; border-radius: 12px; }
+
+    .fila, .cab { display: grid; grid-template-columns: minmax(0, 1fr) 150px 120px 260px 120px 36px; column-gap: 16px; align-items: center; padding: 11px 18px; }
+    .cab { font-size: 0.76rem; font-weight: 600; color: #6b7685; background: #fafbfc; border-bottom: 1px solid #edf0f4; border-radius: 12px 12px 0 0; }
+    .fila { border-bottom: 1px solid #f0f2f5; }
+    .fila:last-child { border-bottom: none; }
+    .fila:hover { background: #f8fafd; }
+    .fila.sin-prov { box-shadow: inset 3px 0 0 #b45309; }
+    .der { text-align: right; }
+
+    .desc { font-size: 0.92rem; font-weight: 600; color: var(--text); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .meta { font-size: 0.78rem; color: #6b7685; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .car-marca { display: inline-block; background: var(--navy); color: #fff; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.4px; border-radius: 5px; padding: 1px 7px; margin-right: 7px; vertical-align: 2px; }
+    .fab { font-family: Consolas, 'Courier New', monospace; font-weight: 700; color: var(--text); font-size: 0.82rem; }
+    .sit { font-size: 0.8rem; color: #4a5568; line-height: 1.35; }
+    .sit b { color: var(--text); }
+    .enc { display: inline-block; font-size: 0.72rem; font-weight: 700; border-radius: 5px; padding: 1px 6px; background: #fff3d1; color: #7a5600; margin-top: 2px; }
+    .origen { font-size: 0.72rem; color: #8a94a3; }
+
+    .cant { display: inline-flex; }
+    .cant button { width: 28px; height: 32px; border: 1px solid #c9d3e0; background: #fff; color: #374151; font-weight: 700; }
+    .cant button:first-child { border-radius: 7px 0 0 7px; } .cant button:last-child { border-radius: 0 7px 7px 0; }
+    .cant input { width: 48px; height: 32px; border: 1px solid #c9d3e0; border-left: none; border-right: none; text-align: center; font-weight: 700; }
+    .prov select { font-size: 0.84rem; }
+    .prov .nota { font-size: 0.72rem; margin-top: 3px; }
+    .prov .nota.mejor { color: #146c43; font-weight: 700; }
+    .prov .nota.caro { color: #a8281e; }
+    .prov .nota.falta { color: #b45309; font-weight: 700; }
+    .sub { font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+    .sacar { width: 32px; height: 32px; border: 1px solid transparent; background: none; border-radius: 7px; color: #8a94a3; }
+    .sacar:hover { border-color: #f1b8b4; background: #fdeceb; color: #a8281e; }
+
+    .panel-h { padding: 14px 18px 8px; font-weight: 700; color: var(--navy); }
+    .panel-h small { display: block; font-weight: 400; color: #6b7685; font-size: 0.8rem; }
+    .grupo { padding: 8px 18px; border-top: 1px solid #f0f2f5; display: flex; justify-content: space-between; gap: 10px; font-size: 0.88rem; }
+    .grupo .n { color: #6b7685; font-size: 0.78rem; }
+    .grupo b { font-variant-numeric: tabular-nums; }
+    .total { padding: 14px 18px; border-top: 1px solid #dde3ea; display: flex; justify-content: space-between; align-items: baseline; }
+    .total span { color: #4a5568; font-weight: 600; }
+    .total b { font-size: 1.4rem; color: var(--navy); font-variant-numeric: tabular-nums; }
+    .confirmar { margin: 0 18px 10px; width: calc(100% - 36px); height: 46px; border: none; border-radius: 10px; background: var(--navy); color: #fff; font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .confirmar:hover:not(:disabled) { background: #0b2c55; }
+    .confirmar:disabled { opacity: 0.45; cursor: not-allowed; }
+    .panel-nota { padding: 0 18px 14px; font-size: 0.78rem; color: #6b7685; }
+
+    .vacio { text-align: center; padding: 60px 20px; color: #5f6b7a; }
+    .vacio i { font-size: 2.2rem; color: #b8c6d9; display: block; margin-bottom: 10px; }
+    .vacio h5 { color: var(--navy); font-weight: 700; }
+
+    @media (max-width: 1200px) {
+      .car-cuerpo { flex-direction: column; }
+      .car-panel { position: static; width: 100%; flex-basis: auto; }
+    }
+    @media (max-width: 860px) {
+      .car-main { padding: 12px !important; }
+      .cab { display: none; }
+      .fila { grid-template-columns: 1fr auto; row-gap: 8px; }
+      .fila > :first-child { grid-column: 1 / -1; }
+      .fila > .prov { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+
+<body data-page="carrito">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content car-main">
+    <div class="car-top">
+      <div>
+        <h1>Carrito de compras</h1>
+        <p>Todo lo que hay que pedir. Elegí el proveedor de cada repuesto y confirmá: se suma al pedido en armado de cada uno.</p>
+      </div>
+      <div class="car-links">
+        <a class="btn-a" href="PedidoNuevo.html"><i class="bi bi-stars"></i> Reposición sugerida</a>
+        <a class="btn-a" href="Buscador.html"><i class="bi bi-search"></i> Buscador</a>
+      </div>
+    </div>
+
+    <div class="car-cuerpo">
+      <section class="car-lista" aria-label="Repuestos en el carrito">
+        <div class="cab"><span>Repuesto</span><span>Situación</span><span>Cantidad</span><span>Proveedor</span><span class="der">Subtotal</span><span></span></div>
+        <div id="lista"><div class="vacio"><span class="spinner-border spinner-border-sm"></span> Cargando…</div></div>
+      </section>
+
+      <aside class="car-panel" aria-label="Resumen">
+        <div class="panel-h" id="panelTitulo">Resumen<small>Un pedido por proveedor</small></div>
+        <div id="grupos"></div>
+        <div class="total"><span>Total estimado</span><b id="total">$0,00</b></div>
+        <button type="button" class="confirmar" id="btnConfirmar" disabled><i class="bi bi-cart-check"></i> Confirmar</button>
+        <div class="panel-nota" id="panelNota">Los importes son costo.</div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+    var api = API_BASE;
+    var items = [];       // { IdRepuesto, Cantidad, IdProveedorElegido, ..., Opciones:[{IdProveedor, Proveedor, Precio, CondicionIva}] }
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function leerError(r) {
+      return r.text().then(function (t) { try { var j = JSON.parse(t); return j.Message || j.message || t; } catch (e) { return t; } });
+    }
+    function marcaDe(it) {
+      if (it.MarcaFabricante) return it.MarcaFabricante;
+      var m = /"([^"]+)"/.exec(String(it.Rubro || ""));
+      return m ? m[1].trim() : "";
+    }
+    function rubroSinMarca(r) { return String(r || "").replace(/\s*"[^"]*"\s*/g, " ").trim(); }
+
+    // Opcion de compra que se usa: la elegida, o la mas barata
+    function opcionDe(it) {
+      if (!it.Opciones.length) return null;
+      if (it.IdProveedorElegido) {
+        var e = it.Opciones.find(function (o) { return o.IdProveedor === it.IdProveedorElegido; });
+        if (e) return e;
+      }
+      return it.Opciones[0];
+    }
+
+    function cargar() {
+      fetchAuth(api + "Compras/Carrito")
+        .then(function (r) { if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); }); return r.json(); })
+        .then(function (d) {
+          var ops = {};
+          (d.Opciones || []).forEach(function (o) {
+            (ops[o.IdRepuesto] = ops[o.IdRepuesto] || []).push({ IdProveedor: o.IdProveedor, Proveedor: o.Proveedor, Precio: Number(o.Precio), CondicionIva: o.CondicionIva });
+          });
+          items = (d.Items || []).map(function (it) { it.Opciones = ops[it.IdRepuesto] || []; return it; });
+          pintar();
+        })
+        .catch(function (e) {
+          document.getElementById("lista").innerHTML = '<div class="vacio"><i class="bi bi-exclamation-triangle"></i><h5>No se pudo cargar el carrito</h5><p>' + esc(e.message) + '</p></div>';
+        });
+    }
+
+    function pintar() {
+      var cont = document.getElementById("lista");
+      if (!items.length) {
+        cont.innerHTML = '<div class="vacio"><i class="bi bi-cart"></i><h5>El carrito está vacío</h5>' +
+          '<p>Sumá repuestos desde la <a href="PedidoNuevo.html">reposición sugerida</a> o desde el <a href="Buscador.html">Buscador</a>.</p></div>';
+      } else {
+        cont.innerHTML = items.map(fila).join("");
+      }
+      pintarResumen();
+    }
+
+    function fila(it, i) {
+      var op = opcionDe(it), mejor = it.Opciones[0];
+      var marca = marcaDe(it);
+      var nota = !op ? '<div class="nota falta"><i class="bi bi-exclamation-triangle"></i> Ningún proveedor tiene precio</div>'
+        : (op === mejor ? (it.Opciones.length > 1 ? '<div class="nota mejor">el más barato</div>' : '')
+        : '<div class="nota caro">+' + formatearMoneda(op.Precio - mejor.Precio) + ' c/u vs. ' + esc(mejor.Proveedor) + '</div>');
+      return '<div class="fila' + (op ? '' : ' sin-prov') + '">' +
+        '<div><div class="desc" title="' + esc(it.Descripcion) + '">' + (marca ? '<span class="car-marca">' + esc(marca) + '</span>' : '') + esc(it.Descripcion) + '</div>' +
+          '<div class="meta">' + (it.CodigoFabricante ? '<span class="fab">' + esc(it.CodigoFabricante) + '</span>' : '') +
+            '<span>tu cód. ' + esc(it.Codigo || "-") + '</span>' +
+            (it.Rubro ? '<span>' + esc(rubroSinMarca(it.Rubro)) + '</span>' : '') +
+            '<span class="origen">· desde ' + (it.Origen === "BUSCADOR" ? 'el Buscador' : 'la reposición') + '</span></div></div>' +
+        '<div class="sit">Tenés <b>' + it.Stock + '</b>' + (it.Minimo > 0 ? ' de <b>' + it.Minimo + '</b>' : '') +
+          (it.Encargado > 0 ? '<br><span class="enc">' + it.Encargado + ' encargado' + (it.Encargado === 1 ? '' : 's') + '</span>' : '') + '</div>' +
+        '<div><div class="cant">' +
+          '<button type="button" aria-label="Menos" onclick="cambiarCant(' + i + ', -1)">−</button>' +
+          '<input type="number" min="1" max="500" value="' + it.Cantidad + '" aria-label="Cantidad" onchange="ponerCant(' + i + ', this.value)">' +
+          '<button type="button" aria-label="Más" onclick="cambiarCant(' + i + ', 1)">+</button></div></div>' +
+        '<div class="prov">' + (it.Opciones.length
+          ? '<select class="form-select form-select-sm" aria-label="Proveedor" onchange="elegirProv(' + i + ', this.value)">' +
+              it.Opciones.map(function (o, k) {
+                return '<option value="' + o.IdProveedor + '"' + (op && o.IdProveedor === op.IdProveedor ? ' selected' : '') + '>' +
+                  esc(o.Proveedor) + ' — ' + formatearMoneda(o.Precio) + (k === 0 && it.Opciones.length > 1 ? ' (más barato)' : '') +
+                  (o.CondicionIva && o.CondicionIva !== "Responsable Inscripto" ? ' · sin IVA' : '') + '</option>';
+              }).join("") + '</select>'
+          : '') + nota + '</div>' +
+        '<div class="der sub">' + (op ? formatearMoneda(op.Precio * it.Cantidad) : '—') + '</div>' +
+        '<div><button type="button" class="sacar" title="Sacar del carrito" aria-label="Sacar del carrito" onclick="sacar(' + i + ')"><i class="bi bi-x-lg"></i></button></div>' +
+      '</div>';
+    }
+
+    function pintarResumen() {
+      var g = {}, total = 0, faltan = 0;
+      items.forEach(function (it) {
+        var op = opcionDe(it);
+        if (!op) { faltan++; return; }
+        var k = op.IdProveedor;
+        g[k] = g[k] || { nombre: op.Proveedor, n: 0, sub: 0 };
+        g[k].n++; g[k].sub += op.Precio * it.Cantidad; total += op.Precio * it.Cantidad;
+      });
+      var lista = Object.keys(g).map(function (k) { return g[k]; }).sort(function (a, b) { return b.sub - a.sub; });
+      document.getElementById("panelTitulo").innerHTML = (items.length ? items.length + ' repuesto' + (items.length === 1 ? '' : 's') + ' para ' + lista.length + ' proveedor' + (lista.length === 1 ? '' : 'es') : 'Resumen') +
+        '<small>Un pedido por proveedor</small>';
+      document.getElementById("grupos").innerHTML = lista.map(function (x) {
+        return '<div class="grupo"><div><b>' + esc(x.nombre) + '</b><div class="n">' + x.n + ' repuesto' + (x.n === 1 ? '' : 's') + '</div></div><b>' + formatearMoneda(x.sub) + '</b></div>';
+      }).join("");
+      document.getElementById("total").textContent = formatearMoneda(total);
+      var btn = document.getElementById("btnConfirmar");
+      btn.disabled = !items.length || faltan > 0;
+      btn.innerHTML = '<i class="bi bi-cart-check"></i> ' + (lista.length ? 'Sumar a ' + lista.length + ' pedido' + (lista.length === 1 ? '' : 's') + ' en armado' : 'Confirmar');
+      document.getElementById("panelNota").textContent = faltan
+        ? faltan + ' repuesto' + (faltan === 1 ? ' no tiene' : 's no tienen') + ' proveedor con precio: sacalo' + (faltan === 1 ? '' : 's') + ' para poder confirmar.'
+        : 'Los importes son costo. Después se cargan en la web de cada proveedor desde Listado de pedidos.';
+    }
+
+    /* ---------- Cambios: se guardan enseguida ---------- */
+    var esperas = {};
+    function guardar(i) {
+      var it = items[i]; if (!it) return;
+      clearTimeout(esperas[it.IdRepuesto]);
+      esperas[it.IdRepuesto] = setTimeout(function () {
+        fetchAuth(api + "Compras/Carrito/" + it.IdRepuesto, {
+          method: "PUT", body: JSON.stringify({ Cantidad: it.Cantidad, IdProveedor: it.IdProveedorElegido || null })
+        }).then(function (r) { if (!r.ok) return leerError(r).then(function (m) { Swal.fire("No se guardó el cambio", m, "error"); cargar(); }); });
+      }, 350);
+    }
+    function ponerCant(i, v) {
+      var n = parseInt(v, 10);
+      if (!(n >= 1)) n = 1; if (n > 500) n = 500;
+      items[i].Cantidad = n; pintar(); guardar(i);
+    }
+    function cambiarCant(i, d) { ponerCant(i, items[i].Cantidad + d); }
+    function elegirProv(i, idProv) { items[i].IdProveedorElegido = parseInt(idProv, 10); pintar(); guardar(i); }
+    function sacar(i) {
+      var it = items[i];
+      fetchAuth(api + "Compras/Carrito/" + it.IdRepuesto, { method: "PUT", body: JSON.stringify({ Cantidad: 0 }) })
+        .then(function (r) {
+          if (!r.ok) return leerError(r).then(function (m) { Swal.fire("No se pudo sacar", m, "error"); });
+          items.splice(i, 1); pintar();
+        });
+    }
+
+    /* ---------- Confirmar ---------- */
+    function confirmar() {
+      Swal.fire({
+        title: "¿Confirmar el carrito?",
+        html: '<div style="font-size:0.92rem;">Se suma todo al pedido en armado de cada proveedor y el carrito queda vacío.</div>',
+        showCancelButton: true, confirmButtonText: "Confirmar", cancelButtonText: "Revisar", confirmButtonColor: "#0d3b78",
+        preConfirm: function () {
+          return fetchAuth(api + "Compras/Carrito/Confirmar", { method: "POST" })
+            .then(function (r) { if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); }); return r.json(); })
+            .catch(function (e) { Swal.showValidationMessage(e.message || "No se pudo confirmar."); return false; });
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value) return;
+        var filas = res.value || [];
+        Swal.fire({
+          icon: "success",
+          title: "Sumado a " + filas.length + " pedido" + (filas.length === 1 ? "" : "s") + " en armado",
+          html: '<div style="text-align:left;font-size:0.9rem;">' + filas.map(function (f) {
+            return '<div>Pedido N° ' + f.IdPedido + ' — ' + esc(f.Proveedor) + ' — ' + formatearMoneda(f.Total) + '</div>';
+          }).join("") + '<div class="text-muted mt-2" style="font-size:0.8rem;">Cargalos en la web de cada proveedor y marcalos como enviados.</div></div>',
+          confirmButtonText: "Ir a pedidos", showCancelButton: true, cancelButtonText: "Quedarme acá"
+        }).then(function (r2) { if (r2.isConfirmed) location.href = "ListadoPedido.html"; else cargar(); });
+      });
+    }
+
+    window.onload = function () {
+      document.getElementById("btnConfirmar").addEventListener("click", confirmar);
+      cargar();
+    };
+  </script>
+</body>
+</html>

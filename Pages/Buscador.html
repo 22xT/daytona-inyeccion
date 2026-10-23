@@ -10,134 +10,173 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="vincular.js"></script>
   <style>
-    /* ================= LAYOUT =================
-       Una sola columna: Daytona primero, ocupando solo lo que necesita;
-       proveedores debajo. Con 2 propios y 15 externos no se desperdicia
-       media pantalla en cada lado. */
-    .busc-main { padding: 14px 20px 24px !important; max-width: 1400px; }
+    /* =================================================================
+       BUSCADOR — herramienta de mostrador
+       Jerarquia: 1) que escribo  2) lo tengo o no  3) cuanto sale
+       4) que hago. Un solo color fuerte (azul Daytona) para la accion
+       principal; verde/ambar/rojo solo para el estado del stock.
+       ================================================================= */
+    .busc-main { padding: 0 24px 28px !important; max-width: none; width: 100%; }
 
-    .codigo { font-family: 'Courier New', monospace; font-weight: 700; color: #2c3e50; letter-spacing: 0.4px; font-size: 0.82rem; }
-
-    /* ================= BUSCADOR ================= */
-    .busc-hero { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px 12px; margin-bottom: 14px; }
-    .busc-fila { display: flex; gap: 10px; align-items: stretch; }
-    .busc-input { position: relative; flex: 1; }
-    .busc-input i.lupa { position: absolute; left: 17px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.25rem; pointer-events: none; }
-    .busc-input input {
-      width: 100%; height: 54px; font-size: 1.12rem; padding: 0 44px 0 50px;
-      border: 2px solid var(--border); border-radius: 11px; background: var(--bg-soft);
-      transition: border-color 0.12s, background 0.12s;
+    /* ---------- Barra de busqueda: fija arriba, una sola linea ---------- */
+    .busc-barra {
+      position: sticky; top: 0; z-index: 15; background: var(--bg, #f5f7fa);
+      padding: 14px 0 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
     }
-    .busc-input input:focus { outline: none; border-color: var(--nav-accent); background: #fff; box-shadow: 0 0 0 3px rgba(18,102,209,0.10); }
-    .busc-limpiar { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: none; color: var(--text-muted); font-size: 1.15rem; display: none; padding: 4px; }
+    .busc-input { position: relative; flex: 1 1 420px; min-width: 260px; }
+    .busc-input .lupa { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem; pointer-events: none; }
+    .busc-input input {
+      width: 100%; height: 48px; font-size: 1.05rem; padding: 0 92px 0 44px;
+      border: 1px solid #c9d3e0; border-radius: 10px; background: #fff; color: var(--text);
+    }
+    .busc-input input::placeholder { color: #8a94a3; }
+    .busc-input input:focus { outline: none; border-color: var(--nav-accent); box-shadow: 0 0 0 3px rgba(18,102,209,0.15); }
+    .busc-limpiar { position: absolute; right: 52px; top: 50%; transform: translateY(-50%); border: none; background: none; color: #8a94a3; font-size: 1.05rem; display: none; padding: 4px; line-height: 1; }
     .busc-limpiar.visible { display: block; }
+    .busc-limpiar:hover { color: var(--text); }
     .btn-buscar {
-      min-width: 118px; border: none; border-radius: 11px; background: var(--navy); color: #fff;
-      font-weight: 700; font-size: 0.95rem; letter-spacing: 0.3px; display: flex; align-items: center; justify-content: center; gap: 7px;
+      position: absolute; right: 6px; top: 6px; bottom: 6px; width: 40px; border: none; border-radius: 7px;
+      background: var(--navy); color: #fff; font-size: 1rem; display: flex; align-items: center; justify-content: center;
     }
     .btn-buscar:hover { background: #0b2c55; }
-    .busc-pie { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
-    .busc-ejemplo { font-size: 0.78rem; color: var(--text-muted); }
-    .busc-ejemplo kbd { font-size: 0.7rem; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; }
+    .btn-buscar:focus-visible, .busc-limpiar:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
 
-    /* Chips de fuente: escalables. Los proveedores que no entran van al "+ N" */
-    .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .chip {
-      border: 1px solid var(--border); background: #fff; color: var(--text-muted);
-      border-radius: 20px; padding: 5px 13px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
-      display: inline-flex; align-items: center; gap: 6px; transition: 0.12s; white-space: nowrap;
+    /* Fuente: control segmentado, no fichas sueltas */
+    .fuentes { display: inline-flex; background: #fff; border: 1px solid #c9d3e0; border-radius: 10px; padding: 3px; gap: 2px; height: 48px; align-items: center; flex-wrap: nowrap; }
+    .fuente {
+      border: none; background: none; color: #4a5568; font-size: 0.84rem; font-weight: 600;
+      padding: 0 12px; height: 40px; border-radius: 7px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
     }
-    .chip:hover { border-color: #b9d3f2; color: var(--navy); }
-    .chip.activo { background: var(--navy); border-color: var(--navy); color: #fff; }
-    .chip.activo.propio { background: #157347; border-color: #157347; }
-    .chip .punto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+    .fuente:hover { background: #f0f4f9; color: var(--navy); }
+    .fuente.activo { background: var(--navy); color: #fff; }
+    .fuente:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 1px; }
+    .fuente .punto { width: 7px; height: 7px; border-radius: 50%; background: #157347; }
+    .fuente.activo .punto { background: #8fd4a8; }
     .chip-mas { position: relative; }
     .chip-menu {
-      position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 200px; display: none;
-      background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.10); padding: 6px;
+      position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; min-width: 210px; display: none;
+      background: #fff; border: 1px solid #c9d3e0; border-radius: 10px; box-shadow: 0 10px 28px rgba(16,42,80,0.14); padding: 6px;
     }
     .chip-menu.abierto { display: block; }
-    .chip-menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 7px 10px; border-radius: 6px; font-size: 0.85rem; color: var(--text); }
+    .chip-menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 8px 10px; border-radius: 6px; font-size: 0.86rem; color: var(--text); }
     .chip-menu button:hover, .chip-menu button.activo { background: var(--nav-accent-soft); color: var(--nav-accent-dark); }
 
-    /* ================= SECCIONES ================= */
-    .seccion { background: #fff; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
-    .seccion-head { display: flex; align-items: center; gap: 10px; padding: 11px 16px; font-weight: 700; font-size: 0.86rem; letter-spacing: 0.4px; text-transform: uppercase; }
-    .seccion-head .cont { margin-left: auto; font-weight: 600; font-size: 0.78rem; text-transform: none; letter-spacing: 0; opacity: 0.85; }
-    .seccion.propio .seccion-head { background: #eaf6ee; color: #146c43; border-bottom: 1px solid #cfe9d8; }
-    .seccion.externo .seccion-head { background: #f3f6fb; color: var(--navy); border-bottom: 1px solid var(--border); }
+    /* ---------- Resumen: la respuesta en una linea ---------- */
+    .resumen { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 0.9rem; color: #4a5568; padding: 2px 2px 12px; min-height: 30px; }
+    .resumen strong { color: var(--text); }
+    .res-dato { display: inline; }
+    .res-dato .ind { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+    .ind.si { background: #198754; } .ind.no { background: #c0392b; } .ind.prov { background: var(--nav-accent); }
 
-    /* Filas en grilla: se leen como tabla, se ven como lista moderna */
-    .fila, .cabecera { display: grid; align-items: center; gap: 14px; padding: 9px 16px; }
-    .propio .fila, .propio .cabecera { grid-template-columns: minmax(0, 1fr) 150px 120px 140px 96px; }
-    .externo .fila, .externo .cabecera { grid-template-columns: minmax(0, 1fr) 150px 120px 120px 116px; }
-    .cabecera { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding-top: 7px; padding-bottom: 7px; border-bottom: 1px solid var(--border); background: #fcfcfd; }
-    .fila { border-bottom: 1px solid #f0f1f3; transition: background 0.1s; }
+    /* ---------- Bloques ---------- */
+    .bloque { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; margin-bottom: 16px; }
+    .bloque-head { display: flex; align-items: baseline; gap: 10px; padding: 13px 18px 9px; }
+    .bloque-head h2 { font-size: 1rem; font-weight: 700; color: var(--navy); margin: 0; }
+    .bloque-head .cont { font-size: 0.82rem; color: var(--text-muted); }
+
+    .fila, .cabecera { display: grid; align-items: center; column-gap: 18px; padding: 11px 18px; }
+    .propio .fila, .propio .cabecera { grid-template-columns: minmax(0, 1fr) 128px 200px 236px; }
+    .externo .fila, .externo .cabecera { grid-template-columns: minmax(0, 1fr) 150px 200px 236px; }
+    .cabecera { padding-top: 6px; padding-bottom: 6px; font-size: 0.74rem; font-weight: 600; color: #6b7685; border-top: 1px solid #edf0f4; border-bottom: 1px solid #edf0f4; background: #fafbfc; }
+    .fila { border-bottom: 1px solid #f0f2f5; }
     .fila:last-child { border-bottom: none; }
-    .fila:hover { background: #fafbfd; }
+    .fila:hover { background: #f8fafd; }
     .fila:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
     .der { text-align: right; }
 
-    .prod-desc { font-size: 0.9rem; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .prod-meta { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .marca { font-weight: 700; color: var(--navy); font-size: 0.8rem; }
+    .prod-desc { font-size: 0.93rem; font-weight: 600; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .prod-meta { font-size: 0.8rem; color: #5f6b7a; margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .marca { display: inline-block; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.3px; color: var(--navy); background: #e8eef7; border-radius: 5px; padding: 1px 7px; }
+    .codfab { font-family: Consolas, 'Courier New', monospace; font-weight: 700; color: var(--text); font-size: 0.85rem; }
+    .sec { color: #8a94a3; }
 
-    .stock { display: inline-flex; align-items: center; gap: 6px; border-radius: 20px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700; }
-    .stock .punto { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-    .stock.ok { background: #e3f4e9; color: #146c43; }
-    .stock.critico { background: #fff4d6; color: #8a6300; }
-    .stock.sin { background: #fdecee; color: #b02a37; }
+    .stock { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 3px 9px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+    .stock .punto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .stock.ok { background: #e6f4ec; color: #146c43; }
+    .stock.critico { background: #fff3d1; color: #7a5600; }
+    .stock.sin { background: #fdeceb; color: #a8281e; }
 
-    .precio { font-size: 1.02rem; font-weight: 800; color: var(--navy); }
-    .precio-sub { font-size: 0.7rem; color: var(--text-muted); }
-    .costo { font-size: 0.98rem; font-weight: 800; color: var(--navy); }
+    .precio { font-size: 1.12rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+    .precio-sub { font-size: 0.76rem; color: #6b7685; font-variant-numeric: tabular-nums; }
+    .prov { font-weight: 700; font-size: 0.88rem; color: var(--text); }
 
-    .prov { font-weight: 700; font-size: 0.84rem; color: var(--navy); }
-    .badge-rel { display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; font-weight: 700; border-radius: 7px; padding: 2px 7px; white-space: nowrap; }
-    .rel-mejor { background: #fff4d6; color: #8a6300; }
-    .rel-comp { background: var(--nav-accent-soft); color: var(--nav-accent-dark); }
-    .rel-sin { background: var(--bg); color: var(--text-muted); }
-    .rel-tengo { background: #e3f4e9; color: #146c43; }
-
-    .btn-accion {
-      border: 1px solid var(--border); background: #fff; color: var(--nav-accent-dark);
-      border-radius: 8px; padding: 5px 10px; font-size: 0.76rem; font-weight: 700; white-space: nowrap;
+    /* Acciones: una principal, el resto discretas */
+    .acciones { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+    .btn-a {
+      height: 34px; border-radius: 8px; padding: 0 12px; font-size: 0.82rem; font-weight: 700; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px; border: 1px solid #c9d3e0; background: #fff; color: var(--navy);
     }
-    .btn-accion:hover { border-color: var(--nav-accent); background: var(--nav-accent-soft); }
+    .btn-a:hover { border-color: var(--nav-accent); background: #f0f6ff; }
+    .btn-a.prim { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .btn-a.prim:hover { background: #0b2c55; }
+    .btn-a.icono { width: 34px; padding: 0; justify-content: center; color: #5f6b7a; }
+    .btn-a:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
 
-    /* Grupo: el mismo repuesto confirmado en varios proveedores. Solo se
-       agrupa lo que tiene vinculo; lo demas va suelto. */
-    .grupo { border-bottom: 1px solid var(--border); }
-    .grupo-head { padding: 8px 16px 2px; font-size: 0.72rem; font-weight: 700; color: var(--nav-accent-dark); display: flex; align-items: center; gap: 6px; }
-    .grupo .fila { border-bottom: none; padding-top: 6px; padding-bottom: 6px; }
-    .grupo .fila:first-of-type { padding-top: 4px; }
-    .grupo .fila .prod-desc { font-size: 0.84rem; color: var(--text-muted); }
-    .grupo .fila.mejor { background: #fffbef; }
+    /* Grupo: el mismo articulo en varias listas */
+    .grupo { border-bottom: 1px solid #e3e8ef; }
+    .grupo:last-child { border-bottom: none; }
+    .grupo-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 18px 4px; font-size: 0.82rem; color: #4a5568; }
+    .grupo-head .tag { font-weight: 700; color: var(--navy); }
+    .grupo-head .tag.duda { color: #7a5600; }
+    .grupo-head .btn-a { height: 28px; font-size: 0.76rem; margin-left: auto; }
+    /* Proveedores de un repuesto del local: debajo de su fila, no repetidos abajo */
+    .sub-prov { padding: 0 18px 10px; margin-top: -4px; }
+    .sp-fila { display: grid; align-items: center; column-gap: 18px; grid-template-columns: minmax(0, 1fr) 128px 200px 236px;
+               padding: 5px 0 5px 14px; border-left: 2px solid #dde3ea; font-size: 0.82rem; }
+    .sp-fila:hover { background: #f8fafd; }
+    .sp-prov { color: #374151; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .sp-prov b { color: var(--text); }
+    .sp-costo { font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+    .sp-fila .btn-a { height: 28px; font-size: 0.76rem; padding: 0 10px; }
+    @media (max-width: 1100px) { .sp-fila { grid-template-columns: minmax(0, 1fr) 120px 150px 200px; } }
+    @media (max-width: 860px) { .sp-fila { grid-template-columns: 1fr auto; } .sp-fila > :nth-child(2) { display: none; } }
+    /* Modo cliente: el ojito oculta costos y comparaciones de costo */
+    body.sin-costos .dato-costo { display: none !important; }
+    .btn-ojo { height: 48px; width: 48px; border: 1px solid #c9d3e0; border-radius: 10px; background: #fff; color: #4a5568;
+               font-size: 1.15rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .btn-ojo:hover { border-color: var(--nav-accent); color: var(--navy); }
+    .btn-ojo:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+    body.sin-costos .btn-ojo { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .marca-fuerte { display: inline-block; background: var(--navy); color: #fff; font-weight: 800; font-size: 0.74rem;
+                    letter-spacing: 0.4px; border-radius: 5px; padding: 2px 8px; margin-right: 8px; vertical-align: 2px; }
+    .marca-aviso { color: #b45309; margin: 0 6px 0 -4px; font-size: 0.8rem; cursor: help; vertical-align: 1px; }
+    .pend-tag { font-size: 0.72rem; font-weight: 700; color: #7a5600; background: #fff3d1; border-radius: 5px; padding: 1px 6px; }
+    .grupo .fila { border-bottom: none; padding-top: 8px; padding-bottom: 8px; }
+    .grupo .fila.mejor { box-shadow: inset 3px 0 0 #198754; }
+    .mejor-tag { font-size: 0.72rem; font-weight: 700; color: #146c43; }
+    .dif { font-size: 0.74rem; color: #a8281e; font-weight: 600; }
 
-    /* Aviso compacto cuando Daytona no lo tiene: una linea, no una caja vacia */
-    .sin-propio { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px dashed var(--border); border-radius: 12px; padding: 10px 16px; margin-bottom: 14px; font-size: 0.88rem; color: var(--text-muted); }
-    .sin-propio i { color: #b02a37; font-size: 1.1rem; }
-
-    /* ================= ESTADOS ================= */
-    .estado { text-align: center; padding: 56px 20px; color: var(--text-muted); }
-    .estado i.grande { font-size: 2.6rem; color: #c8d3e3; display: block; margin-bottom: 12px; }
-    .estado h5 { color: var(--navy); font-weight: 700; margin-bottom: 6px; }
-    .estado p { margin: 0 auto; max-width: 460px; font-size: 0.9rem; }
-    .estado ul { list-style: none; padding: 0; margin: 14px auto 0; max-width: 340px; text-align: left; font-size: 0.86rem; }
+    /* ---------- Estados ---------- */
+    .estado { text-align: center; padding: 64px 20px; color: #5f6b7a; }
+    .estado .grande { font-size: 2.2rem; color: #b8c6d9; display: block; margin-bottom: 10px; }
+    .estado h5 { color: var(--navy); font-weight: 700; margin-bottom: 6px; font-size: 1.1rem; }
+    .estado p { margin: 0 auto; max-width: 520px; font-size: 0.92rem; }
+    .ejemplos { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+    .ejemplos button { border: 1px solid #c9d3e0; background: #fff; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; color: var(--navy); }
+    .ejemplos button:hover { border-color: var(--nav-accent); background: #f0f6ff; }
+    .atajos { margin-top: 18px; font-size: 0.8rem; color: #8a94a3; }
+    .atajos kbd { font-size: 0.72rem; background: #fff; color: #4a5568; border: 1px solid #c9d3e0; padding: 1px 6px; border-radius: 4px; }
+    .estado ul { list-style: none; padding: 0; margin: 14px auto 0; max-width: 360px; text-align: left; font-size: 0.88rem; }
     .estado ul li { padding: 3px 0; }
     .estado ul li::before { content: "›"; color: var(--nav-accent); font-weight: 700; margin-right: 8px; }
-    .cargando { padding: 22px; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+    .cargando { padding: 26px; text-align: center; color: #5f6b7a; font-size: 0.9rem; }
 
-    .nota { font-size: 0.74rem; color: var(--text-muted); padding: 8px 16px; background: #fcfcfd; border-top: 1px solid var(--border); }
-
-    @media (max-width: 991px) {
-      .busc-fila { flex-direction: column; }
-      .btn-buscar { height: 46px; }
-      .cabecera { display: none; }
-      .propio .fila, .externo .fila { grid-template-columns: 1fr auto; row-gap: 6px; }
-      .fila > .col-prod { grid-column: 1 / -1; }
+    @media (max-width: 1100px) {
+      .propio .fila, .propio .cabecera { grid-template-columns: minmax(0, 1fr) 120px 150px 200px; }
+      .externo .fila, .externo .cabecera { grid-template-columns: minmax(0, 1fr) 130px 150px 200px; }
+      .btn-a .txt-largo { display: none; }
     }
+    @media (max-width: 860px) {
+      .busc-main { padding: 0 12px 24px !important; }
+      .fuentes { width: 100%; overflow-x: auto; }
+      .cabecera { display: none; }
+      .propio .fila, .externo .fila { grid-template-columns: 1fr auto; row-gap: 8px; }
+      .fila > .col-prod { grid-column: 1 / -1; }
+      .fila > .acciones { grid-column: 1 / -1; justify-content: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 
@@ -146,74 +185,73 @@
 
   <div class="main-content busc-main">
 
-    <!-- ================= BUSCADOR ================= -->
-    <div class="busc-hero">
-      <form class="busc-fila" id="formBuscar" autocomplete="off">
-        <div class="busc-input">
-          <i class="bi bi-search lupa"></i>
-          <input type="text" id="buscar" placeholder="¿Qué repuesto está buscando el cliente?"
-                 aria-label="Buscar repuesto" autocomplete="off">
-          <button type="button" class="busc-limpiar" id="btnLimpiar" title="Limpiar (Esc)" aria-label="Limpiar búsqueda">
-            <i class="bi bi-x-circle-fill"></i>
-          </button>
-        </div>
-        <button type="submit" class="btn-buscar"><i class="bi bi-search"></i> Buscar</button>
+    <!-- Barra: buscar y elegir donde -->
+    <div class="busc-barra">
+      <form class="busc-input" id="formBuscar" autocomplete="off" role="search">
+        <i class="bi bi-search lupa" aria-hidden="true"></i>
+        <input type="text" id="buscar" placeholder="Descripción, código o vehículo"
+               aria-label="Buscar repuesto" autocomplete="off"
+               title="Enter busca · Esc limpia · / vuelve acá desde cualquier lado">
+        <button type="button" class="busc-limpiar" id="btnLimpiar" title="Limpiar (Esc)" aria-label="Limpiar búsqueda">
+          <i class="bi bi-x-circle-fill"></i>
+        </button>
+        <button type="submit" class="btn-buscar" aria-label="Buscar"><i class="bi bi-arrow-return-left"></i></button>
       </form>
-      <div class="busc-pie">
-        <div class="busc-ejemplo">
-          Ej.: <em>bomba de agua Suran</em>, <em>6PK1070</em>, <em>tensor Partner HDI</em>
-          · <kbd>Enter</kbd> buscar · <kbd>Esc</kbd> limpiar · <kbd>/</kbd> ir al buscador
-        </div>
-        <div class="chips" id="botonesProveedor"></div>
-      </div>
+      <div class="fuentes" id="botonesProveedor" role="group" aria-label="Dónde buscar"></div>
+      <button type="button" class="btn-ojo" id="btnCostos" data-bs-toggle="tooltip" data-bs-placement="bottom"
+              title="Ocultar costos (para mostrarle la pantalla al cliente)" aria-pressed="false" aria-label="Ocultar costos">
+        <i class="bi bi-eye"></i>
+      </button>
     </div>
 
-    <!-- ================= RESULTADOS ================= -->
+    <!-- Respuesta en una linea: lo tengo o no, y desde cuanto se consigue -->
+    <div class="resumen" id="resumen" aria-live="polite"></div>
+
     <div id="zonaResultados">
       <div class="estado" id="estadoInicial">
-        <i class="bi bi-search grande"></i>
-        <h5>Buscá el repuesto que necesita el cliente</h5>
-        <p>Consultamos a la vez el stock de Daytona y los catálogos de los proveedores.</p>
+        <i class="bi bi-upc-scan grande" aria-hidden="true"></i>
+        <h5>¿Qué está buscando el cliente?</h5>
+        <p>Se busca a la vez en el stock del local y en las listas de los proveedores.</p>
+        <div class="ejemplos">
+          <button type="button" onclick="probar('bomba de agua suran')">bomba de agua suran</button>
+          <button type="button" onclick="probar('6PK1070')">6PK1070</button>
+          <button type="button" onclick="probar('tensor partner hdi')">tensor partner hdi</button>
+        </div>
+        <div class="atajos"><kbd>Enter</kbd> busca · <kbd>Esc</kbd> limpia · <kbd>/</kbd> vuelve al buscador</div>
       </div>
 
-      <!-- Daytona -->
-      <div class="seccion propio" id="secPropio" style="display:none;">
-        <div class="seccion-head">
-          <i class="bi bi-check-circle-fill"></i> Disponible en Daytona
+      <!-- En el local -->
+      <section class="bloque propio" id="secPropio" style="display:none;" aria-labelledby="tituloPropio">
+        <div class="bloque-head">
+          <h2 id="tituloPropio">En el local</h2>
           <span class="cont" id="contTengo"></span>
         </div>
         <div class="cabecera">
-          <span>Producto</span><span>Stock</span><span class="der">Precio</span><span>Proveedor más barato</span><span></span>
+          <span>Repuesto</span><span>Stock</span><span class="der">Precio</span><span></span>
         </div>
         <div id="listaTengo"></div>
-      </div>
+      </section>
 
-      <div class="sin-propio" id="sinPropio" style="display:none;">
-        <i class="bi bi-x-circle"></i>
-        <span><strong>No lo tenemos en el local.</strong> Abajo, quién lo ofrece.</span>
-      </div>
+      <!-- Se mantiene por compatibilidad: el aviso ahora va en el resumen -->
+      <div id="sinPropio" style="display:none;"></div>
 
-      <!-- Proveedores -->
-      <div class="seccion externo" id="secExterno" style="display:none;">
-        <div class="seccion-head">
-          <i class="bi bi-truck"></i> También lo podés conseguir
+      <!-- En proveedores -->
+      <section class="bloque externo" id="secExterno" style="display:none;" aria-labelledby="tituloExterno">
+        <div class="bloque-head">
+          <h2 id="tituloExterno">En proveedores</h2>
           <span class="cont" id="contConsigo"></span>
         </div>
         <div class="cabecera">
-          <span>Producto</span><span>Proveedor</span><span>Código</span><span class="der">Costo</span><span class="der">Venta sugerida</span>
+          <span>Artículo</span><span>Proveedor</span><span class="der">Precio de venta</span><span></span>
         </div>
         <div id="listaConsigo"></div>
-        <div class="nota">
-          <i class="bi bi-info-circle"></i>
-          Solo se agrupan y comparan los artículos confirmados como el mismo repuesto.
-          Los marcados <em>sin confirmar</em> pueden ser otra marca o calidad.
-        </div>
-      </div>
+      </section>
 
       <div class="estado" id="estadoVacio" style="display:none;"></div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="layout.js"></script>
   <script>
     if (!Auth.requireSession()) { /* redirect */ }
@@ -262,24 +300,24 @@
     }
 
     function pintarBotones() {
-      var html = '<button type="button" class="chip' + (provActivo === 0 ? ' activo' : '') +
-                 '" onclick="filtrarProv(0)">Todos</button>' +
-                 '<button type="button" class="chip propio' + (provActivo === -1 ? ' activo propio' : '') +
-                 '" onclick="filtrarProv(-1)"><span class="punto"></span>Daytona</button>';
+      var html = '<button type="button" class="fuente' + (provActivo === 0 ? ' activo' : '') +
+                 '" onclick="filtrarProv(0)" aria-pressed="' + (provActivo === 0) + '">Todos</button>' +
+                 '<button type="button" class="fuente' + (provActivo === -1 ? ' activo' : '') +
+                 '" onclick="filtrarProv(-1)" aria-pressed="' + (provActivo === -1) + '"><span class="punto"></span>Local</button>';
 
       var visibles = proveedores.slice(0, MAX_CHIPS);
       var resto = proveedores.slice(MAX_CHIPS);
 
       visibles.forEach(function (p) {
-        html += '<button type="button" class="chip' + (provActivo === p.Id ? ' activo' : '') +
-                '" onclick="filtrarProv(' + p.Id + ')">' + escapeHtml(p.RazonSocial) + '</button>';
+        html += '<button type="button" class="fuente' + (provActivo === p.Id ? ' activo' : '') +
+                '" onclick="filtrarProv(' + p.Id + ')" aria-pressed="' + (provActivo === p.Id) + '">' + escapeHtml(p.RazonSocial) + '</button>';
       });
 
       if (resto.length > 0) {
         var activoEnResto = resto.some(function (p) { return p.Id === provActivo; });
         html += '<div class="chip-mas">' +
-          '<button type="button" class="chip' + (activoEnResto ? ' activo' : '') + '" onclick="toggleMenuProv(event)">' +
-            '+ ' + resto.length + ' proveedor' + (resto.length === 1 ? '' : 'es') + ' <i class="bi bi-chevron-down"></i></button>' +
+          '<button type="button" class="fuente' + (activoEnResto ? ' activo' : '') + '" onclick="toggleMenuProv(event)" aria-haspopup="true">' +
+            '+' + resto.length + ' <i class="bi bi-chevron-down"></i></button>' +
           '<div class="chip-menu" id="menuProv">' +
             resto.map(function (p) {
               return '<button type="button" class="' + (provActivo === p.Id ? 'activo' : '') +
@@ -314,6 +352,7 @@
     function estadoInicial() {
       ["secPropio", "secExterno", "sinPropio", "estadoVacio"].forEach(function (id) { mostrar(id, false); });
       mostrar("estadoInicial", true);
+      document.getElementById("resumen").innerHTML = "";
       document.getElementById("contTengo").textContent = "";
       document.getElementById("contConsigo").textContent = "";
       ultimoTexto = "";
@@ -332,14 +371,17 @@
 
       // El filtro de proveedor viaja a la API; "solo Daytona" se resuelve aca
       var url = api + "Busqueda?texto=" + encodeURIComponent(texto) +
-                (provActivo > 0 ? "&idProveedor=" + provActivo : "");
+                (provActivo > 0 ? "&idProveedor=" + provActivo : "") +
+                // Abierto desde el reporte de busquedas: no cuenta como pedido de un cliente
+                (textoDesdeReporte && texto === textoDesdeReporte ? "&origen=REVISION" : "");
 
       mostrar("estadoInicial", false);
       mostrar("estadoVacio", false);
+      document.getElementById("resumen").innerHTML = "";
       mostrar("secPropio", true);
       document.getElementById("listaTengo").innerHTML =
-        '<div class="cargando"><span class="spinner-border spinner-border-sm"></span> Buscando en Daytona' +
-        (provActivo === -1 ? '' : ' y proveedores') + '…</div>';
+        '<div class="cargando"><span class="spinner-border spinner-border-sm"></span> Buscando en el local' +
+        (provActivo === -1 ? '' : ' y en proveedores') + '…</div>';
       mostrar("secExterno", false);
       mostrar("sinPropio", false);
 
@@ -363,246 +405,745 @@
     function pintarResultado(texto, propios, externos) {
       if (propios.length === 0 && externos.length === 0) {
         mostrar("secPropio", false); mostrar("secExterno", false); mostrar("sinPropio", false);
+        document.getElementById("resumen").innerHTML = "";
         var v = document.getElementById("estadoVacio");
         v.innerHTML = '<i class="bi bi-search grande"></i>' +
-          '<h5>No encontramos coincidencias para “' + escapeHtml(texto) + '”</h5>' +
+          '<h5>Sin resultados para “' + escapeHtml(texto) + '”</h5>' +
           '<ul><li>Probá con otra descripción o menos palabras</li>' +
-          '<li>Buscá por código del repuesto o del fabricante</li>' +
-          '<li>Quitá la marca o el modelo del vehículo</li>' +
-          (provActivo !== 0 ? '<li>Volvé a mirar en <a href="#" onclick="filtrarProv(0);return false;">todas las fuentes</a></li>' : '') +
+          '<li>Buscá por el código del repuesto o del fabricante</li>' +
+          '<li>Sacá la marca o el modelo del vehículo</li>' +
+          (provActivo !== 0 ? '<li>Volvé a buscar en <a href="#" onclick="filtrarProv(0);return false;">todos lados</a></li>' : '') +
           '</ul>';
         mostrar("estadoVacio", true);
         return;
       }
 
-      if (propios.length > 0) { mostrar("secPropio", true); mostrar("sinPropio", false); pintarPropios(propios); }
-      else { mostrar("secPropio", false); mostrar("sinPropio", provActivo !== -1); }
+      mostrar("sinPropio", false);
+      // Primero los proveedores: los que son de un repuesto del local van
+      // debajo de esa fila, y abajo quedan solo los que no tenes
+      // "En el local" es lo que el negocio trabaja (stock, minimo, ventas,
+      // compras o encargos). Una ficha armada solo al vincular listas no
+      // cuenta como del local: se ve abajo, en proveedores.
+      var locales = propios.filter(function (p) { return p.EnLocal !== 0 && p.EnLocal !== false; });
+      fichasActuales = propios.filter(function (p) { return p.EnLocal === 0 || p.EnLocal === false; });
+      propiosActuales = locales;
+      subProv = {};
+      var quedanAbajo = externos.length > 0 ? pintarExternos(externos) : 0;
+      mostrar("secExterno", quedanAbajo > 0);
 
-      if (externos.length > 0) { mostrar("secExterno", true); pintarExternos(externos); }
-      else mostrar("secExterno", false);
+      if (locales.length > 0) { mostrar("secPropio", true); pintarPropios(locales); }
+      else mostrar("secPropio", false);
+
+      pintarResumen(locales, externos);
+    }
+
+    // La respuesta a "¿lo tenés?" en una linea, antes de cualquier tabla
+    function pintarResumen(propios, externos) {
+      var html = "";
+      var conStock = propios.filter(function (r) { return r.Stock > 0; });
+      if (provActivo !== -1 || propios.length) {
+        if (conStock.length)
+          html += '<span class="res-dato"><span class="ind si"></span><strong>Hay en el local</strong>' +
+                  (conStock.length > 1 ? ' (' + conStock.length + ' opciones)' : '') + '</span>';
+        else if (propios.length)
+          html += '<span class="res-dato"><span class="ind no"></span><strong>Sin stock en el local</strong></span>';
+        else
+          html += '<span class="res-dato"><span class="ind no"></span><strong>No está en el local</strong></span>';
+      }
+      if (externos.length) {
+        var minimo = Math.min.apply(null, externos.map(function (r) { return Number(r.PrecioSugerido) || Infinity; }));
+        var provs = {}; externos.forEach(function (r) { provs[r.Proveedor] = 1; });
+        var n = Object.keys(provs).length;
+        html += '<span class="res-dato"><span class="ind prov"></span>Se consigue en <strong>' + n + ' proveedor' + (n === 1 ? '' : 'es') + '</strong>' +
+                (isFinite(minimo) ? ', desde <strong>' + formatearMoneda(minimo) + '</strong> de venta' : '') + '</span>';
+      }
+      document.getElementById("resumen").innerHTML = html;
     }
 
     function pintarPropios(lista) {
+      propiosActuales = lista;
       var cont = document.getElementById("listaTengo");
       var conStock = lista.filter(function (r) { return r.Stock > 0; }).length;
       document.getElementById("contTengo").textContent =
-        conStock + " con stock · " + lista.length + " resultado" + (lista.length === 1 ? "" : "s");
+        lista.length + " resultado" + (lista.length === 1 ? "" : "s") + ", " + conStock + " con stock";
 
       var html = "";
       lista.forEach(function (r) {
-        var stock = r.EstadoStock === "SinStock"
+        var sinStock = r.EstadoStock === "SinStock";
+        var stock = sinStock
           ? '<span class="stock sin"><span class="punto"></span>Sin stock</span>'
           : r.EstadoStock === "Critico"
             ? '<span class="stock critico"><span class="punto"></span>Quedan ' + r.Stock + '</span>'
-            : '<span class="stock ok"><span class="punto"></span>En stock · ' + r.Stock + '</span>';
+            : '<span class="stock ok"><span class="punto"></span>' + r.Stock + ' en stock</span>';
+
+        // Sin stock, lo natural es encargarlo; con stock, pedir es reponer (secundario)
+        var acciones = "";
+        if (r.MejorCosto) {
+          acciones += sinStock
+            ? '<button class="btn-a prim" onclick="encargarPropio(' + r.Id + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i>Encargar</button>' +
+              '<button class="btn-a" onclick="pedirPropio(' + r.Id + ')" title="Sumar al carrito de compras"><i class="bi bi-cart-plus"></i><span class="txt-largo">Pedir</span></button>'
+            : '<button class="btn-a" onclick="pedirPropio(' + r.Id + ')" title="Sumar al carrito de compras"><i class="bi bi-cart-plus"></i>Pedir</button>' +
+              '<button class="btn-a" onclick="encargarPropio(' + r.Id + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i><span class="txt-largo">Encargar</span></button>';
+        }
+        acciones += '<button class="btn-a icono" onclick="abrirVinculacion(' + r.Id + ', { alTerminar: refrescarEquivalencias })" ' +
+                    'title="Mismo artículo en otras listas y equivalentes de otras marcas" aria-label="Vincular y equivalentes"><i class="bi bi-link-45deg"></i></button>';
 
         html += '<div class="fila" tabindex="0">' +
           '<div class="col-prod">' +
-            '<div class="prod-desc">' + escapeHtml(r.Descripcion) + '</div>' +
+            '<div class="prod-desc">' + marcaDe(r.MarcaFabricante, r.Descripcion, r.Rubro) + escapeHtml(r.Descripcion) + '</div>' +
             '<div class="prod-meta">' +
-              (r.MarcaFabricante ? '<span class="marca">' + escapeHtml(r.MarcaFabricante) + '</span> · ' : '') +
-              '<span class="codigo">' + escapeHtml(r.Codigo || "-") + '</span>' +
-              (r.Rubro && r.Rubro !== "-" ? ' · ' + escapeHtml(r.Rubro) : '') +
+              (function () { var f = fabDe(r.CodigoFabricante, r.Descripcion, r.Codigo);
+                return f ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(f) + '</span>' : ''; })() +
+              '<span class="sec" title="Tu código">tu cód. ' + escapeHtml(r.Codigo || "-") + '</span>' +
+              (r.Rubro && r.Rubro !== "-" ? '<span class="sec">' + escapeHtml(rubroSinMarca(r.Rubro)) + '</span>' : '') +
             '</div>' +
+            (r.Stock <= 0 ? Equivalencias.chips(r.Id, 'irAEquivalente') : '') +
           '</div>' +
           '<div>' + stock + '</div>' +
-          '<div class="der"><div class="precio">' + formatearMoneda(r.PrecioDeVenta) + '</div></div>' +
-          '<div>' +
-            (r.MejorCosto
-              ? '<div class="prov" style="font-size:0.8rem;">' + escapeHtml(r.MejorProveedor || "") + '</div>' +
-                '<div class="precio-sub">costo ' + formatearMoneda(r.MejorCosto) +
-                (r.ProveedoresDisponibles > 1 ? ' · ' + r.ProveedoresDisponibles + ' prov.' : '') + '</div>'
-              : '<span class="precio-sub">Sin proveedor vinculado</span>') +
+          '<div class="der"><div class="precio">' + formatearMoneda(r.PrecioDeVenta) + '</div>' +
+            ((subProv[r.Id] || []).length ? ''   // el detalle por proveedor va justo debajo
+            : r.MejorCosto
+              ? '<div class="precio-sub dato-costo">costo ' + formatearMoneda(r.MejorCosto) + ' en ' + escapeHtml(r.MejorProveedor || "") +
+                (r.ProveedoresDisponibles > 1 ? ' (+' + (r.ProveedoresDisponibles - 1) + ')' : '') + '</div>'
+              : '<div class="precio-sub">sin proveedor vinculado</div>') +
           '</div>' +
-          '<div class="der">' +
-            '<button class="btn-accion" onclick="abrirVinculacion(' + r.Id + ', \'' +
-              escapeHtml(String(r.Codigo || '')).replace(/'/g, "") + '\')" title="Buscar esta pieza en las listas de proveedores">' +
-              '<i class="bi bi-link-45deg"></i> Vincular</button>' +
-          '</div>' +
-        '</div>';
+          '<div class="acciones">' + acciones + '</div>' +
+        '</div>' +
+        subProveedoresHtml(r.Id);
       });
       cont.innerHTML = html;
     }
 
-    /* Proveedores: primero los grupos de ofertas confirmadas del mismo
-       repuesto (comparables, con el mas barato marcado), despues las
-       coincidencias sueltas sin confirmar. No se agrupa nada por
-       parecido de texto. */
+    /* Proveedores agrupados por articulo:
+       1) Confirmados: ya vinculados al mismo repuesto del local.
+       2) Mismo codigo de fabrica en varias listas, sin confirmar: se
+          muestran juntos para comparar y se confirman con un clic.
+       3) El resto, sueltos. */
+    /* Marca del repuesto. Si no esta cargada, se toma del rubro: los
+       rubros llevan la marca entre comillas (KIT DE DISTRIBUCION "DAYCO"). */
+    function marcaDeRubro(rubro) {
+      var m = /"([^"]+)"/.exec(String(rubro || ""));
+      return m ? m[1].trim() : "";
+    }
+    function rubroSinMarca(rubro) {
+      return String(rubro || "").replace(/\s*"[^"]*"\s*/g, " ").trim();
+    }
+    function marcaBadge(marca, aviso) {
+      return marca ? '<span class="marca-fuerte">' + escapeHtml(marca) + '</span>' +
+        (aviso ? '<span class="marca-aviso" title="' + escapeHtml(aviso) + '"><i class="bi bi-exclamation-triangle-fill"></i></span>' : '') : '';
+    }
+
+    /* Marcas conocidas: las que aparecen entre comillas en los rubros.
+       Sirven para reconocer la marca escrita en la descripcion. */
+    var marcasConocidas = [];
+    function armarMarcas(rubros) {
+      var s = {};
+      // Marcas de repuestos comunes, por si todavia no hay un rubro con su nombre
+      ["BOSCH", "SKF", "DAYCO", "INA", "GATES", "CONTITECH", "CONTINENTAL", "NAKATA", "ESEVED", "HUTCHINSON",
+       "NGK", "FRAM", "MAHLE", "VALEO", "LUK", "SACHS", "MONROE", "CORVEN", "FERODO", "TRW", "COFAP",
+       "WAHLER", "DOLZ", "SADAR", "FAG", "TIMKEN", "KOYO", "AP PLUS", "REY GOMA"].forEach(function (m) { s[m] = 1; });
+      (rubros || []).forEach(function (ru) { var m = marcaDeRubro(ru.Nombre); if (m && m.length >= 2) s[m.toUpperCase()] = 1; });
+      marcasConocidas = Object.keys(s).sort(function (a, b) { return b.length - a.length; });
+    }
+    function marcaEnTexto(texto) {
+      var t = " " + String(texto || "").toUpperCase().replace(/[^A-Z0-9ÑÁÉÍÓÚÜ]+/g, " ") + " ";
+      for (var i = 0; i < marcasConocidas.length; i++)
+        if (t.indexOf(" " + marcasConocidas[i] + " ") !== -1) return marcasConocidas[i];
+      return "";
+    }
+
+    /* Que marca mostrar. Manda la cargada en el repuesto; si no hay, la que
+       dice la descripcion; si no, la del rubro. Si la descripcion y el rubro
+       dicen marcas distintas, se avisa: el rubro probablemente esta mal. */
+    function marcaDe(cargada, descripcion, rubro) {
+      var enDesc = marcaEnTexto(descripcion), enRubro = marcaDeRubro(rubro);
+      var marca = cargada || enDesc || enRubro;
+      var aviso = (enDesc && enRubro && enDesc.toUpperCase() !== enRubro.toUpperCase())
+        ? 'La descripción dice ' + enDesc + ' pero el rubro dice ' + enRubro + ': revisá el rubro de este repuesto.' : '';
+      return marcaBadge(marca, aviso);
+    }
+
+    // Codigo de fabrica: el cargado, o el que viene escrito en la descripcion
+    function fabDe(cargado, descripcion, excluir) {
+      var l = String(cargado || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (l.length >= 4 && /[0-9]/.test(l)) return String(cargado);
+      var ex = String(excluir || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      var c = codigosDe({ Articulo: null, Descripcion: descripcion }).filter(function (x) { return x !== ex; });
+      return c[0] || "";
+    }
+
+    var gruposDuda = [];
+    var subProv = {};
+    var fichasActuales = [];   // vinculadas pero no trabajadas en el local      // IdRepuesto del local -> sus ofertas de proveedores
+
+    function subProveedoresHtml(idRep) {
+      var filas = (subProv[idRep] || []).slice().sort(function (a, b) { return a.PrecioCompra - b.PrecioCompra; });
+      if (!filas.length) return "";
+      var base = filas[0].PrecioCompra;
+      return '<div class="sub-prov">' + filas.map(function (r, k) {
+        var dif = base > 0 ? Math.round((r.PrecioCompra - base) / base * 100) : 0;
+        var tag = r._pend ? '<span class="pend-tag">sin vincular</span>'
+                : (filas.length > 1 && k === 0 ? '<span class="mejor-tag dato-costo">más barato</span>'
+                : (dif > 0 ? '<span class="dif dato-costo">+' + dif + '%</span>' : ''));
+        return '<div class="sp-fila">' +
+          '<div class="sp-prov"><i class="bi bi-truck" aria-hidden="true"></i><b>' + escapeHtml(r.Proveedor) + '</b>' +
+            '<span class="sec">cód. ' + escapeHtml(r.CodigoProveedor) + '</span>' +
+            (function () { var f = fabDe(r.Articulo, r.Descripcion, r.CodigoProveedor);
+              return f ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(f) + '</span>' : ''; })() +
+            tag + '</div>' +
+          '<div></div>' +
+          '<div class="der"><span class="sp-costo dato-costo">costo ' + formatearMoneda(r.PrecioCompra) + '</span>' +
+            '<div class="precio-sub">venta sugerida ' + formatearMoneda(r.PrecioSugerido) + '</div></div>' +
+          '<div class="acciones">' +
+            (r._pend
+              ? '<button class="btn-a" onclick="vincularPendientes(' + idRep + ')" title="Mismo código de fábrica: vincular para comparar precios"><i class="bi bi-link-45deg"></i>Vincular</button>'
+              : '<button class="btn-a" onclick="pedirExterno(' + r._i + ')" title="Sumar al carrito, comprándole a ' + escapeHtml(r.Proveedor) + '"><i class="bi bi-cart-plus"></i>Pedir acá</button>' +
+                '<button class="btn-a icono" onclick="desvincular(' + r._i + ')" title="No es el mismo artículo: desvincular" aria-label="Desvincular"><i class="bi bi-x-lg"></i></button>') +
+          '</div>' +
+        '</div>';
+      }).join("") + '</div>';
+    }
+    var pendientesActuales = {};
+
+    /* Deshace un vinculo hecho por error. El articulo vuelve a ser una
+       oferta suelta; tu repuesto (stock, precio, ventas) no cambia. */
+    function desvincular(i) {
+      var r = externosActuales[i];
+      if (!r || !r.IdRepuesto) return;
+      Swal.fire({
+        icon: "question",
+        title: "¿Desvincular?",
+        html: '<div style="text-align:left;font-size:0.9rem;">' +
+                '<p class="mb-2"><strong>' + escapeHtml(r.Proveedor) + '</strong> · cód. ' + escapeHtml(r.CodigoProveedor) + '<br>' +
+                escapeHtml(r.Descripcion) + '</p>' +
+                '<p class="mb-0">Deja de contarse como el mismo artículo que tu ' + escapeHtml(r.CodigoPropio || 'repuesto') +
+                ': no se compara su precio ni se sugiere para pedir. Tu repuesto, su stock y sus ventas no cambian.</p></div>',
+        showCancelButton: true, confirmButtonText: "Desvincular", cancelButtonText: "Cancelar", confirmButtonColor: "#b02a37",
+        preConfirm: function () {
+          return fetchAuth(api + "ProveedorRepuesto/" + r.Id + "/Desvincular", { method: "PUT" })
+            .then(function (resp) {
+              if (!resp.ok) return leerError(resp).then(function (m) { throw new Error(m); });
+            })
+            .catch(function (err) { Swal.showValidationMessage(err.message || "No se pudo desvincular."); return false; });
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        Swal.fire({ icon: "success", title: "Desvinculado", timer: 1300, showConfirmButton: false });
+        buscar(true);
+      });
+    }
+
+    // Vincula al repuesto los articulos con su mismo codigo que todavia no lo estan
+    function vincularPendientes(idRep) {
+      var pend = pendientesActuales[idRep] || [];
+      if (!pend.length) return;
+      Swal.fire({
+        title: "¿Vincular al mismo repuesto?",
+        html: '<div style="text-align:left;font-size:0.9rem;">' +
+                '<p class="mb-2">Tienen el mismo código de fábrica. Vinculalos solo si también son <strong>la misma marca</strong>: van a compartir stock y se comparan los precios.</p>' +
+                '<ul style="padding-left:18px;">' + pend.map(function (r) {
+                  return '<li><strong>' + escapeHtml(r.Proveedor) + '</strong>: ' + escapeHtml(r.Descripcion) + '</li>';
+                }).join("") + '</ul></div>',
+        width: 600, showCancelButton: true, confirmButtonText: "Sí, vincular", cancelButtonText: "Cancelar", confirmButtonColor: "#0d3b78",
+        preConfirm: function () {
+          var errores = [];
+          return pend.reduce(function (p, r) {
+            return p.then(function () {
+              return fetchAuth(api + "ProveedorRepuesto/" + r.Id + "/Enlazar", {
+                method: "PUT", body: JSON.stringify({ IdRepuesto: idRep })
+              }).then(function (resp) {
+                if (!resp.ok) return leerError(resp).then(function (m) { errores.push(r.Proveedor + ": " + m); });
+              });
+            });
+          }, Promise.resolve()).then(function () { return errores; });
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        var errores = res.value || [];
+        if (errores.length) Swal.fire({ icon: "warning", title: "Vinculado en parte", html: escapeHtml(errores.join(" · ")) });
+        buscar(true);
+      });
+    }
+
+    function codigosDe(r) {
+      var out = {};
+      var limpio = function (s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); };
+      var vale = function (c) { return c.length >= 5 && /[A-Z]/.test(c) && /[0-9]/.test(c); };
+      var a = limpio(r.Articulo);
+      if (vale(a)) out[a] = 1;
+      String(r.Descripcion || "").toUpperCase().split(/[\s,;\/()"]+/).forEach(function (w) {
+        var c = limpio(w);
+        if (vale(c)) out[c] = 1;
+      });
+      return Object.keys(out);
+    }
+
     function pintarExternos(lista) {
+      externosActuales = lista;
+      lista.forEach(function (r, i) { r._i = i; });
       var cont = document.getElementById("listaConsigo");
       var provs = {};
       lista.forEach(function (r) { provs[r.Proveedor] = 1; });
       var nProv = Object.keys(provs).length;
       document.getElementById("contConsigo").textContent =
-        lista.length + " oferta" + (lista.length === 1 ? "" : "s") + " · " + nProv + " proveedor" + (nProv === 1 ? "" : "es");
+        lista.length + " oferta" + (lista.length === 1 ? "" : "s") + " en " + nProv + " proveedor" + (nProv === 1 ? "" : "es");
 
-      var grupos = {}, ordenGrupos = [], sueltos = [];
+      // 1) Confirmados
+      var grupos = {}, ordenGrupos = [], libres = [];
       lista.forEach(function (r) {
         if (r.IdRepuesto) {
           if (!grupos[r.IdRepuesto]) { grupos[r.IdRepuesto] = []; ordenGrupos.push(r.IdRepuesto); }
           grupos[r.IdRepuesto].push(r);
-        } else sueltos.push(r);
+        } else libres.push(r);
       });
 
-      function filaExterna(r, enGrupo) {
-        var rel = !r.IdRepuesto
-          ? '<span class="badge-rel rel-sin">sin confirmar</span>'
-          : (enGrupo && r.RankingCosto === 1
-              ? '<span class="badge-rel rel-mejor"><i class="bi bi-star-fill"></i> más barato</span>'
-              : '<span class="badge-rel rel-comp">comparable</span>');
-        return '<div class="fila' + (enGrupo && r.RankingCosto === 1 ? ' mejor' : '') + '" tabindex="0">' +
+      // Cuantas ofertas sueltas tienen cada codigo. Un codigo de fabrica
+      // identifica UN articulo; si aparece en muchas (codigo de motor,
+      // de modelo...) no sirve para decir que son lo mismo.
+      var frecuencia = {};
+      libres.forEach(function (r) { codigosDe(r).forEach(function (c) { frecuencia[c] = (frecuencia[c] || 0) + 1; }); });
+      var limpiar = function (s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); };
+      var vale = function (c) { return c.length >= 5 && /[A-Z]/.test(c) && /[0-9]/.test(c); };
+
+      // 1b) Sueltos con el mismo codigo DE FABRICA que un repuesto confirmado
+      //     (el de su columna, no cualquier palabra de la descripcion):
+      //     van dentro de ese grupo, marcados "sin vincular"
+      var pendientes = {};
+      ordenGrupos.forEach(function (id) {
+        var cods = {};
+        grupos[id].forEach(function (r) { var a = limpiar(r.Articulo); if (vale(a)) cods[a] = 1; });
+        var propio = (propiosActuales || []).concat(fichasActuales || []).find(function (p) { return p.Id === id; });
+        if (propio && vale(limpiar(propio.CodigoFabricante))) cods[limpiar(propio.CodigoFabricante)] = 1;
+        pendientes[id] = libres.filter(function (r) {
+          return !r._pend && codigosDe(r).some(function (c) { return cods[c] && frecuencia[c] <= 2; });
+        });
+        pendientes[id].forEach(function (r) { r._pend = id; });
+      });
+      libres = libres.filter(function (r) { return !r._pend; });
+
+      // 2) Mismo codigo de fabrica en proveedores distintos (y en pocas ofertas)
+      var porCodigo = {};
+      libres.forEach(function (r) {
+        codigosDe(r).forEach(function (c) { (porCodigo[c] = porCodigo[c] || []).push(r); });
+      });
+      gruposDuda = [];
+      var usados = {};
+      Object.keys(porCodigo).forEach(function (c) {
+        if (porCodigo[c].length > 3) return;
+        var g = porCodigo[c].filter(function (r) { return !usados[r._i]; });
+        var distintos = {}; g.forEach(function (r) { distintos[r.IdProveedor] = 1; });
+        if (Object.keys(distintos).length < 2) return;
+        g.forEach(function (r) { usados[r._i] = 1; });
+        gruposDuda.push({ codigo: c, filas: g });
+      });
+      var sueltos = libres.filter(function (r) { return !usados[r._i]; });
+
+      function filaExterna(r, mejor, base) {
+        var dif = (base && !mejor && base > 0) ? Math.round((r.PrecioCompra - base) / base * 100) : null;
+        var fab = codigosDe(r)[0] || "";
+        var rubro = r.Rubro || r.RubroTexto || "";
+        if (/^[\d.,\s]+$/.test(rubro)) rubro = "";   // listas que mandan un numero en esa columna
+        return '<div class="fila' + (mejor ? ' mejor' : '') + '" tabindex="0">' +
           '<div class="col-prod">' +
-            '<div class="prod-desc">' + escapeHtml(r.Descripcion) + '</div>' +
+            '<div class="prod-desc" title="' + escapeHtml(r.Descripcion) + '">' + marcaDe(null, r.Descripcion, rubro) + escapeHtml(r.Descripcion) + '</div>' +
             '<div class="prod-meta">' +
-              (r.Articulo ? 'fab <span class="codigo">' + escapeHtml(r.Articulo) + '</span> · ' : '') +
-              escapeHtml(r.Rubro || r.RubroTexto || '') + ' ' + rel +
+              (fab ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(fab) + '</span>' : '') +
+              (rubro ? '<span class="sec">' + escapeHtml(rubroSinMarca(rubro)) + '</span>' : '') +
+              (r._pend ? '<span class="pend-tag">sin vincular</span>' : '') +
             '</div>' +
           '</div>' +
-          '<div class="prov">' + escapeHtml(r.Proveedor) + '</div>' +
-          '<div class="codigo">' + escapeHtml(r.CodigoProveedor) + '</div>' +
-          '<div class="der"><div class="costo">' + formatearMoneda(r.PrecioCompra) + '</div>' +
-            '<div class="precio-sub">costo</div></div>' +
-          '<div class="der"><div class="precio" style="font-size:0.92rem;">' + formatearMoneda(r.PrecioSugerido) + '</div>' +
-            '<div class="precio-sub">con tu margen</div></div>' +
+          '<div><div class="prov">' + escapeHtml(r.Proveedor) + '</div>' +
+            '<div class="precio-sub" title="Código del proveedor">cód. ' + escapeHtml(r.CodigoProveedor) + '</div></div>' +
+          '<div class="der"><div class="precio">' + formatearMoneda(r.PrecioSugerido) + '</div>' +
+            '<div class="precio-sub dato-costo">costo ' + formatearMoneda(r.PrecioCompra) + '</div>' +
+            (mejor ? '<div class="mejor-tag dato-costo">más barato</div>' : (dif !== null && dif > 0 ? '<div class="dif dato-costo">+' + dif + '% de costo</div>' : '')) +
+          '</div>' +
+          '<div class="acciones">' +
+            '<button class="btn-a prim" onclick="encargarExterno(' + r._i + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i>Encargar</button>' +
+            '<button class="btn-a" onclick="pedirExterno(' + r._i + ')" title="Sumar al carrito, comprándole a ' + escapeHtml(r.Proveedor) + '"><i class="bi bi-cart-plus"></i><span class="txt-largo">Pedir</span></button>' +
+            (r.IdRepuesto && !r._pend ? '<button class="btn-a icono" onclick="desvincular(' + r._i + ')" title="No es el mismo artículo: desvincular" aria-label="Desvincular"><i class="bi bi-x-lg"></i></button>' : '') +
+          '</div>' +
         '</div>';
       }
 
-      var html = "";
+      function filasOrdenadas(g) {
+        var o = g.slice().sort(function (a, b) { return a.PrecioCompra - b.PrecioCompra; });
+        var base = o[0].PrecioCompra;
+        return o.map(function (r, k) { return filaExterna(r, o.length > 1 && k === 0, base); }).join("");
+      }
+
+      var html = "", abajo = 0;
+      var enLocal = {};
+      (propiosActuales || []).forEach(function (p) { enLocal[p.Id] = 1; });
       ordenGrupos.forEach(function (id) {
-        var g = grupos[id].slice().sort(function (a, b) { return a.PrecioCompra - b.PrecioCompra; });
-        var r0 = g[0];
+        var g = grupos[id], r0 = g[0], pend = pendientes[id] || [];
+        if (enLocal[id]) { subProv[id] = g.concat(pend); return; }
+        abajo += g.length + pend.length;
+        var esFicha = (fichasActuales || []).some(function (p) { return p.Id === id; });
         html += '<div class="grupo">' +
-          '<div class="grupo-head"><i class="bi bi-collection"></i> ' +
-            (r0.CodigoPropio ? '<span class="badge-rel rel-tengo">tu código ' + escapeHtml(r0.CodigoPropio) +
-              ' · stock ' + r0.StockPropio + '</span> ' : '') +
-            'Mismo repuesto en ' + g.length + ' proveedor' + (g.length === 1 ? '' : 'es') +
+          (esFicha
+            ? '<div class="grupo-head"><span class="tag"><i class="bi bi-link-45deg"></i> Mismo artículo en ' + g.length + ' lista' + (g.length === 1 ? '' : 's') + '</span>' +
+              '<span>vinculadas para comparar precios · no lo trabajás en el local' +
+              (pend.length ? '; ' + pend.map(function (r) { return escapeHtml(r.Proveedor); }).join(", ") + ' tiene el mismo código sin vincular' : '') + '</span>'
+            : '<div class="grupo-head"><span class="tag"><i class="bi bi-check2-circle"></i> Es tu repuesto ' +
+            escapeHtml(r0.CodigoPropio || "") + '</span>' +
+            '<span>' + (r0.StockPropio > 0 ? 'tenés ' + r0.StockPropio + ' en el local' : 'sin stock en el local') +
+            ' · vinculado en ' + g.length + ' proveedor' + (g.length === 1 ? '' : 'es') +
+            (pend.length ? '; ' + pend.map(function (r) { return escapeHtml(r.Proveedor); }).join(", ") + ' tiene el mismo código sin vincular' : '') + '</span>') +
+            (pend.length ? '<button class="btn-a" onclick="vincularPendientes(' + id + ')" title="Vincular para comparar precios"><i class="bi bi-link-45deg"></i>Vincular</button>' : '') +
           '</div>' +
-          g.map(function (r) { return filaExterna(r, true); }).join("") +
+          filasOrdenadas(g.concat(pend)) +
         '</div>';
       });
-      sueltos.forEach(function (r) { html += filaExterna(r, false); });
+      pendientesActuales = pendientes;
+      gruposDuda.forEach(function (gd, k) {
+        abajo += gd.filas.length;
+        html += '<div class="grupo">' +
+          '<div class="grupo-head"><span class="tag duda"><i class="bi bi-question-circle"></i> Mismo código de fábrica ' +
+            escapeHtml(gd.codigo) + ' en ' + gd.filas.length + ' listas</span>' +
+            '<span>Revisá la marca en la descripción.</span>' +
+            '<button class="btn-a" onclick="confirmarGrupo(' + k + ')" title="Lo suma al catálogo y vincula las listas: se comparan los precios"><i class="bi bi-link-45deg"></i>Son el mismo</button>' +
+          '</div>' +
+          filasOrdenadas(gd.filas) +
+        '</div>';
+      });
+      sueltos.forEach(function (r) { html += filaExterna(r, false, null); });
+      abajo += sueltos.length;
       cont.innerHTML = html;
+      document.getElementById("contConsigo").textContent =
+        abajo + " oferta" + (abajo === 1 ? "" : "s");
+      return abajo;
     }
 
-    function abrirVinculacion(idRepuesto, codigo) {
-      Swal.fire({
-        title: "Vincular con otras listas",
-        html:
-          '<div style="text-align:left;">' +
-            '<div class="mb-2">Repuesto <strong>' + escapeHtml(codigo) + '</strong></div>' +
-            '<div class="form-text mb-2">Buscá cómo lo llama el otro proveedor. ' +
-              'Los que marques se van a comparar con este repuesto. ' +
-              'Los importes son el COSTO, no el precio de venta.</div>' +
-            '<input type="text" id="swBv" class="form-control mb-2" ' +
-              'placeholder="Ej: kit distribucion fox, KTB-341...">' +
-            '<div id="swRes" style="max-height:280px;overflow-y:auto;">' +
-              '<div class="form-text">Escribí al menos 3 letras.</div></div>' +
-          '</div>',
-        width: 600,
-        showCancelButton: true,
-        confirmButtonText: "Vincular seleccionados",
-        cancelButtonText: "Cancelar",
-        confirmButtonColor: "#1266d1",
-        didOpen: function () {
-          var campo = document.getElementById("swBv");
-          var t = null;
-          campo.addEventListener("input", function () {
-            clearTimeout(t);
-            t = setTimeout(function () { buscarVinc(campo.value); }, 320);
-          });
-          campo.focus();
-        },
-        preConfirm: function () {
-          var ids = [];
-          document.querySelectorAll('#swRes input:checked').forEach(function (c) {
-            ids.push(parseInt(c.value, 10));
-          });
-          if (ids.length === 0) {
-            Swal.showValidationMessage("Marcá al menos uno.");
-            return false;
+    /* "Son el mismo": el mas barato entra al catalogo (con rubro si hace
+       falta) y los demas se vinculan a ese repuesto. A partir de ahi se
+       comparan solos y aparecen agrupados como confirmados. */
+    function confirmarGrupo(k) {
+      var gd = gruposDuda[k];
+      if (!gd) return;
+      var orden = gd.filas.slice().sort(function (a, b) { return a.PrecioCompra - b.PrecioCompra; });
+      var base = orden[0];
+      cargarRubros().then(function () {
+        Swal.fire({
+          title: "¿Son el mismo artículo?",
+          html: '<div style="text-align:left;font-size:0.9rem;">' +
+                  '<p class="mb-2">Si son <strong>la misma marca y el mismo código</strong>, se suma al catálogo y las listas quedan vinculadas: ' +
+                  'el sistema compara los precios y te muestra el más barato. Si alguno es de otra marca, cancelá.</p>' +
+                  '<ul style="padding-left:18px;margin-bottom:10px;">' + orden.map(function (r) {
+                    return '<li><strong>' + escapeHtml(r.Proveedor) + '</strong>: ' + escapeHtml(r.Descripcion) + '</li>';
+                  }).join("") + '</ul>' +
+                  rubroSelectHtml(base) +
+                '</div>',
+          width: 620,
+          showCancelButton: true, confirmButtonText: "Sí, vincular", cancelButtonText: "Cancelar", confirmButtonColor: "#0d3b78",
+          preConfirm: function () {
+            var idRubro = rubroElegido();
+            if (document.getElementById("swRubro") && !idRubro) { Swal.showValidationMessage("Elegí un rubro."); return false; }
+            return asegurarRepuesto(base, idRubro).then(function (idRep) {
+              var errores = [];
+              return orden.slice(1).reduce(function (p, r) {
+                return p.then(function () {
+                  return fetchAuth(api + "ProveedorRepuesto/" + r.Id + "/Enlazar", {
+                    method: "PUT", body: JSON.stringify({ IdRepuesto: idRep })
+                  }).then(function (resp) {
+                    if (!resp.ok) return leerError(resp).then(function (m) { errores.push(r.Proveedor + ": " + m); });
+                  });
+                });
+              }, Promise.resolve()).then(function () { return errores; });
+            }).catch(function (err) {
+              Swal.showValidationMessage(err.message || "No se pudo vincular."); return false;
+            });
           }
-          return ids;
+        }).then(function (res) {
+          if (!res.isConfirmed) return;
+          var errores = res.value || [];
+          Swal.fire({
+            icon: errores.length ? "warning" : "success",
+            title: errores.length ? "Vinculado en parte" : "Vinculados",
+            html: errores.length ? escapeHtml(errores.join(" · ")) : "Quedaron vinculados: se comparan los precios. No pasa al local hasta que lo pidas, lo encargues o le pongas stock mínimo.",
+            timer: errores.length ? undefined : 2200, showConfirmButton: !!errores.length
+          });
+          buscar(true);
+        });
+      });
+    }
+
+    /* ================= PEDIR Y ENCARGAR =================
+       Todo lo que se pide va al pedido EN ARMADO de ese proveedor: uno por
+       proveedor a la vez, hasta que se carga en su web y se marca enviado.
+       "Encargar" es lo mismo pero para un cliente: con sus datos, la seña
+       y el renglón del pedido vinculado al encargo. */
+
+    var propiosActuales = [];
+    var externosActuales = [];
+    var mediosPago = null;
+    var rubrosCache = null;
+
+    function llegadaTexto(fecha) {
+      if (!fecha) return "";
+      var d = new Date(fecha);
+      if (isNaN(d)) return "";
+      return d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "numeric" });
+    }
+
+    // Llegada estimada si se pide hoy: dia habil siguiente (lo mismo que calcula la base)
+    function llegadaManana() {
+      var d = new Date();
+      do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+      return d;
+    }
+
+    function cargarMedios() {
+      if (mediosPago) return Promise.resolve(mediosPago);
+      return fetchAuth(api + "MedioPago").then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (d) { mediosPago = d || []; return mediosPago; });
+    }
+
+    // Un articulo que solo esta en la lista del proveedor se suma al
+    // catalogo al confirmar. Si el proveedor no manda rubro, el dialogo
+    // pide elegirlo (con los rubros que comparten palabras sugeridos).
+    function necesitaRubro(ext) { return !ext.IdRepuesto && !ext.Rubro; }
+
+    function cargarRubros() {
+      if (rubrosCache) return Promise.resolve(rubrosCache);
+      return fetchAuth(api + "Rubro").then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (d) { rubrosCache = (d || []).filter(function (x) { return x.Activo === undefined || x.Activo; }); return rubrosCache; });
+    }
+
+    function rubroSelectHtml(ext) {
+      if (!necesitaRubro(ext)) return "";
+      var palabras = String(ext.Descripcion || "").toUpperCase().split(/[^A-ZÑ0-9]+/).filter(function (w) { return w.length > 3; });
+      var sugeridos = rubrosCache.filter(function (ru) {
+        var n = String(ru.Nombre || "").toUpperCase();
+        return palabras.some(function (w) { return n.indexOf(w) !== -1; });
+      }).slice(0, 8);
+      var opc = function (lista) { return lista.map(function (ru) { return '<option value="' + ru.Id + '">' + escapeHtml(ru.Nombre) + '</option>'; }).join(""); };
+      return '<label class="form-label mb-0">Rubro <small class="text-muted">(no está en tu catálogo: se suma al confirmar)</small></label>' +
+             '<select id="swRubro" class="form-select form-select-sm mb-2">' +
+               (sugeridos.length ? '<optgroup label="Sugeridos">' + opc(sugeridos) + '</optgroup>' : '<option value="">Elegí un rubro…</option>') +
+               '<optgroup label="Todos">' + opc(rubrosCache) + '</optgroup></select>';
+    }
+
+    function rubroElegido() {
+      var el = document.getElementById("swRubro");
+      return el && el.value ? parseInt(el.value, 10) : null;
+    }
+
+    function asegurarRepuesto(ext, idRubro) {
+      if (ext.IdRepuesto) return Promise.resolve(ext.IdRepuesto);
+      if (necesitaRubro(ext) && !idRubro) return Promise.reject(new Error("Elegí un rubro."));
+      return fetchAuth(api + "Repuesto/IncorporarDesdeLista", {
+        method: "POST",
+        // Minimo 0: sumarlo al catalogo (para vincular, pedir o encargar) no es
+        // decidir tenerlo en stock. Si no, la reposicion lo pedia solo (min. 5).
+        body: JSON.stringify({ IdListaProveedor: ext.Id, IdRubro: idRubro, StockMinimo: 0 })
+      }).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return r.json();
+      }).then(function (d) { ext.IdRepuesto = d.Id; return d.Id; });
+    }
+
+    // Para un repuesto propio: a que proveedor se le pide (el mas barato primero)
+    function elegirProveedor(idRepuesto) {
+      return fetchAuth(api + "Compras/Repuesto/" + idRepuesto + "/Opciones")
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (ops) {
+          if (!ops || ops.length === 0) throw new Error("Este repuesto no tiene proveedor vinculado. Usá el botón de vincular.");
+          return ops;
+        });
+    }
+
+    function opcionesProveedorHtml(ops) {
+      return ops.map(function (o, i) {
+        return '<option value="' + o.IdProveedor + '"' + (i === 0 ? ' selected' : '') + '>' +
+          escapeHtml(o.Proveedor) + ' — costo ' + formatearMoneda(o.PrecioCompra) + (i === 0 ? ' (más barato)' : '') + '</option>';
+      }).join("");
+    }
+
+    /* ---------- Pedir ---------- */
+
+    function pedirExterno(i) {
+      var ext = externosActuales[i];
+      if (!ext) return;
+      cargarRubros().then(function () {
+        dialogoPedir(ext.Descripcion, ext.Proveedor, null, function (cant, idProv, idRubro) {
+          return asegurarRepuesto(ext, idRubro).then(function (idRep) { return enviarPedir(ext.IdProveedor, idRep, cant); });
+        }, rubroSelectHtml(ext));
+      });
+    }
+
+    function pedirPropio(id) {
+      var r = propiosActuales.find(function (x) { return x.Id === id; });
+      if (!r) return;
+      elegirProveedor(id).then(function (ops) {
+        dialogoPedir(r.Descripcion, null, ops, function (cant, idProv) { return enviarPedir(idProv, id, cant); });
+      }).catch(function (err) { Swal.fire("No se puede pedir", err.message, "info"); });
+    }
+
+    function dialogoPedir(descripcion, proveedor, ops, accion, extraHtml) {
+      Swal.fire({
+        title: "Pedir",
+        html: '<div style="text-align:left;font-size:0.9rem;">' +
+                '<div class="mb-2">' + escapeHtml(descripcion) + '</div>' +
+                (ops ? '<label class="form-label">Proveedor</label><select id="swProv" class="form-select mb-2">' + opcionesProveedorHtml(ops) + '</select>'
+                     : '<div class="mb-2"><strong>' + escapeHtml(proveedor) + '</strong></div>') +
+                (extraHtml || '') +
+                '<label class="form-label">Cantidad</label><input id="swCant" type="number" min="1" max="500" value="1" class="form-control">' +
+                '<div class="form-text mt-2">Se suma al carrito de compras. Ahí revisás todo lo que hay que pedir y lo confirmás.</div>' +
+              '</div>',
+        showCancelButton: true, confirmButtonText: "Sumar al carrito", cancelButtonText: "Cancelar", confirmButtonColor: "#0d3b78",
+        didOpen: function () { document.getElementById("swCant").select(); },
+        preConfirm: function () {
+          var cant = parseInt(document.getElementById("swCant").value, 10);
+          if (!(cant > 0 && cant <= 500)) { Swal.showValidationMessage("La cantidad tiene que estar entre 1 y 500."); return false; }
+          var idProv = ops ? parseInt(document.getElementById("swProv").value, 10) : null;
+          var idRubro = rubroElegido();
+          if (document.getElementById("swRubro") && !idRubro) { Swal.showValidationMessage("Elegí un rubro."); return false; }
+          return accion(cant, idProv, idRubro).catch(function (err) {
+            Swal.showValidationMessage(err.message || "No se pudo sumar al carrito."); return false;
+          });
         }
       }).then(function (res) {
         if (!res.isConfirmed || !res.value) return;
-        confirmarVinculos(res.value, idRepuesto);
+        var d = res.value;
+        Swal.fire({ icon: "success", title: "Sumado al carrito",
+          html: "Hay <strong>" + d.Renglones + "</strong> repuesto" + (d.Renglones === 1 ? "" : "s") + " en el carrito de compras.",
+          showCancelButton: true, confirmButtonText: "Seguir buscando", cancelButtonText: "Ver carrito" })
+          .then(function (r2) { if (r2.dismiss === Swal.DismissReason.cancel) window.location.href = "Carrito.html"; });
       });
     }
 
-    function buscarVinc(texto) {
-      var cont = document.getElementById("swRes");
-      texto = (texto || "").trim();
+    // "Pedir" ya no va directo al pedido: va al carrito, con el proveedor elegido
+    function enviarPedir(idProveedor, idRepuesto, cantidad) {
+      return fetchAuth(api + "Compras/Carrito", {
+        method: "POST", body: JSON.stringify({ IdProveedor: idProveedor, IdRepuesto: idRepuesto, Cantidad: cantidad, Origen: "BUSCADOR" })
+      }).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return r.json();
+      });
+    }
 
-      if (texto.length < 3) {
-        cont.innerHTML = '<div class="form-text">Escribí al menos 3 letras.</div>';
-        return;
-      }
+    /* ---------- Encargar ---------- */
 
-      cont.innerHTML = '<div class="text-center p-2">' +
-        '<span class="spinner-border spinner-border-sm"></span></div>';
-
-      fetchAuth(api + "ProveedorRepuesto/Buscar?texto=" + encodeURIComponent(texto) +
-                "&soloSinEnlazar=true&tope=25")
-        .then(function (r) { return r.ok ? r.json() : []; })
-        .then(function (lista) {
-          if (!lista || lista.length === 0) {
-            cont.innerHTML = '<div class="form-text">Sin resultados.</div>';
-            return;
-          }
-          var html = "";
-          lista.forEach(function (c) {
-            html +=
-              '<label style="display:flex;align-items:center;gap:9px;padding:8px 10px;' +
-                     'border:1px solid #dee2e6;border-radius:8px;margin-bottom:6px;' +
-                     'cursor:pointer;">' +
-                '<input type="checkbox" class="form-check-input mt-0" value="' + c.Id + '">' +
-                '<div style="flex:1;min-width:0;text-align:left;">' +
-                  '<div style="font-size:0.83rem;font-weight:600;">' +
-                    escapeHtml(c.Proveedor) + ' · ' + escapeHtml(c.CodigoProveedor) +
-                    (c.Articulo ? ' · fab ' + escapeHtml(c.Articulo) : '') + '</div>' +
-                  '<div style="font-size:0.74rem;color:#6c757d;">' +
-                    escapeHtml(String(c.Descripcion).substring(0, 62)) + '</div>' +
-                '</div>' +
-                '<div style="text-align:right;white-space:nowrap;">' +
-                  '<div style="font-size:0.65rem;color:#6c757d;text-transform:uppercase;' +
-                       'letter-spacing:0.3px;">costo</div>' +
-                  '<div style="font-weight:700;">' + formatearMoneda(c.PrecioCompra) + '</div>' +
-                  (c.FinalSugerido
-                    ? '<div style="font-size:0.7rem;color:#6c757d;">venta ' +
-                      formatearMoneda(c.FinalSugerido) + '</div>'
-                    : '') +
-                '</div>' +
-              '</label>';
+    function encargarExterno(i) {
+      var ext = externosActuales[i];
+      if (!ext) return;
+      cargarRubros().then(function () {
+        dialogoEncargar({ descripcion: ext.Descripcion, proveedor: ext.Proveedor, precio: Number(ext.PrecioSugerido) || 0, extraHtml: rubroSelectHtml(ext) }, null,
+          function (datos) {
+            return asegurarRepuesto(ext, datos.idRubro).then(function (idRep) { return enviarEncargo(datos, idRep, ext.IdProveedor); });
           });
-          cont.innerHTML = html;
-        })
-        .catch(function () {
-          cont.innerHTML = '<div class="form-text text-danger">No se pudo buscar.</div>';
-        });
+      });
     }
 
-    function confirmarVinculos(ids, idRepuesto) {
-      var pend = ids.map(function (id) {
-        return fetchAuth(api + "ProveedorRepuesto/" + id + "/Enlazar", {
-          method: "PUT",
-          body: JSON.stringify({ IdRepuesto: idRepuesto })
-        }).then(function (r) { return r.ok; });
-      });
+    function encargarPropio(id) {
+      var r = propiosActuales.find(function (x) { return x.Id === id; });
+      if (!r) return;
+      elegirProveedor(id).then(function (ops) {
+        dialogoEncargar({ descripcion: r.Descripcion, precio: Number(r.PrecioDeVenta) || 0 }, ops,
+          function (datos) { return enviarEncargo(datos, id, datos.idProv); });
+      }).catch(function (err) { Swal.fire("No se puede encargar", err.message, "info"); });
+    }
 
-      Promise.all(pend).then(function (res) {
-        var ok = res.filter(Boolean).length;
+    function dialogoEncargar(art, ops, accion) {
+      cargarMedios().then(function (medios) {
+        var opcMedios = medios.map(function (m) { return '<option value="' + m.Id + '">' + escapeHtml(m.Nombre) + '</option>'; }).join("");
         Swal.fire({
-          icon: ok === ids.length ? "success" : "warning",
-          title: ok + " de " + ids.length + " vinculados",
-          html: ok > 0
-            ? "<small class='text-muted'>Ya se pueden comparar precios entre proveedores.</small>"
-            : "<small class='text-muted'>No se pudo vincular ninguno.</small>"
+          title: "Encargo",
+          width: 560,
+          html: '<div style="text-align:left;font-size:0.88rem;">' +
+                  '<div class="mb-2"><strong>' + escapeHtml(art.descripcion) + '</strong>' +
+                    (art.proveedor ? ' · ' + escapeHtml(art.proveedor) : '') + '</div>' +
+                  (art.extraHtml || '') +
+                  (ops ? '<label class="form-label mb-0">Se le pide a</label><select id="eProv" class="form-select form-select-sm mb-2">' + opcionesProveedorHtml(ops) + '</select>' : '') +
+                  '<div class="row g-2">' +
+                    '<div class="col-7"><label class="form-label mb-0">Nombre del cliente</label><input id="eNom" class="form-control form-control-sm" maxlength="80"></div>' +
+                    '<div class="col-5"><label class="form-label mb-0">Teléfono (WhatsApp)</label><input id="eTel" class="form-control form-control-sm" maxlength="30"></div>' +
+                    '<div class="col-3"><label class="form-label mb-0">Cantidad</label><input id="eCant" type="number" min="1" value="1" class="form-control form-control-sm"></div>' +
+                    '<div class="col-4"><label class="form-label mb-0">Precio unitario</label><input id="ePrecio" class="form-control form-control-sm text-end" value="' + numeroAPrecio(art.precio) + '"></div>' +
+                    '<div class="col-5"><label class="form-label mb-0">Llega aprox.</label><div class="form-control form-control-sm" style="background:#f8f9fa;">' + llegadaTexto(llegadaManana()) + '</div></div>' +
+                    '<div class="col-4"><label class="form-label mb-0">Seña</label><input id="eSena" class="form-control form-control-sm text-end" placeholder="0"></div>' +
+                    '<div class="col-8"><label class="form-label mb-0">Medio de la seña</label><select id="eMedio" class="form-select form-select-sm">' + opcMedios + '</select></div>' +
+                    '<div class="col-12"><label class="form-label mb-0">Observación</label><input id="eObs" class="form-control form-control-sm" maxlength="250"></div>' +
+                  '</div>' +
+                  '<div class="form-text mt-2">Se suma al pedido en armado del proveedor, vinculado al encargo. La seña en efectivo requiere la caja abierta.</div>' +
+                '</div>',
+          showCancelButton: true, confirmButtonText: "Tomar encargo", cancelButtonText: "Cancelar", confirmButtonColor: "#146c43",
+          didOpen: function () { activarInputPrecio("ePrecio"); activarInputPrecio("eSena"); document.getElementById("eNom").focus(); },
+          preConfirm: function () {
+            var datos = {
+              nombre: document.getElementById("eNom").value.trim(),
+              tel: document.getElementById("eTel").value.trim(),
+              cant: parseInt(document.getElementById("eCant").value, 10),
+              precio: precioANumero(document.getElementById("ePrecio").value) || 0,
+              sena: precioANumero(document.getElementById("eSena").value) || 0,
+              medio: parseInt(document.getElementById("eMedio").value, 10),
+              obs: document.getElementById("eObs").value.trim(),
+              idProv: ops ? parseInt(document.getElementById("eProv").value, 10) : null,
+              idRubro: rubroElegido()
+            };
+            if (document.getElementById("swRubro") && !datos.idRubro) { Swal.showValidationMessage("Elegí un rubro."); return false; }
+            if (datos.nombre.length < 2) { Swal.showValidationMessage("Falta el nombre del cliente."); return false; }
+            if (datos.tel.replace(/\D/g, "").length < 6) { Swal.showValidationMessage("Falta el teléfono: es para avisarle cuando llegue."); return false; }
+            if (!(datos.cant > 0)) { Swal.showValidationMessage("Revisá la cantidad."); return false; }
+            if (datos.precio <= 0) { Swal.showValidationMessage("Indicá el precio que le pasaste al cliente."); return false; }
+            if (datos.sena > datos.cant * datos.precio + 0.01) { Swal.showValidationMessage("La seña no puede superar el total."); return false; }
+            return accion(datos).catch(function (err) {
+              Swal.showValidationMessage(err.message || "No se pudo tomar el encargo."); return false;
+            });
+          }
+        }).then(function (res) {
+          if (!res.isConfirmed || !res.value) return;
+          var d = res.value;
+          Swal.fire({ icon: "success", title: "Encargo #" + d.IdEncargo + " tomado",
+            html: (d.IdPedido ? "Sumado al pedido N° " + d.IdPedido + " (en armado).<br>" : "") +
+                  (d.LlegadaEstimada ? "Llega aprox. el <strong>" + llegadaTexto(d.LlegadaEstimada) + "</strong> si el pedido se envía hoy." : ""),
+            showCancelButton: true, confirmButtonText: "Seguir buscando", cancelButtonText: "Ver encargos" })
+            .then(function (r2) { if (r2.dismiss === Swal.DismissReason.cancel) window.location.href = "Encargos.html"; });
         });
-        buscar();
       });
+    }
+
+    function enviarEncargo(datos, idRepuesto, idProveedor) {
+      return fetchAuth(api + "Encargos", {
+        method: "POST",
+        body: JSON.stringify({
+          Nombre: datos.nombre, Telefono: datos.tel, Observacion: datos.obs || null,
+          Lineas: [{ IdRepuesto: idRepuesto, Cantidad: datos.cant, PrecioPactado: datos.precio }],
+          MontoSena: datos.sena > 0 ? datos.sena : null,
+          IdMedioSena: datos.sena > 0 ? datos.medio : null,
+          IdProveedorPedido: idProveedor
+        })
+      }).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+        return r.json();
+      });
+    }
+
+    // Vincular y equivalentes: ver vincular.js
+
+    // Otra marca con stock: se busca por su codigo para verla con todos sus datos
+    function irAEquivalente(id) {
+      var g = Equivalencias.porId[id];
+      var e = (Equivalencias.porGrupo[g] || []).find(function (x) { return x.IdRepuesto === id; });
+      if (!e) return;
+      var inp = document.getElementById("buscar");
+      inp.value = e.Codigo || e.Descripcion;
+      buscar(true);
+    }
+
+    function refrescarEquivalencias() {
+      Equivalencias.cargar().then(function () { buscar(true); });
     }
 
     /* ================= INICIO ================= */
+
+    function probar(texto) {
+      var inp = document.getElementById("buscar");
+      inp.value = texto;
+      buscar(true);
+      inp.focus();
+    }
 
     function limpiar() {
       var inp = document.getElementById("buscar");
@@ -612,9 +1153,41 @@
       inp.focus();
     }
 
+    /* ---------- Ojito: ocultar costos ----------
+       Para dar vuelta el monitor y mostrarle al cliente sin que vea lo
+       que pagamos. Queda recordado en este navegador. */
+    function aplicarCostos(ocultar) {
+      document.body.classList.toggle("sin-costos", ocultar);
+      var b = document.getElementById("btnCostos");
+      if (!b) return;
+      var txt = ocultar ? "Mostrar costos" : "Ocultar costos (para mostrarle la pantalla al cliente)";
+      b.innerHTML = '<i class="bi ' + (ocultar ? 'bi-eye-slash' : 'bi-eye') + '"></i>';
+      b.setAttribute("aria-pressed", ocultar ? "true" : "false");
+      b.setAttribute("aria-label", ocultar ? "Mostrar costos" : "Ocultar costos");
+      b.setAttribute("title", txt);
+      b.setAttribute("data-bs-original-title", txt);
+      if (window.bootstrap && bootstrap.Tooltip) {
+        var tt = bootstrap.Tooltip.getInstance(b);
+        if (tt && tt.setContent) tt.setContent({ ".tooltip-inner": txt });
+      }
+      try { localStorage.setItem("buscadorSinCostos", ocultar ? "1" : "0"); } catch (e) { }
+    }
+
+    var textoDesdeReporte = "";
+
     window.onload = function () {
       cargarProveedores();
+      Equivalencias.cargar();
+      armarMarcas([]);
+      cargarRubros().then(armarMarcas).catch(function () { });
       pintarBotones();
+
+      var ocultos = false;
+      try { ocultos = localStorage.getItem("buscadorSinCostos") === "1"; } catch (e) { }
+      aplicarCostos(ocultos);
+      var bc = document.getElementById("btnCostos");
+      if (window.bootstrap && bootstrap.Tooltip) bootstrap.Tooltip.getOrCreateInstance(bc);
+      bc.addEventListener("click", function () { aplicarCostos(!document.body.classList.contains("sin-costos")); });
 
       var inp = document.getElementById("buscar");
 
@@ -644,6 +1217,12 @@
       });
 
       inp.focus();
+
+      // Buscador.html?q=... (desde el reporte de busquedas)
+      try {
+        var q = new URLSearchParams(location.search).get("q");
+        if (q) { textoDesdeReporte = q.trim(); inp.value = q; buscar(true); }
+      } catch (e) { }
     };
   </script>
 </body>

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Encargos - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    .enc-nro { font-weight: 700; color: var(--navy); }
+    .enc-tel { font-size: 0.8rem; color: var(--text-muted); }
+    .enc-que { max-width: 300px; }
+    .enc-que small { color: var(--text-muted); }
+    .badge-disp { font-size: 0.75rem; font-weight: 600; padding: 4px 8px; border-radius: 12px; white-space: nowrap; }
+    .disp-EN_STOCK  { background: var(--green-soft); color: #155724; }
+    .disp-PEDIDO    { background: #e8f1ff; color: #0b3f85; }
+    .disp-SIN_PEDIR { background: #fff3cd; color: #856404; }
+    .disp-EN_ARMADO { background: #e0e7ff; color: #3730a3; }
+    .disp-ATRASADO  { background: var(--red-soft); color: #721c24; }
+    .enc-llega { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .est-AVISADO    { background: #e8f1ff; color: #0b3f85; }
+    .est-ENTREGADO  { background: #e9ecef; color: #495057; }
+    .est-CANCELADO  { background: var(--red-soft); color: #721c24; }
+    .btn-icono {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 8px; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; white-space: nowrap;
+    }
+    .btn-icono:hover { border-color: var(--nav-accent); color: var(--nav-accent-dark); }
+    .btn-icono.wa { border-color: #b7dfc4; color: #1e7e34; }
+    .btn-icono.wa:hover { background: #25d366; border-color: #25d366; color: #fff; }
+    .btn-icono.entregar { border-color: #b7dfc4; color: #1e7e34; }
+    .btn-icono.entregar:hover { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn-icono.peligro:hover { border-color: var(--red); color: var(--red); }
+    .tabs-estado .btn { font-size: 0.85rem; }
+    /* Modal de alta */
+    .enc-form label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 2px; }
+    .enc-res { max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; margin-top: 4px; }
+    .enc-res-item { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f1f3f5; }
+    .enc-res-item:hover { background: #f5f8ff; }
+    .enc-res-item .cod { font-family: 'Courier New', monospace; font-weight: 700; color: var(--navy); }
+    .enc-lin { display: grid; grid-template-columns: 1fr 70px 120px 28px; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f3f5; font-size: 0.85rem; }
+    .enc-lin input { font-size: 0.85rem; }
+    .enc-tot { display: flex; justify-content: space-between; font-weight: 700; color: var(--navy); padding-top: 8px; }
+    .ficha-lin { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f3f5; font-size: 0.86rem; }
+  </style>
+</head>
+
+<body data-page="encargos">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <div class="header-bar">
+      <div>
+        <h2><i class="bi bi-bookmark-star"></i> Encargos</h2>
+        <span class="subtitle">Lo que piden los clientes y no hay en stock</span>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn btn-danger" id="btnNuevo">
+          <i class="bi bi-plus-lg"></i> Encargo
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="bi bi-bookmark"></i></div>
+          <div><p class="stat-value" id="kpiAbiertos">0</p><p class="stat-label">Encargos abiertos</p></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="bi bi-whatsapp"></i></div>
+          <div><p class="stat-value" id="kpiAvisar">0</p><p class="stat-label">Llegaron y falta avisar</p></div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-icon yellow"><i class="bi bi-cash-coin"></i></div>
+          <div><p class="stat-value" id="kpiSenas">$0</p><p class="stat-label">Señas en poder del negocio</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="filtros-bar">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Buscar</label>
+          <input type="text" id="fTexto" class="form-control" placeholder="Cliente, teléfono o repuesto...">
+        </div>
+        <div class="col-md-4 tabs-estado">
+          <label class="form-label d-block">Mostrar</label>
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary active" id="verAbiertos">Abiertos</button>
+            <button type="button" class="btn btn-outline-primary" id="verTodos">Últimos 90 días</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>N°</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Qué encargó</th>
+              <th class="text-end">Total</th>
+              <th class="text-end">Seña</th>
+              <th>Situación</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla">
+            <tr class="loading-row"><td colspan="8">Cargando encargos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    var API = API_BASE + "Encargos";
+    var listado = [];
+    var verAbiertos = true;
+    var repuestos = [];   // catalogo propio, para el alta
+    var clientes = [];
+    var medios = [];      // medios de pago para la seña
+    var lineas = [];      // renglones del encargo en armado
+
+    var TEXTO_DISP = { EN_STOCK: "Llegó: hay stock", PEDIDO: "Pedido al proveedor", EN_ARMADO: "En un pedido sin enviar", SIN_PEDIR: "Sin pedir" };
+
+    function esc(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function fecha(v) { var d = new Date(v); return isNaN(d) ? "-" : d.toLocaleDateString("es-AR"); }
+    function leerError(r) {
+      return r.text().then(function (t) {
+        try { var d = JSON.parse(t); return d.Message || d.message || t; } catch (e) { return t; }
+      });
+    }
+
+    /* ---------- Listado ---------- */
+
+    function cargar() {
+      fetchAuth(API + "?abiertos=" + verAbiertos).then(function (r) {
+        if (!r.ok) throw new Error();
+        return r.json();
+      }).then(function (d) {
+        listado = d.Encargos || [];
+        document.getElementById("kpiSenas").textContent = formatearMoneda(Number(d.SenasPendientes) || 0);
+        var abiertos = listado.filter(function (e) { return e.Estado === "PENDIENTE" || e.Estado === "AVISADO"; });
+        document.getElementById("kpiAbiertos").textContent = abiertos.length;
+        document.getElementById("kpiAvisar").textContent =
+          abiertos.filter(function (e) { return e.Estado === "PENDIENTE" && e.Disponibilidad === "EN_STOCK"; }).length;
+        pintar();
+      }).catch(function () {
+        document.getElementById("tabla").innerHTML =
+          '<tr><td colspan="8" class="text-center text-danger p-4">No se pudieron cargar los encargos.</td></tr>';
+      });
+    }
+
+    function pintar() {
+      var t = document.getElementById("fTexto").value.trim().toLowerCase();
+      var lista = listado.filter(function (e) {
+        return !t || (e.Nombre + " " + e.Telefono + " " + (e.Primero || "") + " " + e.Id).toLowerCase().indexOf(t) !== -1;
+      });
+      var tb = document.getElementById("tabla");
+      if (lista.length === 0) {
+        tb.innerHTML = '<tr><td colspan="8" class="text-center text-muted p-4">' +
+          (verAbiertos ? "No hay encargos abiertos." : "No hay encargos en los últimos 90 días.") + '</td></tr>';
+        return;
+      }
+      tb.innerHTML = lista.map(function (e) {
+        var abierto = e.Estado === "PENDIENTE" || e.Estado === "AVISADO";
+        var situacion = abierto
+          ? '<span class="badge-disp disp-' + e.Disponibilidad + '">' + TEXTO_DISP[e.Disponibilidad] + '</span>' +
+            (e.Atrasado ? ' <span class="badge-disp disp-ATRASADO">Atrasado</span>' : '') +
+            (e.NoRetiro ? ' <span class="badge-disp disp-ATRASADO" title="Se le avisó y no vino a buscarlo">No retiró</span>' : '') +
+            (e.LlegadaEstimada && e.Disponibilidad !== "EN_STOCK"
+              ? '<div class="enc-llega">Llega aprox. ' + new Date(e.LlegadaEstimada).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "numeric" }) + '</div>' : '') +
+            (e.Estado === "AVISADO" ? '<div><span class="badge-disp est-AVISADO">Avisado ' + fecha(e.FechaAviso) + '</span></div>' : '')
+          : '<span class="badge-disp est-' + e.Estado + '">' + (e.Estado === "ENTREGADO" ? "Entregado" : "Cancelado") + '</span>';
+
+        var acciones = '<button class="btn-icono" onclick="verFicha(' + e.Id + ')" title="Ver"><i class="bi bi-eye"></i></button> ';
+        if (abierto) {
+          acciones += '<button class="btn-icono wa" onclick="avisar(' + e.Id + ')" title="Avisar por WhatsApp"><i class="bi bi-whatsapp"></i></button> ';
+          if (e.Disponibilidad === "EN_STOCK")
+            acciones += '<button class="btn-icono" onclick="etiqueta(' + e.Id + ')" title="Etiqueta para la bolsa"><i class="bi bi-printer"></i></button> ';
+          if (e.Disponibilidad === "EN_STOCK")
+            acciones += '<a class="btn-icono entregar" href="CargarVenta.html?encargo=' + e.Id + '" title="Entregar: abre la venta">' +
+                        '<i class="bi bi-bag-check"></i> Entregar</a> ';
+          acciones += '<button class="btn-icono peligro" onclick="cancelar(' + e.Id + ')" title="Cancelar"><i class="bi bi-x-circle"></i></button>';
+        }
+
+        return '<tr>' +
+          '<td class="enc-nro">#' + e.Id + '</td>' +
+          '<td>' + fecha(e.Fecha) + '<div class="enc-tel">hace ' + e.Dias + ' día' + (e.Dias === 1 ? '' : 's') + '</div></td>' +
+          '<td>' + esc(e.Nombre) + '<div class="enc-tel"><i class="bi bi-telephone"></i> ' + esc(e.Telefono) + '</div></td>' +
+          '<td class="enc-que">' + esc(e.Primero) + (e.Renglones > 1 ? ' <small>y ' + (e.Renglones - 1) + ' más</small>' : '') + '</td>' +
+          '<td class="text-end">' + formatearMoneda(e.Total) + '</td>' +
+          '<td class="text-end">' + (Number(e.Sena) > 0 ? formatearMoneda(e.Sena) : '<span class="text-muted">—</span>') + '</td>' +
+          '<td>' + situacion + '</td>' +
+          '<td class="text-center">' + acciones + '</td>' +
+        '</tr>';
+      }).join("");
+    }
+
+    /* ---------- Alta ---------- */
+
+    function cargarAuxiliares() {
+      return Promise.all([
+        fetchAuth(API_BASE + "Repuesto").then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (d) { repuestos = (d || []).filter(function (x) { return x.Activo === undefined || x.Activo === true || x.Activo === 1; }); }),
+        fetchAuth(API_BASE + "Cliente").then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (d) { clientes = (d || []).filter(function (c) { return c.Dni !== "00000000" && c.Dni !== "00000001"; }); }),
+        fetchAuth(API_BASE + "MedioPago").then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (d) { medios = d || []; })
+      ]);
+    }
+
+    function totalLineas() {
+      return lineas.reduce(function (a, l) { return a + l.Cantidad * l.PrecioPactado; }, 0);
+    }
+
+    function pintarLineas() {
+      var cont = document.getElementById("encLineas");
+      if (!cont) return;
+      if (lineas.length === 0) {
+        cont.innerHTML = '<div class="text-muted" style="font-size:0.85rem;padding:6px 0;">Buscá el repuesto y tocalo para sumarlo.</div>';
+      } else {
+        cont.innerHTML = lineas.map(function (l, i) {
+          return '<div class="enc-lin">' +
+            '<div><strong>' + esc(l.Codigo) + '</strong> ' + esc(l.Descripcion) + '</div>' +
+            '<input type="number" min="1" class="form-control form-control-sm" value="' + l.Cantidad + '" data-cant="' + i + '">' +
+            '<input type="text" inputmode="decimal" class="form-control form-control-sm text-end" id="encPrecio' + i + '" value="' + numeroAPrecio(l.PrecioPactado) + '">' +
+            '<button type="button" class="btn btn-sm btn-link text-danger p-0" data-quitar="' + i + '"><i class="bi bi-x-circle"></i></button>' +
+          '</div>';
+        }).join("");
+        cont.querySelectorAll("[data-cant]").forEach(function (inp) {
+          inp.addEventListener("input", function () {
+            lineas[+inp.getAttribute("data-cant")].Cantidad = Math.max(1, parseInt(inp.value, 10) || 1);
+            pintarTotal();
+          });
+        });
+        lineas.forEach(function (l, i) {
+          activarInputPrecio("encPrecio" + i);
+          document.getElementById("encPrecio" + i).addEventListener("input", function (ev) {
+            lineas[i].PrecioPactado = precioANumero(ev.target.value) || 0;
+            pintarTotal();
+          });
+        });
+        cont.querySelectorAll("[data-quitar]").forEach(function (b) {
+          b.addEventListener("click", function () { lineas.splice(+b.getAttribute("data-quitar"), 1); pintarLineas(); });
+        });
+      }
+      pintarTotal();
+    }
+
+    function pintarTotal() {
+      var el = document.getElementById("encTotal");
+      if (el) el.textContent = formatearMoneda(totalLineas());
+    }
+
+    function buscarRepuesto(texto) {
+      var res = document.getElementById("encRes");
+      texto = texto.trim().toLowerCase();
+      if (texto.length < 2) { res.innerHTML = ""; res.style.display = "none"; return; }
+      var palabras = texto.split(/\s+/);
+      var lista = repuestos.filter(function (r) {
+        var s = ((r.Codigo || "") + " " + (r.Descripcion || "") + " " + (r.Marca || "")).toLowerCase();
+        return palabras.every(function (p) { return s.indexOf(p) !== -1; });
+      }).slice(0, 30);
+      res.style.display = "block";
+      res.innerHTML = lista.length === 0
+        ? '<div class="p-2 text-muted" style="font-size:0.82rem;">No está en el catálogo. Sumalo primero desde Catálogo de proveedores.</div>'
+        : lista.map(function (r) {
+            return '<div class="enc-res-item" data-id="' + r.Id + '"><span><span class="cod">' + esc(r.Codigo) + '</span> ' +
+                   esc(r.Descripcion) + '</span><span>' + formatearMoneda(r.PrecioDeVenta) +
+                   ' · stock ' + (r.StockActual !== undefined ? r.StockActual : 0) + '</span></div>';
+          }).join("");
+      res.querySelectorAll("[data-id]").forEach(function (it) {
+        it.addEventListener("click", function () {
+          var r = repuestos.find(function (x) { return x.Id === +it.getAttribute("data-id"); });
+          if (!r) return;
+          if (!lineas.some(function (l) { return l.IdRepuesto === r.Id; }))
+            lineas.push({ IdRepuesto: r.Id, Codigo: r.Codigo || "", Descripcion: r.Descripcion,
+                          Cantidad: 1, PrecioPactado: Number(r.PrecioDeVenta) || 0 });
+          document.getElementById("encBuscar").value = "";
+          res.innerHTML = ""; res.style.display = "none";
+          pintarLineas();
+        });
+      });
+    }
+
+    function nuevo() {
+      lineas = [];
+      var opcClientes = '<option value="">— No está registrado —</option>' + clientes.map(function (c) {
+        return '<option value="' + c.Id + '">' + esc(c.Apellido + ", " + c.Nombre) + (c.Telefono ? " · " + esc(c.Telefono) : "") + '</option>';
+      }).join("");
+      var opcMedios = medios.map(function (m) { return '<option value="' + m.Id + '">' + esc(m.Nombre) + '</option>'; }).join("");
+
+      Swal.fire({
+        title: "Encargo",
+        width: 720,
+        html:
+          '<div class="enc-form" style="text-align:left;">' +
+            '<div class="row g-2">' +
+              '<div class="col-12"><label>Cliente registrado (opcional)</label><select id="encCliente" class="form-select form-select-sm">' + opcClientes + '</select></div>' +
+              '<div class="col-7"><label>Nombre</label><input id="encNombre" class="form-control form-control-sm" maxlength="80"></div>' +
+              '<div class="col-5"><label>Teléfono (WhatsApp)</label><input id="encTel" class="form-control form-control-sm" maxlength="30" placeholder="351 555-5555"></div>' +
+              '<div class="col-12"><label>Repuesto</label><input id="encBuscar" class="form-control form-control-sm" placeholder="Código o descripción...">' +
+                '<div class="enc-res" id="encRes" style="display:none;"></div></div>' +
+              '<div class="col-12"><div class="enc-lin" style="font-weight:600;color:var(--text-muted);font-size:0.75rem;border:none;"><span>Repuesto</span><span>Cant.</span><span class="text-end">Precio pactado</span><span></span></div>' +
+                '<div id="encLineas"></div><div class="enc-tot"><span>Total</span><span id="encTotal">$0,00</span></div></div>' +
+              '<div class="col-5"><label>Seña (opcional)</label><input id="encSena" class="form-control form-control-sm text-end" inputmode="decimal" placeholder="0"></div>' +
+              '<div class="col-7"><label>Medio de la seña</label><select id="encMedio" class="form-select form-select-sm">' + opcMedios + '</select></div>' +
+              '<div class="col-12"><label>Observación</label><input id="encObs" class="form-control form-control-sm" maxlength="250" placeholder="Ej.: para el Gol 2012, lo necesita para el viernes"></div>' +
+            '</div>' +
+            '<div class="text-muted mt-2" style="font-size:0.78rem;">La seña en efectivo entra a la caja (tiene que estar abierta). Queda registrada como deuda con el cliente hasta que se entregue o se cancele.</div>' +
+          '</div>',
+        showCancelButton: true,
+        confirmButtonText: "Tomar encargo",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#28a745",
+        didOpen: function () {
+          activarInputPrecio("encSena");
+          document.getElementById("encBuscar").addEventListener("input", function (e) { buscarRepuesto(e.target.value); });
+          document.getElementById("encCliente").addEventListener("change", function (e) {
+            var c = clientes.find(function (x) { return x.Id === +e.target.value; });
+            if (c) {
+              document.getElementById("encNombre").value = c.Apellido + ", " + c.Nombre;
+              document.getElementById("encTel").value = c.Telefono || "";
+            }
+          });
+          pintarLineas();
+          document.getElementById("encNombre").focus();
+        },
+        preConfirm: function () {
+          var nombre = document.getElementById("encNombre").value.trim();
+          var tel = document.getElementById("encTel").value.trim();
+          var sena = precioANumero(document.getElementById("encSena").value) || 0;
+          if (nombre.length < 2) { Swal.showValidationMessage("Falta el nombre del cliente."); return false; }
+          if (tel.replace(/\D/g, "").length < 6) { Swal.showValidationMessage("Falta el teléfono: es para avisarle cuando llegue."); return false; }
+          if (lineas.length === 0) { Swal.showValidationMessage("Sumá al menos un repuesto."); return false; }
+          if (sena > totalLineas() + 0.01) { Swal.showValidationMessage("La seña no puede superar el total."); return false; }
+          var idCli = document.getElementById("encCliente").value;
+          return {
+            IdCliente: idCli ? +idCli : null,
+            Nombre: nombre, Telefono: tel,
+            Observacion: document.getElementById("encObs").value.trim() || null,
+            Lineas: lineas.map(function (l) { return { IdRepuesto: l.IdRepuesto, Cantidad: l.Cantidad, PrecioPactado: l.PrecioPactado }; }),
+            MontoSena: sena > 0 ? sena : null,
+            IdMedioSena: sena > 0 ? +document.getElementById("encMedio").value : null
+          };
+        }
+      }).then(function (res) {
+        if (!res.isConfirmed || !res.value) return;
+        fetchAuth(API, { method: "POST", body: JSON.stringify(res.value) }).then(function (r) {
+          if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+          return r.json();
+        }).then(function (d) {
+          Swal.fire({ icon: "success", title: "Encargo #" + d.IdEncargo + " tomado",
+                      text: "Cuando llegue, avisale desde acá por WhatsApp.", timer: 2200, showConfirmButton: false });
+          cargar();
+        }).catch(function (err) { Swal.fire("No se pudo tomar el encargo", err.message || "Error de conexión.", "error"); });
+      });
+    }
+
+    /* ---------- Ficha ---------- */
+
+    function verFicha(id) {
+      fetchAuth(API + "/" + id).then(function (r) { if (!r.ok) throw new Error(); return r.json(); }).then(function (d) {
+        var e = d.Encargo[0];
+        var html = '<div style="text-align:left;font-size:0.88rem;">' +
+          '<div><strong>' + esc(e.Nombre) + '</strong> · ' + esc(e.Telefono) + '</div>' +
+          '<div class="text-muted" style="font-size:0.8rem;">Tomado el ' + fecha(e.Fecha) + (e.Usuario ? ' por ' + esc(e.Usuario) : '') + '</div>' +
+          (e.Observacion ? '<div class="mt-1"><i class="bi bi-chat-left-text"></i> ' + esc(e.Observacion) + '</div>' : '') +
+          '<hr style="margin:8px 0;">' +
+          d.Renglones.map(function (l) {
+            var est = l.Stock >= l.Cantidad ? '<span style="color:#1e7e34;">hay ' + l.Stock + '</span>'
+                    : (l.EnCamino > 0 ? '<span style="color:#0b3f85;">en camino ' + l.EnCamino + '</span>' : '<span style="color:#856404;">sin pedir</span>');
+            return '<div class="ficha-lin"><span>' + l.Cantidad + ' × ' + esc(l.Descripcion) + '<br><small class="text-muted">' + esc(l.Codigo) + ' · ' + est + '</small></span>' +
+                   '<strong>' + formatearMoneda(l.Subtotal) + '</strong></div>';
+          }).join("") +
+          '<div class="ficha-lin" style="border:none;"><strong>Total</strong><strong>' + formatearMoneda(e.Total) + '</strong></div>' +
+          (d.Senas.length ? '<div class="mt-2"><strong>Señas</strong>' + d.Senas.map(function (s) {
+              return '<div class="ficha-lin"><span>' + fecha(s.Fecha) + ' · ' + esc(s.Medio) + '</span><span>' + formatearMoneda(s.Monto) + '</span></div>';
+            }).join("") + '<div class="ficha-lin" style="border:none;"><span>Resta pagar al retirar</span><strong>' +
+            formatearMoneda(Math.max(0, e.Total - e.Sena)) + '</strong></div></div>' : '<div class="text-muted mt-2">Sin seña.</div>') +
+          (e.Estado === "CANCELADO" ? '<div class="mt-2" style="color:#721c24;">Cancelado el ' + fecha(e.FechaCancelacion) + ': ' + esc(e.MotivoCancelacion) + '</div>' : '') +
+          (e.Estado === "ENTREGADO" ? '<div class="mt-2">Entregado el ' + fecha(e.FechaEntrega) + ' con la venta N° ' + String(e.IdVenta).padStart(8, "0") + '</div>' : '') +
+        '</div>';
+        var abierto = e.Estado === "PENDIENTE" || e.Estado === "AVISADO";
+        Swal.fire({ title: "Encargo #" + e.Id, html: html, width: 600,
+                    showDenyButton: abierto, denyButtonText: "Agregar seña", denyButtonColor: "#0b3f85",
+                    confirmButtonText: "Cerrar" })
+          .then(function (r) { if (r.isDenied) agregarSena(e); });
+      }).catch(function () { Swal.fire("Error", "No se pudo cargar el encargo.", "error"); });
+    }
+
+    function agregarSena(e) {
+      var opc = medios.map(function (m) { return '<option value="' + m.Id + '">' + esc(m.Nombre) + '</option>'; }).join("");
+      Swal.fire({
+        title: "Agregar seña · #" + e.Id,
+        html: '<div style="text-align:left;"><label class="form-label">Importe</label>' +
+              '<input id="sMonto" class="form-control text-end" inputmode="decimal">' +
+              '<label class="form-label mt-2">Medio</label><select id="sMedio" class="form-select">' + opc + '</select>' +
+              '<div class="text-muted mt-2" style="font-size:0.8rem;">Ya dejó ' + formatearMoneda(e.Sena) + ' de ' + formatearMoneda(e.Total) + '.</div></div>',
+        showCancelButton: true, confirmButtonText: "Registrar", cancelButtonText: "Cancelar",
+        didOpen: function () { activarInputPrecio("sMonto"); document.getElementById("sMonto").focus(); },
+        preConfirm: function () {
+          var m = precioANumero(document.getElementById("sMonto").value) || 0;
+          if (m <= 0) { Swal.showValidationMessage("Indicá el importe."); return false; }
+          return { Monto: m, IdMedioPago: +document.getElementById("sMedio").value };
+        }
+      }).then(function (r) {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "/" + e.Id + "/Sena", { method: "POST", body: JSON.stringify(r.value) }).then(function (x) {
+          if (!x.ok) return leerError(x).then(function (m) { throw new Error(m); });
+          Swal.fire({ icon: "success", title: "Seña registrada", timer: 1500, showConfirmButton: false });
+          cargar();
+        }).catch(function (err) { Swal.fire("No se pudo registrar la seña", err.message, "error"); });
+      });
+    }
+
+    /* ---------- Aviso por WhatsApp ---------- */
+
+    // Numero argentino para wa.me: solo digitos, sin el 0 del area,
+    // con 54 9 adelante. Si ya viene con 54, se respeta.
+    function numeroWhatsApp(tel) {
+      var n = String(tel || "").replace(/\D/g, "");
+      if (n.indexOf("54") === 0) return n;
+      n = n.replace(/^0+/, "");
+      return "549" + n;
+    }
+
+    function avisar(id) {
+      var e = listado.find(function (x) { return x.Id === id; });
+      if (!e) return;
+      var resta = Math.max(0, Number(e.Total) - Number(e.Sena));
+      var nombre = String(e.Nombre).split(",").pop().trim() || e.Nombre;
+      var msg = "Hola " + nombre + ", te escribimos de Daytona Repuestos. " +
+                (e.Disponibilidad === "EN_STOCK" ? "Ya llegó tu encargo" : "Te contamos por tu encargo") +
+                " #" + e.Id + ": " + e.Primero + (e.Renglones > 1 ? " y " + (e.Renglones - 1) + " más" : "") + ". " +
+                (Number(e.Sena) > 0 ? "Dejaste " + formatearMoneda(e.Sena) + " de seña; resta " + formatearMoneda(resta) + ". "
+                                    : "Total: " + formatearMoneda(e.Total) + ". ") +
+                "¡Te esperamos!";
+      window.open("https://wa.me/" + numeroWhatsApp(e.Telefono) + "?text=" + encodeURIComponent(msg), "_blank");
+
+      Swal.fire({
+        title: "¿Le llegó el mensaje?",
+        text: "Se abrió WhatsApp con el mensaje armado. Marcalo como avisado cuando lo envíes.",
+        icon: "question", showCancelButton: true,
+        confirmButtonText: "Sí, avisado", cancelButtonText: "Todavía no"
+      }).then(function (r) {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "/" + id + "/Avisado", { method: "POST" }).then(function (x) {
+          if (!x.ok) return leerError(x).then(function (m) { throw new Error(m); });
+          cargar();
+        }).catch(function (err) { Swal.fire("Error", err.message, "error"); });
+      });
+    }
+
+
+    /* ---------- Etiqueta para separar ----------
+       Un papelito para la bolsa con el repuesto: quien lo encargo, como
+       ubicarlo y cuanto hay que cobrarle al entregar. */
+    function imprimirEtiqueta(e, items) {
+      var resta = Math.max(0, Number(e.Total) - Number(e.Sena));
+      var w = window.open("", "_blank", "width=420,height=520");
+      if (!w) { Swal.fire("No se pudo abrir la etiqueta", "Permití las ventanas emergentes para este sitio.", "info"); return; }
+      var esc2 = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+      w.document.write(
+        '<!doctype html><html><head><meta charset="utf-8"><title>Encargo #' + e.Id + '</title>' +
+        '<style>@page{size:80mm auto;margin:4mm}body{font-family:Arial,sans-serif;width:72mm;margin:0;color:#000}' +
+        '.t{font-size:11px;letter-spacing:1px}.n{font-size:30px;font-weight:800;margin:2px 0}.c{font-size:17px;font-weight:700}' +
+        '.i{font-size:12px;margin:6px 0;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:5px 0}' +
+        '.r{font-size:14px}.r b{font-size:18px}</style></head><body>' +
+        '<div class="t">DAYTONA · ENCARGO</div><div class="n">#' + e.Id + '</div>' +
+        '<div class="c">' + esc2(e.Nombre) + '</div><div>' + esc2(e.Telefono) + '</div>' +
+        '<div class="i">' + esc2(items) + '</div>' +
+        (Number(e.Sena) > 0 ? '<div class="r">Seña: ' + formatearMoneda(e.Sena) + '</div>' : '') +
+        '<div class="r">A cobrar: <b>' + formatearMoneda(resta) + '</b></div>' +
+        '<div style="font-size:10px;margin-top:6px;">Tomado el ' + new Date(e.Fecha || Date.now()).toLocaleDateString("es-AR") + '</div>' +
+        '</' + 'body></' + 'html>');
+      w.document.close();
+      // Se imprime desde aca: un script dentro del texto cortaba el script de la pagina
+      setTimeout(function () { w.focus(); w.print(); }, 250);
+    }
+
+    function etiqueta(id) {
+      fetchAuth(API + "/" + id).then(function (r) { return r.json(); }).then(function (d) {
+        var e = d.Encargo[0];
+        var items = d.Renglones.map(function (l) { return l.Cantidad + " × " + l.Descripcion + " (" + l.Codigo + ")"; }).join(", ");
+        imprimirEtiqueta(e, items);
+      }).catch(function () { Swal.fire("Error", "No se pudo armar la etiqueta.", "error"); });
+    }
+
+    /* ---------- Cancelacion ---------- */
+
+    function cancelar(id) {
+      fetchAuth(API + "/" + id).then(function (r) { return r.json(); }).then(function (d) {
+        var e = d.Encargo[0];
+        var sena = Number(e.Sena) || 0;
+        var puedeAFavor = e.IdCliente && e.ClienteConCuenta && !e.ClienteGenerico;
+        return fetchAuth(API + "/Cuentas").then(function (r) { return r.ok ? r.json() : []; }).then(function (cuentas) {
+          var opcCuentas = (cuentas || []).map(function (c) { return '<option value="' + c.Id + '">' + esc(c.Nombre) + '</option>'; }).join("");
+          var bloqueSena = sena <= 0 ? '' :
+            '<div class="mt-3"><strong>Dejó ' + formatearMoneda(sena) + ' de seña. ¿Qué pasa con ella?</strong>' +
+              '<div class="form-check mt-1"><input class="form-check-input" type="radio" name="res" value="DEVUELTA" id="rDev" checked>' +
+                '<label class="form-check-label" for="rDev">Se le devuelve</label></div>' +
+              '<div id="bloqueCuenta" class="ms-4 mb-1"><select id="cCuenta" class="form-select form-select-sm">' + opcCuentas + '</select>' +
+                '<small class="text-muted">En efectivo, la caja tiene que estar abierta.</small></div>' +
+              '<div class="form-check"><input class="form-check-input" type="radio" name="res" value="A_FAVOR" id="rFav"' + (puedeAFavor ? '' : ' disabled') + '>' +
+                '<label class="form-check-label" for="rFav">Queda a favor en su cuenta corriente' + (puedeAFavor ? '' : ' <small class="text-muted">(no tiene cuenta corriente)</small>') + '</label></div>' +
+              '<div class="form-check"><input class="form-check-input" type="radio" name="res" value="RETENIDA" id="rRet">' +
+                '<label class="form-check-label" for="rRet">Se retiene (la pierde)</label></div>' +
+            '</div>';
+          return Swal.fire({
+            title: "Cancelar encargo #" + id,
+            html: '<div style="text-align:left;"><label class="form-label">Motivo</label>' +
+                  '<input id="cMotivo" class="form-control" maxlength="250" placeholder="Ej.: el cliente lo consiguió en otro lado">' + bloqueSena + '</div>',
+            icon: "warning", showCancelButton: true, confirmButtonText: "Cancelar encargo", cancelButtonText: "Volver",
+            confirmButtonColor: "#B42318",
+            didOpen: function () {
+              document.querySelectorAll('input[name="res"]').forEach(function (rb) {
+                rb.addEventListener("change", function () {
+                  document.getElementById("bloqueCuenta").style.display = rb.value === "DEVUELTA" && rb.checked ? "block" : "none";
+                });
+              });
+            },
+            preConfirm: function () {
+              var motivo = document.getElementById("cMotivo").value.trim();
+              if (motivo.length < 5) { Swal.showValidationMessage("Indicá el motivo."); return false; }
+              var body = { Motivo: motivo };
+              if (sena > 0) {
+                var sel = document.querySelector('input[name="res"]:checked');
+                body.Resolucion = sel ? sel.value : null;
+                if (body.Resolucion === "DEVUELTA") body.IdCuentaDevolucion = +document.getElementById("cCuenta").value;
+              }
+              return body;
+            }
+          }).then(function (r) {
+            if (!r.isConfirmed) return;
+            return fetchAuth(API + "/" + id + "/Cancelar", { method: "POST", body: JSON.stringify(r.value) }).then(function (x) {
+              if (!x.ok) return leerError(x).then(function (m) { throw new Error(m); });
+              Swal.fire({ icon: "success", title: "Encargo cancelado", timer: 1500, showConfirmButton: false });
+              cargar();
+            });
+          });
+        });
+      }).catch(function (err) { Swal.fire("No se pudo cancelar", err.message || "Error de conexión.", "error"); });
+    }
+
+    /* ---------- Inicio ---------- */
+
+    document.getElementById("fTexto").addEventListener("input", pintar);
+    document.getElementById("verAbiertos").addEventListener("click", function () {
+      verAbiertos = true; this.classList.add("active"); document.getElementById("verTodos").classList.remove("active"); cargar();
+    });
+    document.getElementById("verTodos").addEventListener("click", function () {
+      verAbiertos = false; this.classList.add("active"); document.getElementById("verAbiertos").classList.remove("active"); cargar();
+    });
+    document.getElementById("btnNuevo").addEventListener("click", function () {
+      var btn = this;
+      if (repuestos.length) { nuevo(); return; }
+      btn.disabled = true;
+      cargarAuxiliares().then(function () { btn.disabled = false; nuevo(); })
+        .catch(function () { btn.disabled = false; Swal.fire("Error", "No se pudieron cargar los repuestos.", "error"); });
+    });
+    cargarAuxiliares();
+    cargar();
+  </script>
+</body>
+</html>

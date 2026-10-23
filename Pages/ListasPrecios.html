@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Listas de precios - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    /* =================================================================
+       LISTAS DE PRECIOS
+       La actualizacion de los viernes, sin SQL:
+       1) elegir proveedor y subir el Excel (se lee en el navegador)
+       2) comparar contra lo cargado, sin escribir nada
+       3) importar la lista
+       4) aplicar los precios de venta que la persona marca
+       ================================================================= */
+    .lp-main { padding: 16px 24px 90px !important; max-width: none; width: 100%; }
+    .lp-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .lp-top h1 { font-size: 1.3rem; font-weight: 800; color: var(--navy); margin: 0; }
+    .lp-top p { margin: 3px 0 0; color: #5f6b7a; font-size: 0.9rem; }
+
+    .pasos { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 14px; flex-wrap: wrap; }
+    .pasos li { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; font-weight: 600; color: #8a94a3;
+                background: #fff; border: 1px solid #dde3ea; border-radius: 999px; padding: 5px 12px 5px 6px; }
+    .pasos li .n { width: 22px; height: 22px; border-radius: 50%; background: #eef1f5; color: #6b7685; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; }
+    .pasos li.activo { color: var(--navy); border-color: var(--nav-accent); }
+    .pasos li.activo .n { background: var(--navy); color: #fff; }
+    .pasos li.hecho { color: #146c43; }
+    .pasos li.hecho .n { background: #d1f0df; color: #146c43; }
+
+    .caja { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; margin-bottom: 14px; }
+    .caja-h { padding: 14px 18px 4px; font-weight: 700; color: var(--navy); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .caja-h small { font-weight: 400; color: #6b7685; font-size: 0.82rem; }
+    .caja-b { padding: 10px 18px 16px; }
+
+    /* Proveedores */
+    .provs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+    .prov { position: relative; border: 1px solid #c9d3e0; border-radius: 10px; padding: 11px 14px; cursor: pointer; background: #fff; text-align: left; width: 100%; }
+    .prov:hover { border-color: var(--nav-accent); background: #f8fbff; }
+    .prov.sel { border-color: var(--navy); box-shadow: 0 0 0 2px var(--navy) inset; background: #f0f6ff; }
+    .prov:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+    .prov .nom { font-weight: 800; color: var(--navy); }
+    .prov .det { font-size: 0.8rem; color: #5f6b7a; margin-top: 2px; }
+    .prov .toca { display: inline-block; margin-top: 6px; font-size: 0.72rem; font-weight: 700; border-radius: 5px; padding: 1px 7px; background: #fff3d1; color: #7a5600; }
+    .prov .aldia { display: inline-block; margin-top: 6px; font-size: 0.72rem; font-weight: 700; border-radius: 5px; padding: 1px 7px; background: #d1f0df; color: #146c43; }
+
+    .fila-arch { display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap; margin-top: 14px; }
+    .zona { flex: 1 1 380px; border: 2px dashed #b8c6d9; border-radius: 10px; padding: 18px; text-align: center; color: #5f6b7a; cursor: pointer; background: #fafbfc; }
+    .zona:hover, .zona.encima { border-color: var(--nav-accent); background: #f0f6ff; }
+    .zona i { font-size: 1.6rem; color: #8aa1bf; display: block; }
+    .zona b { color: var(--navy); }
+    .zona.cargado { border-style: solid; border-color: #9fd4b6; background: #f3fbf6; }
+    .fecha { flex: 0 0 200px; }
+    .fecha label { font-size: 0.8rem; font-weight: 600; color: #4a5568; }
+
+    /* Vista previa */
+    .prev-info { font-size: 0.86rem; color: #4a5568; margin-bottom: 8px; }
+    .prev-info b { color: var(--text); }
+    .tabla { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .tabla th { font-size: 0.74rem; font-weight: 600; color: #6b7685; background: #fafbfc; padding: 7px 10px; border-bottom: 1px solid #edf0f4; text-align: left; white-space: nowrap; }
+    .tabla td { padding: 7px 10px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+    .tabla tr:last-child td { border-bottom: none; }
+    .tabla .der { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .tabla .cod { font-family: Consolas, 'Courier New', monospace; font-weight: 700; white-space: nowrap; }
+    .tabla .mal { color: #a8281e; font-weight: 700; }
+    .scroll-x { overflow-x: auto; }
+
+    .aviso { border-radius: 9px; padding: 10px 14px; font-size: 0.86rem; margin-top: 10px; display: flex; gap: 10px; align-items: flex-start; }
+    .aviso i { font-size: 1.1rem; line-height: 1.2; }
+    .aviso.amar { background: #fff8e1; color: #6b4f00; border: 1px solid #f3dc9a; }
+    .aviso.rojo { background: #fdeceb; color: #7f1d16; border: 1px solid #f1b8b4; }
+    .aviso.verde { background: #effaf3; color: #14532d; border: 1px solid #b7e2c8; }
+
+    /* Resumen */
+    .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .kpi { border: 1px solid #e3e8ef; border-radius: 10px; padding: 10px 12px; }
+    .kpi .t { font-size: 0.76rem; color: #6b7685; font-weight: 600; }
+    .kpi .v { font-size: 1.35rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.25; }
+    .kpi .s { font-size: 0.74rem; color: #8a94a3; }
+    .kpi.sube .v { color: #a8281e; }
+    .kpi.baja .v { color: #146c43; }
+    .kpi.ojo { border-color: #f3dc9a; background: #fffcf0; }
+
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid #edf0f4; padding: 0 12px; flex-wrap: wrap; }
+    .tabs button { border: none; background: none; padding: 10px 12px; font-size: 0.86rem; font-weight: 600; color: #6b7685; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tabs button.on { color: var(--navy); border-bottom-color: var(--navy); }
+    .tabs button .c { font-size: 0.72rem; background: #eef1f5; border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
+
+    .filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px 18px 6px; }
+    .chip { border: 1px solid #c9d3e0; background: #fff; border-radius: 999px; padding: 4px 11px; font-size: 0.8rem; font-weight: 600; color: #4a5568; }
+    .chip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .filtros input[type=search] { max-width: 260px; height: 32px; font-size: 0.85rem; }
+    .filtros .esp { flex: 1; }
+    .lnk { border: none; background: none; color: var(--nav-accent); font-size: 0.8rem; font-weight: 600; padding: 0; }
+
+    .rep-desc { font-weight: 600; color: var(--text); line-height: 1.3; }
+    .rep-meta { font-size: 0.76rem; color: #6b7685; margin-top: 2px; }
+    .lp-marca { display: inline-block; background: var(--navy); color: #fff; font-weight: 800; font-size: 0.7rem; letter-spacing: 0.4px; border-radius: 5px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; }
+    .var { font-weight: 700; font-size: 0.78rem; }
+    .var.up { color: #a8281e; } .var.down { color: #146c43; } .var.eq { color: #8a94a3; }
+    .antes { color: #8a94a3; text-decoration: line-through; font-size: 0.78rem; }
+    .nota { font-size: 0.74rem; color: #b45309; font-weight: 600; }
+    .ok-aplicado { font-size: 0.74rem; color: #146c43; font-weight: 700; }
+    tr.aplicado td { background: #f3fbf6; }
+    .mas { text-align: center; padding: 10px; }
+
+    /* Barra de acciones abajo */
+    .barra { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #dde3ea;
+             padding: 10px 24px; display: flex; align-items: center; gap: 12px; z-index: 20; box-shadow: 0 -4px 14px rgba(15, 35, 70, 0.06); }
+    .barra .txt { flex: 1; font-size: 0.86rem; color: #4a5568; min-width: 0; }
+    .barra .txt b { color: var(--text); }
+    .btn-p { height: 42px; border: none; border-radius: 10px; background: var(--navy); color: #fff; font-weight: 700; font-size: 0.92rem; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .btn-p:hover:not(:disabled) { background: #0b2c55; }
+    .btn-p:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-s { height: 42px; border-radius: 10px; border: 1px solid #c9d3e0; background: #fff; color: var(--navy); font-weight: 700; font-size: 0.88rem; padding: 0 14px; white-space: nowrap; }
+    .btn-s:hover { border-color: var(--nav-accent); background: #f0f6ff; }
+
+    .oculto { display: none !important; }
+    .vacio { text-align: center; padding: 30px 20px; color: #5f6b7a; }
+
+    @media (max-width: 991px) {
+      .barra { padding: 10px 12px; flex-wrap: wrap; }
+      .lp-main { padding: 12px 12px 130px !important; }
+    }
+  </style>
+</head>
+
+<body data-page="listas-precios">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content lp-main">
+    <div class="lp-top">
+      <div>
+        <h1>Listas de precios</h1>
+        <p>La actualización de los viernes: subí la lista del proveedor, mirá qué cambia y recién ahí importala.</p>
+      </div>
+    </div>
+
+    <ol class="pasos" id="pasos">
+      <li data-p="1" class="activo"><span class="n">1</span> Lista</li>
+      <li data-p="2"><span class="n">2</span> Revisar cambios</li>
+      <li data-p="3"><span class="n">3</span> Importar</li>
+      <li data-p="4"><span class="n">4</span> Precios de venta</li>
+    </ol>
+
+    <!-- PASO 1 -->
+    <section class="caja" id="secLista">
+      <div class="caja-h">¿De qué proveedor es la lista?<small id="provAyuda"></small></div>
+      <div class="caja-b">
+        <div class="provs" id="provs"><div class="vacio"><span class="spinner-border spinner-border-sm"></span> Cargando…</div></div>
+
+        <div class="fila-arch">
+          <label class="zona" id="zona" tabindex="0">
+            <input type="file" id="archivo" accept=".xlsx,.xls,.csv,.txt" class="d-none">
+            <i class="bi bi-file-earmark-spreadsheet"></i>
+            <span id="zonaTxt"><b>Elegí el Excel de la lista</b> o arrastralo acá<br><small>.xlsx, .xls o .csv</small></span>
+          </label>
+          <div class="fecha">
+            <label for="fechaLista">Fecha de la lista</label>
+            <input type="date" class="form-control" id="fechaLista">
+            <div class="form-text">La que figura en el archivo del proveedor.</div>
+          </div>
+        </div>
+
+        <div id="previa" class="oculto" style="margin-top:16px"></div>
+      </div>
+    </section>
+
+    <!-- PASO 2 -->
+    <section class="caja oculto" id="secResumen">
+      <div class="caja-h">Qué cambia<small id="resumenAyuda">Todavía no se escribió nada: es solo la comparación.</small></div>
+      <div class="caja-b">
+        <div class="kpis" id="kpis"></div>
+        <div id="avisos"></div>
+      </div>
+    </section>
+
+    <section class="caja oculto" id="secDetalle">
+      <div class="tabs" role="tablist">
+        <button type="button" class="on" data-tab="tus">Tus repuestos <span class="c" id="cTus">0</span></button>
+        <button type="button" data-tab="rubro">Por rubro <span class="c" id="cRubro">0</span></button>
+        <button type="button" data-tab="raros">Para revisar <span class="c" id="cRaros">0</span></button>
+      </div>
+
+      <div id="tabTus">
+        <div class="filtros">
+          <button type="button" class="chip on" data-f="cambian">Cambian</button>
+          <button type="button" class="chip" data-f="SUBE">Suben</button>
+          <button type="button" class="chip" data-f="BAJA">Bajan</button>
+          <button type="button" class="chip" data-f="SIN_PRECIO">Sin precio</button>
+          <button type="button" class="chip" data-f="todos">Todos</button>
+          <input type="search" class="form-control" id="busca" placeholder="Buscar código o descripción">
+          <span class="esp"></span>
+          <button type="button" class="lnk" id="marcarVis">Marcar los que se ven</button>
+          <button type="button" class="lnk" id="desmarcarVis">Desmarcar</button>
+        </div>
+        <div class="scroll-x">
+          <table class="tabla">
+            <thead><tr>
+              <th style="width:34px"></th><th>Repuesto</th><th class="der">Stock</th>
+              <th class="der">Costo</th><th class="der">Precio de venta</th><th></th>
+            </tr></thead>
+            <tbody id="tbTus"></tbody>
+          </table>
+        </div>
+        <div class="mas oculto" id="masTus"><button type="button" class="btn-s" id="btnMasTus">Mostrar más</button></div>
+      </div>
+
+      <div id="tabRubro" class="oculto scroll-x">
+        <table class="tabla">
+          <thead><tr><th>Rubro</th><th class="der">Artículos</th><th class="der">Suben</th><th class="der">Bajan</th>
+            <th class="der">Variación promedio</th><th class="der">Mínima</th><th class="der">Máxima</th></tr></thead>
+          <tbody id="tbRubro"></tbody>
+        </table>
+      </div>
+
+      <div id="tabRaros" class="oculto scroll-x">
+        <div class="filtros"><span class="rep-meta">Variaciones fuera de lo normal y artículos que se quedan sin precio. Conviene mirarlos antes de importar.</span></div>
+        <table class="tabla">
+          <thead><tr><th>Código</th><th>Artículo</th><th class="der">Antes</th><th class="der">Ahora</th><th class="der">Variación</th><th></th></tr></thead>
+          <tbody id="tbRaros"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="barra" id="barra">
+    <div class="txt" id="barraTxt">Elegí el proveedor y el archivo.</div>
+    <button type="button" class="btn-s oculto" id="btnOtra">Empezar de nuevo</button>
+    <button type="button" class="btn-p" id="btnAccion" disabled><i class="bi bi-arrow-left-right"></i> Comparar</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+    var api = API_BASE;
+    var TANDA = 2500;          // filas por envio (el servidor acepta hasta 10.000)
+    var POR_PAGINA = 200;
+
+    var perfiles = [];
+    var perfil = null;         // proveedor elegido
+    var lectura = null;        // { nombre, hoja, filas: [[...]], encabezado: n }
+    var comp = null;           // resultado de la comparacion
+    var etapa = "lista";       // lista | revisar | importada
+    var marcados = {};         // IdRepuesto -> true
+    var aplicados = {};        // IdRepuesto -> true
+    var filtro = "cambian", texto = "", limite = POR_PAGINA;
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function leerError(r) {
+      return r.text().then(function (t) { try { var j = JSON.parse(t); return j.Message || j.message || t; } catch (e) { return t; } });
+    }
+    function pedir(url, op) {
+      return fetchAuth(url, op).then(function (r) {
+        if (!r.ok) return leerError(r).then(function (m) { throw new Error(m || ("Error " + r.status)); });
+        return r.status === 204 ? null : r.text().then(function (t) { return t ? JSON.parse(t) : null; });
+      });
+    }
+    function n(v) { return Number(v || 0).toLocaleString("es-AR"); }
+    function pct(v) {
+      if (v == null || isNaN(v)) return "";
+      var x = Number(v);
+      return (x > 0 ? "+" : "") + x.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + "%";
+    }
+    function clasePct(v) { return v == null ? "eq" : (v > 0.05 ? "up" : (v < -0.05 ? "down" : "eq")); }
+    function fechaCorta(f) {
+      if (!f) return "";
+      var d = new Date(String(f).slice(0, 10) + "T12:00:00");
+      return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    }
+    function diasDesde(f) {
+      if (!f) return null;
+      var d = new Date(String(f).slice(0, 10) + "T12:00:00");
+      return Math.floor((Date.now() - d.getTime()) / 86400000);
+    }
+    function marcaDeRubro(r) { var m = /"([^"]+)"/.exec(String(r || "")); return m ? m[1].trim() : ""; }
+    function rubroSinMarca(r) { return String(r || "").replace(/\s*"[^"]*"\s*/g, " ").trim(); }
+
+    function marcarPaso(p) {
+      document.querySelectorAll("#pasos li").forEach(function (li) {
+        var k = Number(li.getAttribute("data-p"));
+        li.classList.toggle("activo", k === p);
+        li.classList.toggle("hecho", k < p);
+      });
+    }
+
+    /* ---------------------------------------------------------------
+       Paso 1: proveedor y archivo
+       --------------------------------------------------------------- */
+    function hoyISO() {
+      var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().slice(0, 10);
+    }
+    document.getElementById("fechaLista").value = hoyISO();
+
+    function cargarPerfiles() {
+      pedir(api + "Importacion/Perfiles").then(function (d) {
+        perfiles = d || [];
+        var cont = document.getElementById("provs");
+        if (!perfiles.length) {
+          cont.innerHTML = '<div class="vacio">No hay proveedores con perfil de importación cargado.</div>';
+          return;
+        }
+        cont.innerHTML = perfiles.map(function (p, i) {
+          var dias = diasDesde(p.UltimaLista);
+          var estado = dias == null ? '<span class="toca">Nunca se actualizó</span>'
+            : (dias >= 7 ? '<span class="toca">Hace ' + dias + ' días: toca actualizar</span>'
+                         : '<span class="aldia">Al día (hace ' + dias + (dias === 1 ? ' día' : ' días') + ')</span>');
+          return '<button type="button" class="prov" data-i="' + i + '" aria-pressed="false">' +
+            '<div class="nom">' + esc(p.Proveedor) + '</div>' +
+            '<div class="det">' + n(p.Articulos) + ' artículos' + (p.UltimaLista ? ' · lista del ' + fechaCorta(p.UltimaLista) : '') + '</div>' +
+            estado + '</button>';
+        }).join("");
+        cont.querySelectorAll(".prov").forEach(function (b) {
+          b.addEventListener("click", function () { elegirPerfil(perfiles[Number(b.getAttribute("data-i"))]); });
+        });
+        if (perfiles.length === 1) elegirPerfil(perfiles[0]);
+      }).catch(function (e) {
+        document.getElementById("provs").innerHTML = '<div class="vacio">No se pudieron cargar los proveedores. ' + esc(e.message) + '</div>';
+      });
+    }
+
+    function elegirPerfil(p) {
+      if (etapa !== "lista") return;
+      perfil = p;
+      document.querySelectorAll(".prov").forEach(function (b) {
+        var on = perfiles[Number(b.getAttribute("data-i"))] === p;
+        b.classList.toggle("sel", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      document.getElementById("provAyuda").textContent = p.Nombre || "";
+      if (lectura) analizar();
+      actualizarBarra();
+    }
+
+    var zona = document.getElementById("zona"), inp = document.getElementById("archivo");
+    zona.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inp.click(); } });
+    inp.addEventListener("change", function () { if (inp.files[0]) leerArchivo(inp.files[0]); });
+    ["dragenter", "dragover"].forEach(function (ev) { zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.add("encima"); }); });
+    ["dragleave", "drop"].forEach(function (ev) { zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.remove("encima"); }); });
+    zona.addEventListener("drop", function (e) { if (etapa === "lista" && e.dataTransfer.files[0]) leerArchivo(e.dataTransfer.files[0]); });
+
+    function leerArchivo(f) {
+      if (etapa !== "lista") return;
+      document.getElementById("zonaTxt").innerHTML = '<span class="spinner-border spinner-border-sm"></span> Leyendo <b>' + esc(f.name) + '</b>…';
+      var fr = new FileReader();
+      fr.onload = function () {
+        try {
+          var wb = XLSX.read(new Uint8Array(fr.result), { type: "array" });
+          // La hoja con mas filas (algunos proveedores agregan una caratula)
+          var mejor = null, filas = null;
+          wb.SheetNames.forEach(function (nom) {
+            var a = XLSX.utils.sheet_to_json(wb.Sheets[nom], { header: 1, raw: true, defval: null, blankrows: false });
+            if (!filas || a.length > filas.length) { filas = a; mejor = nom; }
+          });
+          lectura = { nombre: f.name, hoja: mejor, crudas: filas || [] };
+          zona.classList.add("cargado");
+          document.getElementById("zonaTxt").innerHTML = '<b>' + esc(f.name) + '</b><br><small>Hacé clic para elegir otro archivo</small>';
+          analizar();
+        } catch (e) {
+          lectura = null;
+          zona.classList.remove("cargado");
+          document.getElementById("zonaTxt").innerHTML = '<b>No se pudo leer el archivo</b><br><small>' + esc(e.message) + '</small>';
+        }
+        actualizarBarra();
+      };
+      fr.readAsArrayBuffer(f);
+    }
+
+    // Columnas del perfil (1 = columna A). Numericas: se normalizan a "1234.56".
+    function columnas(p) {
+      return [
+        { k: "ColCodigo", t: "Código" }, { k: "ColArticulo", t: "Cód. fábrica" }, { k: "ColRubro", t: "Rubro" },
+        { k: "ColDescripcion", t: "Descripción" }, { k: "ColPrecio", t: "Precio", num: true },
+        { k: "ColDescuento1", t: "Desc. 1", num: true }, { k: "ColDescuento2", t: "Desc. 2", num: true },
+        { k: "ColCosto", t: "Costo", num: true }
+      ].filter(function (c) { return p[c.k]; });
+    }
+
+    // "5.238,15" -> "5238.15" ; "19%" -> "19" ; 5238.15 -> "5238.15"
+    function aNumeroTexto(v) {
+      if (v == null) return null;
+      if (typeof v === "number") return isFinite(v) ? String(v) : null;
+      var s = String(v).trim().replace(/\$|%|\s/g, "");
+      if (s === "") return null;
+      if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s) || /^-?\d+,\d+$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+      else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
+      return s;
+    }
+    function aTexto(v) {
+      if (v == null) return null;
+      if (typeof v === "number") return String(v);
+      var s = String(v).trim();
+      return s === "" ? null : s;
+    }
+    function esNumero(s) { return s != null && /^-?\d+(\.\d+)?$/.test(s); }
+
+    function costoDe(p, fila) {
+      function val(col) { return col ? Number(fila[col - 1]) : NaN; }
+      var precio = val(p.ColPrecio);
+      if (isNaN(precio)) return null;
+      var d1 = p.ColDescuento1 ? val(p.ColDescuento1) : Number(p.DescuentoFijo || 0);
+      var d2 = p.ColDescuento2 ? val(p.ColDescuento2) : Number(p.DescuentoFijo2 || 0);
+      if (isNaN(d1)) d1 = 0; if (isNaN(d2)) d2 = 0;
+      switch (p.EsquemaCosto) {
+        case "CostoEnColumna": return p.ColCosto ? val(p.ColCosto) : null;
+        case "CostoDirecto": return precio;
+        case "UnDescuento": return precio * (1 - d1 / 100);
+        default: return precio * (1 - d1 / 100) * (1 - d2 / 100);
+      }
+    }
+
+    // Arma las filas que se mandan: texto limpio, numeros normalizados, sin
+    // las filas de titulo que haya arriba de los datos.
+    function analizar() {
+      var cont = document.getElementById("previa");
+      if (!lectura || !perfil) { cont.classList.add("oculto"); return; }
+      var cols = columnas(perfil);
+      var ancho = Math.max.apply(null, cols.map(function (c) { return perfil[c.k]; }).concat([1]));
+      var numericas = {};
+      cols.forEach(function (c) { if (c.num) numericas[perfil[c.k]] = true; });
+
+      var filas = lectura.crudas.map(function (r) {
+        var o = [];
+        for (var c = 1; c <= ancho; c++) {
+          var v = r ? r[c - 1] : null;
+          o.push(numericas[c] ? aNumeroTexto(v) : aTexto(v));
+        }
+        return o;
+      });
+
+      // Primera fila de datos: tiene codigo y un precio que es numero
+      var primera = -1;
+      for (var i = 0; i < filas.length && i < 60; i++) {
+        if (filas[i][perfil.ColCodigo - 1] && esNumero(filas[i][perfil.ColPrecio - 1])) { primera = i; break; }
+      }
+      lectura.encabezado = primera < 0 ? 0 : primera;
+      lectura.filas = primera < 0 ? [] : filas.slice(primera);
+
+      var sinCod = 0, sinPrecio = 0;
+      lectura.filas.forEach(function (f) {
+        if (!f[perfil.ColCodigo - 1]) sinCod++;
+        else if (!esNumero(f[perfil.ColPrecio - 1])) sinPrecio++;
+      });
+      lectura.sinPrecio = sinPrecio;
+
+      var h = '<div class="prev-info"><b>' + n(lectura.filas.length) + '</b> filas de datos en la hoja <b>' + esc(lectura.hoja) + '</b>' +
+        (lectura.encabezado ? ' · se saltean ' + lectura.encabezado + ' fila(s) de títulos' : '') +
+        (sinPrecio ? ' · <span class="mal">' + n(sinPrecio) + ' sin precio</span>' : '') +
+        '. Fijate que las columnas sean las correctas:</div>';
+
+      if (primera < 0) {
+        h += '<div class="aviso rojo"><i class="bi bi-x-octagon"></i><div>No encontré filas con código y precio en las columnas que usa el perfil de <b>' +
+          esc(perfil.Proveedor) + '</b>. ¿Es el archivo de este proveedor? ¿Cambió el formato de la lista?</div></div>';
+      } else {
+        h += '<div class="scroll-x"><table class="tabla"><thead><tr>' +
+          cols.map(function (c) { return '<th class="' + (c.num ? "der" : "") + '">' + c.t + ' <small class="text-muted">(col. ' + String.fromCharCode(64 + perfil[c.k]) + ')</small></th>'; }).join("") +
+          '<th class="der">Costo para el sistema</th></tr></thead><tbody>';
+        lectura.filas.slice(0, 6).forEach(function (f) {
+          h += '<tr>' + cols.map(function (c) {
+            var v = f[perfil[c.k] - 1];
+            if (c.num) return '<td class="der' + (c.k === "ColPrecio" && !esNumero(v) ? ' mal' : '') + '">' +
+              (esNumero(v) ? (c.k.indexOf("Descuento") >= 0 ? v + "%" : formatearMoneda(Number(v))) : esc(v || "—")) + '</td>';
+            return '<td class="' + (c.k === "ColCodigo" || c.k === "ColArticulo" ? "cod" : "") + '">' + esc(v || "") + '</td>';
+          }).join("") + '<td class="der"><b>' + (costoDe(perfil, f) != null ? formatearMoneda(costoDe(perfil, f)) : "—") + '</b></td></tr>';
+        });
+        h += '</tbody></table></div>';
+        var esperados = Number(perfil.Articulos || 0);
+        if (esperados > 0 && lectura.filas.length < esperados * 0.8) {
+          h += '<div class="aviso amar"><i class="bi bi-exclamation-triangle"></i><div>El archivo trae <b>' + n(lectura.filas.length) +
+            '</b> filas y hoy hay <b>' + n(esperados) + '</b> artículos de este proveedor. Si no es la lista completa, lo que falte se va a dar de baja al importar.</div></div>';
+        }
+      }
+      cont.innerHTML = h;
+      cont.classList.remove("oculto");
+    }
+
+    /* ---------------------------------------------------------------
+       Paso 2: subir y comparar
+       --------------------------------------------------------------- */
+    function progreso(titulo, texto) {
+      Swal.fire({ title: titulo, html: '<div id="swTxt">' + texto + '</div><div class="progress mt-3" style="height:8px"><div id="swBar" class="progress-bar" style="width:0%"></div></div>',
+        allowOutsideClick: false, showConfirmButton: false, didOpen: function () { } });
+    }
+    function avance(txt, porc) {
+      var t = document.getElementById("swTxt"), b = document.getElementById("swBar");
+      if (t && txt != null) t.innerHTML = txt;
+      if (b && porc != null) b.style.width = Math.round(porc) + "%";
+    }
+
+    function subirYComparar() {
+      // El perfil saltea sus filas de encabezado (FilasEncabezado). Como aca ya se
+      // sacaron los titulos, se mandan esas filas vacias para que el conteo no corra.
+      var relleno = [];
+      for (var i = 0; i < Number(perfil.FilasEncabezado || 0); i++) relleno.push([null]);
+      var todas = relleno.concat(lectura.filas);
+      var tandas = [];
+      for (var j = 0; j < todas.length; j += TANDA) tandas.push(todas.slice(j, j + TANDA));
+
+      progreso("Subiendo la lista", "Preparando…");
+      var k = 0;
+      function siguiente() {
+        if (k >= tandas.length) return Promise.resolve();
+        avance("Subiendo filas " + n(k * TANDA + 1) + " a " + n(Math.min((k + 1) * TANDA, todas.length)) + " de " + n(todas.length) + "…", (k / tandas.length) * 70);
+        return pedir(api + "Importacion/Filas", { method: "POST", body: JSON.stringify({ PrimeraTanda: k === 0, Filas: tandas[k] }) })
+          .then(function () { k++; return siguiente(); });
+      }
+      siguiente()
+        .then(function () {
+          avance("Comparando con los " + n(perfil.Articulos) + " artículos cargados… (puede tardar un minuto)", 80);
+          return pedir(api + "Importacion/" + perfil.IdProveedor + "/Comparar");
+        })
+        .then(function (d) {
+          Swal.close();
+          comp = d || {};
+          etapa = "revisar";
+          marcados = {}; aplicados = {};
+          (comp.TusRepuestos || []).forEach(function (r) { if (porDefecto(r)) marcados[r.IdRepuesto] = true; });
+          pintarComparacion();
+        })
+        .catch(function (e) { Swal.fire({ icon: "error", title: "No se pudo comparar", text: e.message }); });
+    }
+
+    // Se marcan solos los que suben, si este proveedor es el mas barato
+    // y el precio cambia de verdad. Lo demas lo decide la persona.
+    function porDefecto(r) {
+      if (r.Cambio !== "SUBE" || r.SigueSiendoElMasBarato !== "Si" || !(r.NetoSugerido > 0)) return false;
+      var a = Number(r.PrecioVentaActual || 0), s = Number(r.PrecioVentaSugerido || 0);
+      return a <= 0 || Math.abs(s - a) / a > 0.005;
+    }
+
+    function pintarComparacion() {
+      marcarPaso(etapa === "importada" ? 4 : 2);
+      document.getElementById("secLista").classList.add("oculto");
+      ["secResumen", "secDetalle"].forEach(function (id) { document.getElementById(id).classList.remove("oculto"); });
+      document.getElementById("btnOtra").classList.remove("oculto");
+
+      document.getElementById("resumenAyuda").textContent = etapa === "importada"
+        ? "La lista ya está importada." : "Todavía no se escribió nada: es solo la comparación.";
+      var r = (comp.Resumen && comp.Resumen[0]) || {};
+      var k = [
+        { t: "En el archivo", v: n(r.ArticulosEnArchivo), s: esc(perfil.Proveedor) },
+        { t: "Suben", v: n(r.Suben), s: r.AumentoPromedioDeLosQueSuben != null ? "en promedio " + pct(r.AumentoPromedioDeLosQueSuben) : "", c: "sube" },
+        { t: "Bajan", v: n(r.Bajan), c: "baja" },
+        { t: "Sin cambios", v: n(r.Iguales) },
+        { t: "Nuevos", v: n(r.Nuevos), s: "entran a la lista" },
+        { t: "Desaparecen", v: n(r.DesaparecenDeLaLista), s: "se dan de baja", c: Number(r.DesaparecenDeLaLista) > 0 ? "ojo" : "" },
+        { t: "Quedan sin precio", v: n(r.QuedanSinPrecio), c: Number(r.QuedanSinPrecio) > 0 ? "ojo" : "" },
+        { t: "Variación promedio", v: pct(r.VariacionPromedioPorc) || "—" }
+      ];
+      document.getElementById("kpis").innerHTML = k.map(function (x) {
+        return '<div class="kpi ' + (x.c || "") + '"><div class="t">' + x.t + '</div><div class="v">' + x.v + '</div><div class="s">' + (x.s || "&nbsp;") + '</div></div>';
+      }).join("");
+
+      var av = "";
+      var desap = Number(r.DesaparecenDeLaLista || 0), tot = Number(perfil.Articulos || 0);
+      if (etapa === "importada" && comp.Resultado) {
+        var x = comp.Resultado;
+        av += '<div class="aviso verde"><i class="bi bi-check-circle"></i><div><b>Lista importada.</b> ' + n(x.Actualizados) + ' actualizados, ' +
+          n(x.Nuevos) + ' nuevos, ' + n(x.Desactivados) + ' dados de baja' + (x.Descartadas ? ', ' + n(x.Descartadas) + ' filas descartadas por venir incompletas' : '') +
+          '. Ahora aplicá los precios de venta que quieras actualizar.</div></div>';
+      } else if (tot > 0 && desap > tot * 0.05) {
+        av += '<div class="aviso rojo"><i class="bi bi-exclamation-octagon"></i><div><b>' + n(desap) + '</b> artículos de ' + esc(perfil.Proveedor) +
+          ' no vienen en este archivo y se darían de baja. Es mucho: revisá que sea la lista completa antes de importar.</div></div>';
+      }
+      document.getElementById("avisos").innerHTML = av;
+
+      document.getElementById("cTus").textContent = n((comp.TusRepuestos || []).length);
+      document.getElementById("cRubro").textContent = n((comp.PorRubro || []).length);
+      document.getElementById("cRaros").textContent = n((comp.Raros || []).length);
+      pintarRubros(); pintarRaros(); pintarTus();
+      actualizarBarra();
+    }
+
+    function pintarRubros() {
+      var t = comp.PorRubro || [];
+      document.getElementById("tbRubro").innerHTML = t.length ? t.map(function (r) {
+        var m = marcaDeRubro(r.Rubro);
+        return '<tr><td>' + (m ? '<span class="lp-marca">' + esc(m) + '</span>' : '') + esc(rubroSinMarca(r.Rubro) || "(sin rubro)") + '</td>' +
+          '<td class="der">' + n(r.Articulos) + '</td><td class="der">' + n(r.Suben) + '</td><td class="der">' + n(r.Bajan) + '</td>' +
+          '<td class="der"><span class="var ' + clasePct(r.VariacionPromedioPorc) + '">' + (pct(r.VariacionPromedioPorc) || "—") + '</span></td>' +
+          '<td class="der">' + (pct(r.MinPorc) || "—") + '</td><td class="der">' + (pct(r.MaxPorc) || "—") + '</td></tr>';
+      }).join("") : '<tr><td colspan="7" class="vacio">Sin datos.</td></tr>';
+    }
+
+    function pintarRaros() {
+      var t = comp.Raros || [];
+      document.getElementById("tbRaros").innerHTML = t.length ? t.map(function (r) {
+        var m = marcaDeRubro(r.Rubro);
+        var etiqueta = r.Cambio === "SIN_PRECIO" ? '<span class="nota">Queda sin precio</span>' : (r.Cambio === "NUEVO" ? '<span class="rep-meta">Nuevo</span>' : '');
+        return '<tr><td class="cod">' + esc(r.Codigo) + '</td><td><div class="rep-desc">' + (m ? '<span class="lp-marca">' + esc(m) + '</span>' : '') + esc(r.Descripcion) + '</div>' +
+          '<div class="rep-meta">' + esc(rubroSinMarca(r.Rubro)) + (r.EsDeTuCatalogo === "Si" ? ' · <b>es de tu catálogo</b>' : '') + '</div></td>' +
+          '<td class="der">' + (r.CostoAntes != null ? formatearMoneda(r.CostoAntes) : "—") + '</td>' +
+          '<td class="der">' + (r.CostoAhora != null ? formatearMoneda(r.CostoAhora) : "—") + '</td>' +
+          '<td class="der"><span class="var ' + clasePct(r.VariacionPorc) + '">' + (pct(r.VariacionPorc) || "") + '</span></td><td>' + etiqueta + '</td></tr>';
+      }).join("") : '<tr><td colspan="6" class="vacio">Nada raro: todas las variaciones están dentro de lo normal.</td></tr>';
+    }
+
+    function visibles() {
+      var q = texto.toLowerCase();
+      return (comp.TusRepuestos || []).filter(function (r) {
+        if (filtro === "cambian" && ["SUBE", "BAJA", "SIN_PRECIO", "VUELVE"].indexOf(r.Cambio) < 0) return false;
+        if (filtro !== "cambian" && filtro !== "todos" && r.Cambio !== filtro) return false;
+        if (q && (String(r.TuCodigo) + " " + String(r.Descripcion) + " " + String(r.Marca || "")).toLowerCase().indexOf(q) < 0) return false;
+        return true;
+      });
+    }
+
+    function pintarTus() {
+      var v = visibles();
+      var tb = document.getElementById("tbTus");
+      if (!v.length) {
+        tb.innerHTML = '<tr><td colspan="6" class="vacio">' + ((comp.TusRepuestos || []).length ? "Ningún repuesto con ese filtro." : "Ningún repuesto tuyo viene en esta lista.") + '</td></tr>';
+      } else {
+        tb.innerHTML = v.slice(0, limite).map(filaTus).join("");
+      }
+      document.getElementById("masTus").classList.toggle("oculto", v.length <= limite);
+      tb.querySelectorAll("input[type=checkbox]").forEach(function (c) {
+        c.addEventListener("change", function () {
+          var id = Number(c.getAttribute("data-id"));
+          if (c.checked) marcados[id] = true; else delete marcados[id];
+          actualizarBarra();
+        });
+      });
+    }
+
+    function filaTus(r) {
+      var id = r.IdRepuesto, ap = aplicados[id];
+      var puede = r.NetoSugerido > 0;
+      var nota = "";
+      if (!puede) nota = '<span class="nota">Viene sin precio en la lista</span>';
+      else if (r.SigueSiendoElMasBarato !== "Si") nota = '<span class="nota" title="Hay otro proveedor más barato para este repuesto">Otro proveedor es más barato</span>';
+      if (ap) nota = '<span class="ok-aplicado"><i class="bi bi-check2"></i> Precio aplicado</span>';
+      var a = Number(r.PrecioVentaActual || 0), s = Number(r.PrecioVentaSugerido || 0);
+      var varVenta = a > 0 && s > 0 ? (s - a) / a * 100 : null;
+      return '<tr class="' + (ap ? "aplicado" : "") + '">' +
+        '<td><input class="form-check-input" type="checkbox" data-id="' + id + '" aria-label="Aplicar precio de ' + esc(r.TuCodigo) + '"' +
+          (marcados[id] ? " checked" : "") + (!puede || ap ? " disabled" : "") + '></td>' +
+        '<td><div class="rep-desc">' + (r.Marca ? '<span class="lp-marca">' + esc(r.Marca) + '</span>' : '') + esc(r.Descripcion) + '</div>' +
+          '<div class="rep-meta">Tu código <b>' + esc(r.TuCodigo) + '</b></div></td>' +
+        '<td class="der">' + n(r.Stock) + '</td>' +
+        '<td class="der">' + (r.CostoAntes != null ? '<div class="antes">' + formatearMoneda(r.CostoAntes) + '</div>' : '') +
+          '<div>' + (r.CostoAhora != null ? formatearMoneda(r.CostoAhora) : "—") + '</div>' +
+          '<span class="var ' + clasePct(r.VariacionPorc) + '">' + (pct(r.VariacionPorc) || "") + '</span></td>' +
+        '<td class="der"><div class="antes">' + (a > 0 ? formatearMoneda(a) : "sin precio") + '</div>' +
+          '<div><b>' + (s > 0 ? formatearMoneda(s) : "—") + '</b></div>' +
+          (varVenta != null ? '<span class="var ' + clasePct(varVenta) + '">' + pct(varVenta) + '</span>' : '') + '</td>' +
+        '<td>' + nota + '</td></tr>';
+    }
+
+    document.querySelectorAll(".tabs button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll(".tabs button").forEach(function (x) { x.classList.toggle("on", x === b); });
+        var t = b.getAttribute("data-tab");
+        document.getElementById("tabTus").classList.toggle("oculto", t !== "tus");
+        document.getElementById("tabRubro").classList.toggle("oculto", t !== "rubro");
+        document.getElementById("tabRaros").classList.toggle("oculto", t !== "raros");
+      });
+    });
+    document.querySelectorAll(".chip").forEach(function (c) {
+      c.addEventListener("click", function () {
+        document.querySelectorAll(".chip").forEach(function (x) { x.classList.toggle("on", x === c); });
+        filtro = c.getAttribute("data-f"); limite = POR_PAGINA; pintarTus();
+      });
+    });
+    var tBusca = null;
+    document.getElementById("busca").addEventListener("input", function (e) {
+      clearTimeout(tBusca);
+      tBusca = setTimeout(function () { texto = e.target.value.trim(); limite = POR_PAGINA; pintarTus(); }, 200);
+    });
+    document.getElementById("btnMasTus").addEventListener("click", function () { limite += POR_PAGINA; pintarTus(); });
+    document.getElementById("marcarVis").addEventListener("click", function () {
+      visibles().forEach(function (r) { if (r.NetoSugerido > 0 && !aplicados[r.IdRepuesto]) marcados[r.IdRepuesto] = true; });
+      pintarTus(); actualizarBarra();
+    });
+    document.getElementById("desmarcarVis").addEventListener("click", function () {
+      visibles().forEach(function (r) { delete marcados[r.IdRepuesto]; });
+      pintarTus(); actualizarBarra();
+    });
+
+    /* ---------------------------------------------------------------
+       Paso 3: importar
+       --------------------------------------------------------------- */
+    function importar() {
+      var r = (comp.Resumen && comp.Resumen[0]) || {};
+      var desap = Number(r.DesaparecenDeLaLista || 0), tot = Number(perfil.Articulos || 0);
+      var mucho = tot > 0 && desap > tot * 0.05;
+      Swal.fire({
+        icon: mucho ? "warning" : "question",
+        title: "¿Importar la lista de " + perfil.Proveedor + "?",
+        html: "Se actualizan los costos de <b>" + n((Number(r.Suben) || 0) + (Number(r.Bajan) || 0)) + "</b> artículos, entran <b>" + n(r.Nuevos) +
+          "</b> nuevos y se dan de baja <b>" + n(desap) + "</b>.<br><small>Los precios de venta no cambian todavía: eso es el paso siguiente.</small>",
+        showCancelButton: true, confirmButtonText: "Importar", cancelButtonText: "Cancelar",
+        input: mucho ? "checkbox" : undefined,
+        inputPlaceholder: mucho ? "Sí, es la lista completa del proveedor" : undefined,
+        inputValidator: mucho ? function (v) { return v ? null : "Confirmá que es la lista completa."; } : undefined
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        marcarPaso(3);
+        progreso("Importando la lista", "Actualizando artículos y el buscador… (puede tardar unos minutos, no cierres la página)");
+        avance(null, 40);
+        pedir(api + "Importacion/" + perfil.IdProveedor + "/Procesar", { method: "POST", body: JSON.stringify({ FechaLista: document.getElementById("fechaLista").value || null }) })
+          .then(function (d) {
+            Swal.close();
+            comp.Resultado = (d && d.Resultado && d.Resultado[0]) || {};
+            etapa = "importada";
+            pintarComparacion();
+          })
+          .catch(function (e) { marcarPaso(2); Swal.fire({ icon: "error", title: "No se pudo importar", text: e.message }); });
+      });
+    }
+
+    /* ---------------------------------------------------------------
+       Paso 4: precios de venta (solo los marcados)
+       --------------------------------------------------------------- */
+    function aplicarPrecios() {
+      var lista = (comp.TusRepuestos || []).filter(function (r) { return marcados[r.IdRepuesto] && !aplicados[r.IdRepuesto] && r.NetoSugerido > 0; });
+      if (!lista.length) return;
+      Swal.fire({
+        icon: "question", title: "¿Aplicar " + n(lista.length) + " precio(s) de venta?",
+        text: "Cada repuesto marcado pasa al precio sugerido según su margen.",
+        showCancelButton: true, confirmButtonText: "Aplicar", cancelButtonText: "Cancelar"
+      }).then(function (res) {
+        if (!res.isConfirmed) return;
+        progreso("Aplicando precios", "");
+        var i = 0, ok = 0, errores = [];
+        function uno() {
+          if (i >= lista.length) return Promise.resolve();
+          var r = lista[i++];
+          avance("Repuesto " + n(i) + " de " + n(lista.length) + "…", i / lista.length * 100);
+          return pedir(api + "Repuesto/" + r.IdRepuesto + "/AplicarPrecio", { method: "PUT", body: JSON.stringify({ PrecioNetoVenta: Number(r.NetoSugerido) }) })
+            .then(function () { ok++; aplicados[r.IdRepuesto] = true; delete marcados[r.IdRepuesto]; })
+            .catch(function (e) { errores.push(r.TuCodigo + ": " + e.message); })
+            .then(uno);
+        }
+        // De a 4 a la vez
+        Promise.all([uno(), uno(), uno(), uno()]).then(function () {
+          pintarTus(); actualizarBarra();
+          Swal.fire({
+            icon: errores.length ? "warning" : "success",
+            title: n(ok) + " precio(s) aplicados",
+            html: errores.length ? "No se pudieron aplicar " + errores.length + ":<br><small>" + errores.slice(0, 8).map(esc).join("<br>") + "</small>" : ""
+          });
+        });
+      });
+    }
+
+    /* ---------------------------------------------------------------
+       Barra de abajo: una sola accion por etapa
+       --------------------------------------------------------------- */
+    function actualizarBarra() {
+      var txt = document.getElementById("barraTxt"), btn = document.getElementById("btnAccion");
+      if (etapa === "lista") {
+        var listo = perfil && lectura && lectura.filas && lectura.filas.length > 0;
+        txt.innerHTML = !perfil ? "Elegí el proveedor." : (!lectura ? "Elegí el archivo de la lista de <b>" + esc(perfil.Proveedor) + "</b>." :
+          (listo ? "<b>" + n(lectura.filas.length) + "</b> filas listas para comparar con la lista actual. No se escribe nada todavía." : "El archivo no tiene filas que se puedan leer."));
+        btn.innerHTML = '<i class="bi bi-arrow-left-right"></i> Comparar';
+        btn.disabled = !listo;
+      } else if (etapa === "revisar") {
+        txt.innerHTML = "Revisá los cambios. Al importar se actualizan los costos de <b>" + esc(perfil.Proveedor) + "</b>; los precios de venta se aplican después.";
+        btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Importar lista';
+        btn.disabled = false;
+      } else {
+        var c = Object.keys(marcados).length, ya = Object.keys(aplicados).length;
+        txt.innerHTML = c ? "<b>" + n(c) + "</b> repuesto(s) marcados para actualizar el precio de venta." + (ya ? " Ya aplicados: " + n(ya) + "." : "")
+                          : (ya ? "Listo: " + n(ya) + " precio(s) aplicados." : "Marcá en la tabla los repuestos a los que querés actualizarles el precio de venta.");
+        btn.innerHTML = '<i class="bi bi-tag"></i> Aplicar ' + (c ? n(c) + " " : "") + 'precio' + (c === 1 ? "" : "s");
+        btn.disabled = c === 0;
+      }
+    }
+
+    document.getElementById("btnAccion").addEventListener("click", function () {
+      if (etapa === "lista") subirYComparar();
+      else if (etapa === "revisar") importar();
+      else aplicarPrecios();
+    });
+    document.getElementById("btnOtra").addEventListener("click", function () {
+      if (etapa === "importada" && Object.keys(marcados).length) {
+        Swal.fire({ icon: "question", title: "¿Empezar de nuevo?", text: "Quedan repuestos marcados sin aplicar.", showCancelButton: true, confirmButtonText: "Sí", cancelButtonText: "No" })
+          .then(function (r) { if (r.isConfirmed) location.reload(); });
+      } else location.reload();
+    });
+
+    cargarPerfiles();
+    actualizarBarra();
+  </script>
+</body>
+</html>
