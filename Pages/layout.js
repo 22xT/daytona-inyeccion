@@ -127,6 +127,8 @@
       items: [
         { key: 'configuracion', label: 'Configuración comercial', icon: 'bi-percent', href: 'Configuracion.html',
           roles: ['Dueño', 'Administrador'] },
+        { key: 'auditoria', label: 'Auditoría', icon: 'bi-shield-check', href: 'Auditoria.html',
+          roles: ['Dueño', 'Administrador'] },
         { key: 'usuarios', label: 'Usuarios', icon: 'bi-people-fill', href: 'UsuariosListado.html',
           roles: ['Administrador'] },
         { key: 'roles', label: 'Roles', icon: 'bi-shield-lock-fill', href: 'RolesListado.html',

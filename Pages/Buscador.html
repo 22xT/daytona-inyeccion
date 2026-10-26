@@ -146,6 +146,8 @@
     .grupo .fila { border-bottom: none; padding-top: 8px; padding-bottom: 8px; }
     .grupo .fila.mejor { box-shadow: inset 3px 0 0 #198754; }
     .mejor-tag { font-size: 0.72rem; font-weight: 700; color: #146c43; }
+    /* Lo que ya esta en el carrito de compras */
+    .en-carrito { font-size: 0.72rem; font-weight: 700; color: #0d3b78; background: #e6eefb; border-radius: 5px; padding: 1px 7px; white-space: nowrap; }
     .dif { font-size: 0.74rem; color: #a8281e; font-weight: 600; }
 
     /* ---------- Estados ---------- */
@@ -481,7 +483,7 @@
         if (r.MejorCosto) {
           acciones += sinStock
             ? '<button class="btn-a prim" onclick="encargarPropio(' + r.Id + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i>Encargar</button>' +
-              '<button class="btn-a" onclick="pedirPropio(' + r.Id + ')" title="Sumar al carrito de compras"><i class="bi bi-cart-plus"></i><span class="txt-largo">Pedir</span></button>'
+              '<button class="btn-a" onclick="pedirPropio(' + r.Id + ')" title="Sumar al carrito de compras"><i class="bi bi-cart-plus"></i>Pedir</button>'
             : '<button class="btn-a" onclick="pedirPropio(' + r.Id + ')" title="Sumar al carrito de compras"><i class="bi bi-cart-plus"></i>Pedir</button>' +
               '<button class="btn-a" onclick="encargarPropio(' + r.Id + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i><span class="txt-largo">Encargar</span></button>';
         }
@@ -495,6 +497,7 @@
               (function () { var f = fabDe(r.CodigoFabricante, r.Descripcion, r.Codigo);
                 return f ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(f) + '</span>' : ''; })() +
               '<span class="sec" title="Tu código">tu cód. ' + escapeHtml(r.Codigo || "-") + '</span>' +
+              marcaCarrito(r.Id) +
               (r.Rubro && r.Rubro !== "-" ? '<span class="sec">' + escapeHtml(rubroSinMarca(r.Rubro)) + '</span>' : '') +
             '</div>' +
             (r.Stock <= 0 ? Equivalencias.chips(r.Id, 'irAEquivalente') : '') +
@@ -750,6 +753,7 @@
               (fab ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(fab) + '</span>' : '') +
               (rubro ? '<span class="sec">' + escapeHtml(rubroSinMarca(rubro)) + '</span>' : '') +
               (r._pend ? '<span class="pend-tag">sin vincular</span>' : '') +
+              (r.IdRepuesto && !r._pend ? marcaCarrito(r.IdRepuesto) : '') +
             '</div>' +
           '</div>' +
           '<div><div class="prov">' + escapeHtml(r.Proveedor) + '</div>' +
@@ -760,7 +764,7 @@
           '</div>' +
           '<div class="acciones">' +
             '<button class="btn-a prim" onclick="encargarExterno(' + r._i + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i>Encargar</button>' +
-            '<button class="btn-a" onclick="pedirExterno(' + r._i + ')" title="Sumar al carrito, comprándole a ' + escapeHtml(r.Proveedor) + '"><i class="bi bi-cart-plus"></i><span class="txt-largo">Pedir</span></button>' +
+            '<button class="btn-a" onclick="pedirExterno(' + r._i + ')" title="Sumar al carrito, comprándole a ' + escapeHtml(r.Proveedor) + '"><i class="bi bi-cart-plus"></i>Pedir</button>' +
             (r.IdRepuesto && !r._pend ? '<button class="btn-a icono" onclick="desvincular(' + r._i + ')" title="No es el mismo artículo: desvincular" aria-label="Desvincular"><i class="bi bi-x-lg"></i></button>' : '') +
           '</div>' +
         '</div>';
@@ -875,6 +879,44 @@
        y el renglón del pedido vinculado al encargo. */
 
     var propiosActuales = [];
+
+    /* ---------- Carrito de compras ----------
+       Lo que ya esta en el carrito se marca en cada resultado y se avisa
+       al pedir: si dos personas buscan lo mismo en el dia, no se pide dos
+       veces sin saberlo. */
+    var enCarrito = {};
+    function textoCarrito(idRep) {
+      var c = enCarrito[idRep];
+      return c ? '<i class="bi bi-cart-check"></i> ' + c.Cantidad + ' en el carrito' + (c.Proveedor ? ' · ' + escapeHtml(c.Proveedor) : '') : '';
+    }
+    function marcaCarrito(idRep) {
+      return '<span class="en-carrito" data-carrito="' + idRep + '"' + (enCarrito[idRep] ? '' : ' hidden') + '>' + textoCarrito(idRep) + '</span>';
+    }
+    function cargarCarrito() {
+      return fetchAuth(api + "Compras/Carrito")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          enCarrito = {};
+          if (!d) return;
+          var ops = d.Opciones || [];
+          (d.Items || []).forEach(function (it) {
+            var mias = ops.filter(function (o) { return o.IdRepuesto === it.IdRepuesto; });
+            var prov = it.IdProveedorElegido ? mias.filter(function (o) { return o.IdProveedor === it.IdProveedorElegido; })[0] : mias[0];
+            enCarrito[it.IdRepuesto] = { Cantidad: it.Cantidad, Proveedor: prov ? prov.Proveedor : null };
+          });
+          document.querySelectorAll("[data-carrito]").forEach(function (el) {
+            var id = parseInt(el.getAttribute("data-carrito"), 10);
+            el.innerHTML = textoCarrito(id);
+            el.hidden = !enCarrito[id];
+          });
+        })
+        .catch(function () { });
+    }
+    function avisoCarrito(idRep) {
+      var c = idRep ? enCarrito[idRep] : null;
+      return c ? '<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.85rem;"><i class="bi bi-cart-check"></i> Ya hay <strong>' +
+                 c.Cantidad + '</strong> en el carrito' + (c.Proveedor ? ' (' + escapeHtml(c.Proveedor) + ')' : '') + '. Lo que pongas se suma.</div>' : '';
+    }
     var externosActuales = [];
     var mediosPago = null;
     var rubrosCache = null;
@@ -968,7 +1010,7 @@
       cargarRubros().then(function () {
         dialogoPedir(ext.Descripcion, ext.Proveedor, null, function (cant, idProv, idRubro) {
           return asegurarRepuesto(ext, idRubro).then(function (idRep) { return enviarPedir(ext.IdProveedor, idRep, cant); });
-        }, rubroSelectHtml(ext));
+        }, avisoCarrito(ext.IdRepuesto) + rubroSelectHtml(ext));
       });
     }
 
@@ -976,7 +1018,7 @@
       var r = propiosActuales.find(function (x) { return x.Id === id; });
       if (!r) return;
       elegirProveedor(id).then(function (ops) {
-        dialogoPedir(r.Descripcion, null, ops, function (cant, idProv) { return enviarPedir(idProv, id, cant); });
+        dialogoPedir(r.Descripcion, null, ops, function (cant, idProv) { return enviarPedir(idProv, id, cant); }, avisoCarrito(id));
       }).catch(function (err) { Swal.fire("No se puede pedir", err.message, "info"); });
     }
 
@@ -1006,6 +1048,7 @@
       }).then(function (res) {
         if (!res.isConfirmed || !res.value) return;
         var d = res.value;
+        cargarCarrito();
         Swal.fire({ icon: "success", title: "Sumado al carrito",
           html: "Hay <strong>" + d.Renglones + "</strong> repuesto" + (d.Renglones === 1 ? "" : "s") + " en el carrito de compras.",
           showCancelButton: true, confirmButtonText: "Seguir buscando", cancelButtonText: "Ver carrito" })
@@ -1181,6 +1224,7 @@
       armarMarcas([]);
       cargarRubros().then(armarMarcas).catch(function () { });
       pintarBotones();
+      cargarCarrito();
 
       var ocultos = false;
       try { ocultos = localStorage.getItem("buscadorSinCostos") === "1"; } catch (e) { }

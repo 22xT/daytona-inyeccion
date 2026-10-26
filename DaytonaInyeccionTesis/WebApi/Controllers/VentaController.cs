@@ -78,6 +78,12 @@ namespace WebApi.Controllers
 
             venta.IdUsuario = idUsuario;
 
+            // El rol tambien sale del token: decide si puede autorizar pasar
+            // el limite de credito (script 82). Lo que venga en el body se pisa.
+            var identidad = User.Identity as ClaimsIdentity;
+            var claimRol = identidad == null ? null : identidad.FindFirst(ClaimTypes.Role);
+            venta.RolUsuario = claimRol == null ? null : claimRol.Value;
+
             /* ---------- Idempotencia ----------
                Si viene token, se reserva antes de registrar. Un doble clic
                o un reenvio con el mismo token devuelven la venta que ya

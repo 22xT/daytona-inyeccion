@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using System.Web.Http;
 using WebApi.Filters;
@@ -27,8 +28,26 @@ namespace WebApi.Controllers
             return oCliente.ListarPorId();
         }
 
-        // POST: api/Cliente  (Administrador, Supervisor, Vendedor)
-        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor")]
+        // GET: api/Cliente/5/Credito — saldo, limite, disponible y deuda atrasada (script 82)
+        [HttpGet]
+        [Route("api/Cliente/{id:int}/Credito")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
+        public IHttpActionResult Credito(int id)
+        {
+            Cliente oCliente = new Cliente();
+            oCliente.Id = id;
+            DataSet ds = oCliente.Credito();
+            if (ds.Tables.Count == 0 || ds.Tables[0].Rows.Count == 0)
+                return NotFound();
+            return Ok(new
+            {
+                Situacion = ds.Tables[0],
+                Autorizaciones = ds.Tables.Count > 1 ? ds.Tables[1] : null
+            });
+        }
+
+        // POST: api/Cliente  (Dueño, Administrador, Supervisor, Vendedor)
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
         public IHttpActionResult Post([FromBody] Cliente cliente)
         {
             string error = ValidarCliente(cliente);
@@ -36,6 +55,7 @@ namespace WebApi.Controllers
                 return BadRequest(error);
 
             NormalizarCliente(cliente);
+            PermisoCredito(cliente);
 
             try
             {
@@ -55,8 +75,8 @@ namespace WebApi.Controllers
             }
         }
 
-        // PUT: api/Cliente/5  (Administrador, Supervisor, Vendedor)
-        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor")]
+        // PUT: api/Cliente/5  (Dueño, Administrador, Supervisor, Vendedor)
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]
         public IHttpActionResult Put(int id, [FromBody] Cliente cliente)
         {
             string error = ValidarCliente(cliente);
@@ -64,6 +84,7 @@ namespace WebApi.Controllers
                 return BadRequest(error);
 
             NormalizarCliente(cliente);
+            PermisoCredito(cliente);
             cliente.Id = id;
 
             try
@@ -205,7 +226,21 @@ namespace WebApi.Controllers
                 }
             }
 
+            if (cliente.LimiteCredito.HasValue && (cliente.LimiteCredito.Value < 0 || cliente.LimiteCredito.Value > 1000000000m))
+                return "El límite de crédito tiene que ser un monto entre 0 y 1.000.000.000. Vacío = sin límite.";
+
             return "";
+        }
+
+        // El limite de credito solo lo cambia el Dueño o un Administrador.
+        // Lo que mande otro rol se ignora (no se pisa nada).
+        private void PermisoCredito(Cliente cliente)
+        {
+            var identity = User.Identity as ClaimsIdentity;
+            var rol = identity == null ? null : identity.FindFirst(ClaimTypes.Role);
+            bool puede = rol != null && (rol.Value == "Dueño" || rol.Value == "Administrador");
+            cliente.CambiarCredito = puede && cliente.CambiarLimite;
+            if (!cliente.CambiarCredito) cliente.LimiteCredito = null;
         }
 
         // El DNI vacio tiene que quedar NULL, no "".

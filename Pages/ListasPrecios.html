@@ -403,6 +403,13 @@
       var s = String(v).trim();
       return s === "" ? null : s;
     }
+    // Descripciones: TAC manda saltos de linea y renglones en blanco dentro de la celda.
+    function aDescripcion(v) {
+      var s = aTexto(v);
+      if (s == null) return null;
+      s = s.replace(/\u2192/g, ">").replace(/\s+/g, " ").trim();
+      return s === "" ? null : s;
+    }
     function esNumero(s) { return s != null && /^-?\d+(\.\d+)?$/.test(s); }
 
     function costoDe(p, fila) {
@@ -434,7 +441,7 @@
         var o = [];
         for (var c = 1; c <= ancho; c++) {
           var v = r ? r[c - 1] : null;
-          o.push(numericas[c] ? aNumeroTexto(v) : aTexto(v));
+          o.push(numericas[c] ? aNumeroTexto(v) : (c === perfil.ColDescripcion ? aDescripcion(v) : aTexto(v)));
         }
         return o;
       });

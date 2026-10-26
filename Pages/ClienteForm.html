@@ -9,6 +9,13 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
+  <script src="precio.js"></script>
+  <style>
+    .cred-estado { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; }
+    .cred-estado strong { color: var(--navy); }
+    .cred-estado .mal { color: #c0392b; font-weight: 700; }
+    .solo-lectura { font-size: 0.8rem; color: var(--text-muted); }
+  </style>
 </head>
 
 <body data-page="clientes">
@@ -33,9 +40,9 @@
         <div class="panel-body">
           <div class="row g-3">
             <div class="col-md-4">
-              <label class="form-label">DNI <span class="required">*</span></label>
-              <input type="text" id="dni" class="form-control" maxlength="8" required>
-              <div class="form-text">7 u 8 dígitos, sin puntos.</div>
+              <label class="form-label">DNI</label>
+              <input type="text" id="dni" class="form-control" maxlength="8">
+              <div class="form-text">Opcional. 7 u 8 dígitos, sin puntos.</div>
             </div>
             <div class="col-md-4">
               <label class="form-label">Nombre <span class="required">*</span></label>
@@ -83,6 +90,33 @@
         </div>
       </div>
 
+      <div class="panel">
+        <div class="panel-header"><span class="num">3</span> Mecánico y cuenta corriente</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="esMecanico">
+                <label class="form-check-label" for="esMecanico">Es mecánico</label>
+              </div>
+              <div class="form-text">Tiene el descuento de mecánico y cuenta corriente (puede llevarse y pagar después). El teléfono pasa a ser obligatorio. Los demás clientes pagan en el momento.</div>
+            </div>
+            <div class="col-md-6" id="colLimite">
+              <label class="form-label" for="limite">Límite de crédito</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="text" inputmode="decimal" id="limite" class="form-control text-end" placeholder="Sin límite">
+              </div>
+              <div class="form-text">Lo máximo que puede deber. Vacío = sin límite.</div>
+            </div>
+          </div>
+          <div class="cred-estado" id="credEstado"></div>
+          <div class="solo-lectura mt-2" id="credSoloLectura" style="display:none;">
+            <i class="bi bi-lock"></i> El límite de crédito lo cambia el dueño o un administrador.
+          </div>
+        </div>
+      </div>
+
       <input type="hidden" id="id">
 
       <div class="actions">
@@ -100,7 +134,9 @@
 
     const apiCliente = API_BASE + "Cliente";
     const usuario = Auth.getUsuario();
-    const puedeEditar = usuario && (usuario.Rol === "Administrador" || usuario.Rol === "Vendedor");
+    const puedeEditar = usuario && ["Dueño", "Administrador", "Supervisor", "Vendedor"].indexOf(usuario.Rol) !== -1;
+    // Cuenta corriente y limite: solo Dueño o Administrador (script 82)
+    const puedeCredito = usuario && (usuario.Rol === "Dueño" || usuario.Rol === "Administrador");
 
     if (!puedeEditar) {
       Swal.fire({ icon: "error", title: "Acceso denegado", text: "No tiene permisos para gestionar clientes." })
@@ -115,6 +151,8 @@
     const calle = document.getElementById("calle");
     const numero = document.getElementById("numero");
     const idInput = document.getElementById("id");
+    const esMecanico = document.getElementById("esMecanico");
+    const limite = document.getElementById("limite");
 
     const params = new URLSearchParams(window.location.search);
     const idCliente = params.get("id");
@@ -137,8 +175,9 @@
     }
 
     function validar(c) {
-      if (c.Dni === "") return "Debe ingresar el DNI.";
-      if (c.Dni.length < 7 || c.Dni.length > 8) return "El DNI debe tener 7 u 8 dígitos.";
+      if (c.Dni !== "" && (c.Dni.length < 7 || c.Dni.length > 8)) return "El DNI debe tener 7 u 8 dígitos.";
+      if (c.EsMecanico && c.Telefono === "") return "El teléfono es obligatorio para un mecánico.";
+      if (c.LimiteCredito !== null && c.LimiteCredito !== undefined && !(c.LimiteCredito >= 0)) return "El límite de crédito no es válido.";
       if (c.Nombre === "") return "Debe ingresar el nombre.";
       if (c.Apellido === "") return "Debe ingresar el apellido.";
       if (c.Mail !== "" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.Mail))
@@ -162,6 +201,10 @@
         mail.value = c.Mail || "";
         calle.value = c.Calle || "";
         numero.value = c.Numero || "";
+        esMecanico.checked = !!c.EsMecanico;
+        limite.value = c.LimiteCredito !== null && c.LimiteCredito !== undefined ? numeroAPrecio(c.LimiteCredito) : "";
+        estadoCredito();
+        cargarSituacion(c.Id);
       }).catch(mostrarError);
     }
 
@@ -175,8 +218,13 @@
         Telefono: telefono.value.trim(),
         Mail: mail.value.trim(),
         Calle: calle.value.trim(),
-        Numero: numero.value.trim()
+        Numero: numero.value.trim(),
+        EsMecanico: esMecanico.checked
       };
+      if (puedeCredito) {
+        cliente.CambiarLimite = true;
+        cliente.LimiteCredito = esMecanico.checked && limite.value.trim() !== "" ? precioANumero(limite.value) : null;
+      }
       const error = validar(cliente);
       if (error !== "") { Swal.fire("Atención", error, "warning"); return; }
 
@@ -191,8 +239,36 @@
       }).catch(mostrarError);
     }
 
+    // El limite solo existe para mecanicos (son los unicos con cuenta corriente)
+    function estadoCredito() {
+      document.getElementById("colLimite").style.visibility = esMecanico.checked ? "visible" : "hidden";
+      limite.disabled = !puedeCredito || !esMecanico.checked;
+      document.getElementById("credSoloLectura").style.display = puedeCredito || !esMecanico.checked ? "none" : "";
+    }
+
+    // Lo que debe hoy y desde cuando
+    function cargarSituacion(id) {
+      fetchAuth(apiCliente + "/" + id + "/Credito").then(r => r.ok ? r.json() : null).then(d => {
+        const c = d && d.Situacion && d.Situacion[0];
+        const el = document.getElementById("credEstado");
+        if (!c || !c.CuentaCorriente) { el.innerHTML = ""; return; }
+        const saldo = Number(c.Saldo);
+        let html = saldo > 0.009 ? "Hoy debe <strong>" + formatearMoneda(saldo) + "</strong>" :
+                   saldo < -0.009 ? "Tiene <strong>" + formatearMoneda(-saldo) + "</strong> a favor" : "Hoy no debe nada";
+        if (c.LimiteCredito !== null && c.LimiteCredito !== undefined)
+          html += " · disponible <strong>" + formatearMoneda(Math.max(0, Number(c.Disponible))) + "</strong>";
+        if (c.DeudaDesde)
+          html += " · " + (Number(c.Atrasado) === 1 ? '<span class="mal">' : "<span>") + "debe desde hace " + c.DiasAtraso + " días" +
+                  (Number(c.Atrasado) === 1 ? " (pasa el máximo de " + c.DiasMaximo + ")" : "") + "</span>";
+        el.innerHTML = html;
+      }).catch(() => {});
+    }
+
     window.onload = function () {
       document.getElementById("formCliente").addEventListener("submit", guardar);
+      activarInputPrecio("limite");
+      esMecanico.addEventListener("change", estadoCredito);
+      estadoCredito();
       if (idCliente) {
         document.getElementById("tituloPagina").innerHTML =
           '<i class="bi bi-pencil-square"></i> Editar Cliente <span class="mode-badge">Edición</span>';

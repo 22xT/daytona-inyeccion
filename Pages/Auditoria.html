@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auditoría - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="tablero-comun.js"></script>
+  <style>
+    /* =================================================================
+       AUDITORIA (script 83): quien cambio que, cuando y que habia antes
+       ================================================================= */
+    .au-main { padding: 16px 24px 32px !important; max-width: none; width: 100%; }
+    .au-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .au-top h1 { font-size: 1.35rem; font-weight: 800; color: var(--navy); margin: 0; display: flex; gap: 8px; align-items: center; }
+    .au-top h1 i { color: var(--red); }
+    .au-top p { margin: 2px 0 0; color: #5f6b7a; font-size: 0.9rem; }
+    .seg { display: inline-flex; border: 1px solid #c9d3e0; border-radius: 9px; overflow: hidden; background: #fff; flex-wrap: wrap; }
+    .seg button { border: none; background: none; padding: 7px 12px; font-size: 0.83rem; font-weight: 600; color: #4a5568; white-space: nowrap; }
+    .seg button + button { border-left: 1px solid #c9d3e0; }
+    .seg button.on { background: var(--navy); color: #fff; }
+    .seg button:focus-visible, .tipo:focus-visible { outline: 3px solid #8fb3e0; outline-offset: -2px; }
+    .fechas { display: none; gap: 6px; align-items: center; }
+    .fechas.visible { display: inline-flex; }
+    .fechas input { width: 140px; }
+
+    .filtros { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .fila-f { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .fila-f select, .fila-f input[type=search] { max-width: 260px; }
+    .tipos { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tipo { border: 1px solid #d5dde8; background: #f7f9fb; color: #3d4b5c; border-radius: 20px; padding: 4px 11px; font-size: 0.8rem; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+    .tipo .n { background: #e3e9f1; border-radius: 10px; padding: 0 7px; font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+    .tipo.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .tipo.on .n { background: rgba(255,255,255,.2); }
+
+    .caja { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; overflow: hidden; }
+    .tabla-wrap { overflow-x: auto; }
+    table.au { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    table.au th { background: #f6f8fa; color: #4a5568; font-weight: 700; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.3px; padding: 8px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid #e3e7ec; position: sticky; top: 0; }
+    table.au td { padding: 8px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+    tr.dia td { background: #f2f5f9; font-weight: 800; color: var(--navy); font-size: 0.8rem; padding: 6px 12px; }
+    .hora { color: #6b7685; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .usu { font-weight: 600; white-space: nowrap; }
+    .usu.sin { color: #a5281b; font-weight: 600; }
+    .ref { font-weight: 600; color: #1f2d3d; }
+    .campo { font-size: 0.78rem; color: #6b7685; }
+    .cambio { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .cambio .ant { color: #8a95a3; text-decoration: line-through; }
+    .cambio .flecha { color: #9aa6b4; margin: 0 4px; }
+    .cambio .nue { font-weight: 700; color: #1f2d3d; }
+    .det { font-size: 0.8rem; color: #5f6b7a; max-width: 380px; }
+    .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; border-radius: 6px; padding: 1px 8px; white-space: nowrap; }
+    .t-Precios { background: #e8eef7; color: #2a4a72; } .t-Stock { background: #e3f4e9; color: #146c43; }
+    .t-Descuentos { background: #fff4d6; color: #8a6300; } .t-Anulaciones { background: #fbe5e2; color: #a5281b; }
+    .t-Permisos { background: #efe6fb; color: #5b2a91; } .t-Crédito { background: #fde9d9; color: #8a4600; }
+    .t-Caja { background: #e2f3f5; color: #0b5c66; } .t-Configuración, .t-Catálogo, .t-Clientes, .t-Proveedores { background: #eceff3; color: #4a5568; }
+    .pie { padding: 10px 14px; font-size: 0.8rem; color: #6b7685; border-top: 1px solid #edf0f4; }
+    .estado { padding: 36px 10px; text-align: center; color: #6b7685; }
+    @media (max-width: 640px) { .au-main { padding: 12px 14px 28px !important; } .det { max-width: none; } }
+  </style>
+</head>
+
+<body data-page="auditoria">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content au-main">
+    <div class="au-top">
+      <div>
+        <h1><i class="bi bi-shield-check"></i> Auditoría</h1>
+        <p>Quién cambió qué, cuándo y qué había antes: precios, costos, stock, descuentos, anulaciones, permisos y configuración.</p>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <div class="seg" role="group" aria-label="Período" id="segPeriodo">
+          <button type="button" data-p="hoy">Hoy</button>
+          <button type="button" data-p="7d">7 días</button>
+          <button type="button" data-p="30d" class="on">30 días</button>
+          <button type="button" data-p="3m">3 meses</button>
+          <button type="button" data-p="otro">Elegir</button>
+        </div>
+        <div class="fechas" id="fechas">
+          <input type="date" id="desde" class="form-control form-control-sm" aria-label="Desde">
+          <input type="date" id="hasta" class="form-control form-control-sm" aria-label="Hasta">
+          <button class="btn btn-sm btn-primary" id="btnAplicar">Ver</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="filtros">
+      <div class="fila-f">
+        <select id="fUsuario" class="form-select form-select-sm" aria-label="Usuario"><option value="">Todos los usuarios</option></select>
+        <input type="search" id="fTexto" class="form-control form-control-sm" placeholder="Buscar repuesto, cliente, venta, parámetro…" aria-label="Buscar">
+      </div>
+      <div class="tipos" id="tipos" role="group" aria-label="Tipo de cambio"></div>
+    </div>
+
+    <div class="caja">
+      <div class="tabla-wrap">
+        <table class="au">
+          <thead><tr><th>Hora</th><th>Quién</th><th>Tipo</th><th>Qué</th><th>Antes → Después</th><th>Detalle</th></tr></thead>
+          <tbody id="cuerpo"><tr><td colspan="6" class="estado">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pie" id="pie"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+    var esc = TB.esc;
+    var MAX = 500;
+    var estado = { periodo: "30d", desde: null, hasta: null, usuario: "", tipo: "", texto: "" };
+    var pedido = 0, demora = null;
+
+    function rangoDe(p) {
+      var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      var d = new Date(hoy);
+      if (p === "7d") d.setDate(d.getDate() - 6);
+      else if (p === "30d") d.setDate(d.getDate() - 29);
+      else if (p === "3m") d.setMonth(d.getMonth() - 3);
+      return { desde: TB.iso(d), hasta: TB.iso(hoy) };
+    }
+
+    function cargar() {
+      var mio = ++pedido;
+      document.getElementById("cuerpo").innerHTML = '<tr><td colspan="6" class="estado">Cargando…</td></tr>';
+      TB.get("Auditoria", {
+        desde: estado.desde, hasta: estado.hasta,
+        idUsuario: estado.usuario || null, tipo: estado.tipo || null, texto: estado.texto || null, max: MAX
+      }).then(function (d) {
+        if (mio !== pedido) return;
+        pintar(d);
+      }).catch(function (m) {
+        if (mio !== pedido) return;
+        document.getElementById("cuerpo").innerHTML = '<tr><td colspan="6" class="estado">' + esc(typeof m === "string" ? m : "No se pudo cargar.") + '</td></tr>';
+      });
+    }
+
+    function pintar(d) {
+      var R = d.Renglones || [], T = d.PorTipo || [], U = d.PorUsuario || [];
+
+      // Usuarios del periodo (se conserva el elegido)
+      var sel = document.getElementById("fUsuario");
+      sel.innerHTML = '<option value="">Todos los usuarios</option>' + U.map(function (u) {
+        var v = u.IdUsuario === null || u.IdUsuario === undefined ? "-1" : String(u.IdUsuario);
+        return '<option value="' + v + '"' + (v === estado.usuario ? ' selected' : '') + '>' + esc(u.Usuario) + ' (' + TB.num(u.Cantidad) + ')</option>';
+      }).join("");
+      if (estado.usuario && !U.some(function (u) { return String(u.IdUsuario === null ? -1 : u.IdUsuario) === estado.usuario; }))
+        sel.insertAdjacentHTML("beforeend", '<option value="' + esc(estado.usuario) + '" selected>Usuario elegido (0)</option>');
+
+      // Tipos con su cantidad
+      var total = T.reduce(function (a, t) { return a + Number(t.Cantidad); }, 0);
+      document.getElementById("tipos").innerHTML =
+        '<button type="button" class="tipo' + (!estado.tipo ? ' on' : '') + '" data-t="">Todo <span class="n">' + TB.num(total) + '</span></button>' +
+        T.map(function (t) {
+          return '<button type="button" class="tipo' + (estado.tipo === t.Tipo ? ' on' : '') + '" data-t="' + esc(t.Tipo) + '">' + esc(t.Tipo) + ' <span class="n">' + TB.num(t.Cantidad) + '</span></button>';
+        }).join("");
+      document.querySelectorAll("#tipos .tipo").forEach(function (b) {
+        b.addEventListener("click", function () { estado.tipo = b.dataset.t; cargar(); });
+      });
+
+      // Renglones agrupados por dia
+      if (!R.length) {
+        document.getElementById("cuerpo").innerHTML = '<tr><td colspan="6" class="estado">No hay cambios registrados con estos filtros.</td></tr>';
+        document.getElementById("pie").textContent = "";
+        return;
+      }
+      var html = "", diaAnt = "";
+      R.forEach(function (r) {
+        var f = new Date(r.Fecha);
+        var dia = f.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        if (dia !== diaAnt) { html += '<tr class="dia"><td colspan="6">' + esc(dia.charAt(0).toUpperCase() + dia.slice(1)) + '</td></tr>'; diaAnt = dia; }
+        var ant = r.ValorAnterior, nue = r.ValorNuevo;
+        var cambio = ant != null && nue != null
+          ? '<span class="ant">' + esc(ant) + '</span><span class="flecha">→</span><span class="nue">' + esc(nue) + '</span>'
+          : '<span class="nue">' + esc(nue != null ? nue : ant) + '</span>';
+        html += '<tr>' +
+          '<td class="hora">' + f.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) + '</td>' +
+          '<td class="usu' + (r.SinUsuario ? ' sin' : '') + '"' + (r.SinUsuario ? ' title="Hecho por fuera del sistema (script o consola)"' : '') + '>' +
+            (r.SinUsuario ? '<i class="bi bi-terminal"></i> ' : '') + esc(r.Usuario) + '</td>' +
+          '<td><span class="tag t-' + esc(r.Tipo) + '">' + esc(r.Tipo) + '</span></td>' +
+          '<td><div class="ref">' + esc(r.Referencia || "") + '</div><div class="campo">' + esc(r.Campo) + '</div></td>' +
+          '<td class="cambio">' + cambio + '</td>' +
+          '<td class="det">' + esc(r.Detalle || "") + '</td>' +
+        '</tr>';
+      });
+      document.getElementById("cuerpo").innerHTML = html;
+      var shown = R.length;
+      var del = (estado.tipo ? T.filter(function (t) { return t.Tipo === estado.tipo; }).reduce(function (a, t) { return a + Number(t.Cantidad); }, 0) : total);
+      document.getElementById("pie").textContent = shown >= MAX
+        ? "Se muestran los " + TB.num(MAX) + " cambios más nuevos de " + TB.num(del) + ". Achicá el período o filtrá para ver el resto."
+        : TB.num(shown) + (shown === 1 ? " cambio" : " cambios") + " del " + TB.fecha(estado.desde) + " al " + TB.fecha(estado.hasta) + ".";
+    }
+
+    function elegirPeriodo(p) {
+      estado.periodo = p;
+      document.querySelectorAll("#segPeriodo button").forEach(function (b) { b.classList.toggle("on", b.dataset.p === p); });
+      document.getElementById("fechas").classList.toggle("visible", p === "otro");
+      if (p === "otro") {
+        document.getElementById("desde").value = estado.desde; document.getElementById("hasta").value = estado.hasta;
+        return;
+      }
+      var r = rangoDe(p); estado.desde = r.desde; estado.hasta = r.hasta;
+      cargar();
+    }
+
+    window.onload = function () {
+      var usuario = Auth.getUsuario() || {};
+      if (["Dueño", "Administrador"].indexOf(usuario.Rol) === -1) {
+        document.getElementById("cuerpo").innerHTML = '<tr><td colspan="6" class="estado">Solo el dueño o un administrador pueden ver la auditoría.</td></tr>';
+        return;
+      }
+      document.querySelectorAll("#segPeriodo button").forEach(function (b) { b.addEventListener("click", function () { elegirPeriodo(b.dataset.p); }); });
+      document.getElementById("btnAplicar").addEventListener("click", function () {
+        var d = document.getElementById("desde").value, h = document.getElementById("hasta").value;
+        if (!d || !h || h < d) { Swal.fire("Fechas", "Elegí un rango válido.", "warning"); return; }
+        estado.desde = d; estado.hasta = h; cargar();
+      });
+      document.getElementById("fUsuario").addEventListener("change", function (e) { estado.usuario = e.target.value; cargar(); });
+      document.getElementById("fTexto").addEventListener("input", function (e) {
+        clearTimeout(demora);
+        demora = setTimeout(function () { estado.texto = e.target.value.trim(); cargar(); }, 400);
+      });
+      elegirPeriodo("30d");
+    };
+  </script>
+</body>
+</html>

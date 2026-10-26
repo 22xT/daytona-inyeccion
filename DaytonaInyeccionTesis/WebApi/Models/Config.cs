@@ -1,5 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Configuration;
+using System.Data.SqlClient;
+using System.Security.Claims;
+using System.Threading;
+using System.Web;
 
 namespace WebApi.Models
 {
@@ -26,7 +31,50 @@ namespace WebApi.Models
         // Se cachea: leer el Web.config en cada consulta es innecesario
         private static string _conexion;
 
+        /* AUDITORIA (script 83)
+           Cada conexion lleva el usuario de la sesion en el nombre de
+           aplicacion: "Daytona#u=<IdUsuario>". Los disparadores de la base
+           lo leen con APP_NAME() y saben quien hizo cada cambio, sin tener
+           que pasar el usuario a mano en cada modelo. Sin sesion (login,
+           tareas internas) va la cadena tal cual. */
+        private static readonly ConcurrentDictionary<int, string> _porUsuario =
+            new ConcurrentDictionary<int, string>();
+
         public static string Conexion
+        {
+            get
+            {
+                string cadena = ConexionBase;
+                int idUsuario = UsuarioDeLaSesion();
+                if (idUsuario <= 0) return cadena;
+                return _porUsuario.GetOrAdd(idUsuario, id =>
+                {
+                    var b = new SqlConnectionStringBuilder(cadena);
+                    b.ApplicationName = "Daytona#u=" + id;
+                    return b.ConnectionString;
+                });
+            }
+        }
+
+        private static int UsuarioDeLaSesion()
+        {
+            try
+            {
+                ClaimsPrincipal p = null;
+                if (HttpContext.Current != null) p = HttpContext.Current.User as ClaimsPrincipal;
+                if (p == null) p = Thread.CurrentPrincipal as ClaimsPrincipal;
+                if (p == null) return 0;
+                Claim c = p.FindFirst(ClaimTypes.NameIdentifier) ?? p.FindFirst("sub") ?? p.FindFirst("Sub");
+                int id;
+                return c != null && int.TryParse(c.Value, out id) ? id : 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static string ConexionBase
         {
             get
             {

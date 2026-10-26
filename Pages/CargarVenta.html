@@ -485,6 +485,10 @@
     var descuentoActual = 0;
     var formaPago = "Contado";
     var saldoCliente = null;        // saldo actual del cliente elegido
+    // Limite de credito (script 82): situacion del cliente y quien puede autorizar
+    var creditoCliente = null;
+    var autorizoCredito = false;
+    var puedeAutorizarCredito = ["Dueño", "Administrador"].indexOf((Auth.getUsuario() || {}).Rol) !== -1;
     // Token unico de la operacion. Se genera al cargar la pantalla y se
     // renueva al vaciar el carrito. Si el boton se toca dos veces o la red
     // reenvia, el servidor ve el mismo token y no crea una segunda venta.
@@ -634,6 +638,15 @@
           '<i class="bi bi-' + (favor ? 'arrow-down-circle' : 'exclamation-circle') + '"></i> ' +
           (favor ? 'A favor ' : 'Debe ') + formatearMoneda(Math.abs(saldoCliente)) + '</span>';
       }
+      if (creditoCliente && clienteTieneCuentaCorriente()) {
+        if (creditoCliente.LimiteCredito !== null && creditoCliente.LimiteCredito !== undefined) {
+          var disp = Number(creditoCliente.Disponible);
+          html += ' <span class="chip-saldo' + (disp > 0 ? ' favor' : '') + '" title="Límite ' + formatearMoneda(creditoCliente.LimiteCredito) + '">' +
+            '<i class="bi bi-speedometer"></i> ' + (disp > 0 ? 'Puede fiar hasta ' + formatearMoneda(disp) : 'Sin crédito disponible') + '</span>';
+        }
+        if (Number(creditoCliente.Atrasado) === 1)
+          html += ' <span class="chip-saldo"><i class="bi bi-hourglass-split"></i> Deuda de ' + creditoCliente.DiasAtraso + ' días</span>';
+      }
 
       cont.innerHTML = html;
     }
@@ -641,6 +654,7 @@
     function quitarCliente() {
       clienteElegido = null;
       saldoCliente = null;
+      creditoCliente = null;
       pintarChipCliente();
       actualizarOpcionCredito();
     }
@@ -1280,6 +1294,7 @@
     // del mostrador.
     function cargarSaldoCliente() {
       saldoCliente = null;
+      creditoCliente = null;
       if (!clienteElegido) { pintarChipCliente(); return; }
 
       fetchAuth(apiCuentaCorriente + "/" + clienteElegido.Id)
@@ -1289,6 +1304,29 @@
           pintarChipCliente();
         })
         .catch(function () { pintarChipCliente(); });
+
+      // Limite y deuda atrasada (script 82). Si la API vieja no lo tiene, no pasa nada.
+      var idPedido = clienteElegido.Id;
+      fetchAuth(API_BASE + "Cliente/" + idPedido + "/Credito")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!clienteElegido || clienteElegido.Id !== idPedido) return;
+          creditoCliente = d && d.Situacion && d.Situacion[0] ? d.Situacion[0] : null;
+          pintarChipCliente();
+        })
+        .catch(function () { });
+    }
+
+    // Que pasaria con el credito si queda "falta" en cuenta corriente
+    function problemaCredito(falta) {
+      if (!creditoCliente || !(falta > 0.009)) return null;
+      var c = creditoCliente, partes = [];
+      var lim = c.LimiteCredito;
+      if (lim !== null && lim !== undefined && Number(c.Saldo) + falta > Number(lim) + 0.01)
+        partes.push("Con esta venta debería " + formatearMoneda(Number(c.Saldo) + falta) + " y su límite es " + formatearMoneda(lim) + ".");
+      if (Number(c.DiasMaximo) > 0 && Number(c.DiasAtraso) > Number(c.DiasMaximo))
+        partes.push("Tiene deuda sin pagar hace " + c.DiasAtraso + " días (el máximo es " + c.DiasMaximo + ").");
+      return partes.length ? partes.join(" ") : null;
     }
 
     /* ================= CONVERSIÓN DESDE PRESUPUESTO ================= */
@@ -1616,6 +1654,14 @@
         html += clienteTieneCuentaCorriente()
           ? '<div class="fila ctacte"><span>Queda en cuenta corriente</span><span>' + formatearMoneda(falta) + '</span></div>'
           : '<div class="fila falta"><span>Falta cobrar</span><span>' + formatearMoneda(falta) + '</span></div>';
+        var probCred = clienteTieneCuentaCorriente() ? problemaCredito(falta) : null;
+        if (probCred) {
+          html += '<div class="fila falta" style="display:block;font-weight:600;"><i class="bi bi-exclamation-triangle"></i> ' + escapeHtml(probCred) + '</div>';
+          html += puedeAutorizarCredito
+            ? '<label class="fila" style="justify-content:flex-start;gap:8px;cursor:pointer;"><input type="checkbox" ' + (autorizoCredito ? 'checked ' : '') +
+              'onchange="autorizoCredito = this.checked"> Lo autorizo (queda registrado a mi nombre)</label>'
+            : '<div class="fila" style="color:var(--text-muted);font-size:0.82rem;display:block;">Cobrá una parte o pedile al dueño o a un administrador que la autorice.</div>';
+        }
       } else if (pagos.length > 0) {
         html += '<div class="fila" style="color:var(--green);font-weight:700;"><span>Cobro completo</span><span>✓</span></div>';
       }
@@ -1639,11 +1685,17 @@
       if (registrado < total - 0.01 && !clienteTieneCuentaCorriente())
         return "Falta cobrar " + formatearMoneda(total - registrado) +
                ". Para dejar saldo pendiente hay que elegir un cliente con cuenta corriente.";
+      var probCred = registrado < total - 0.01 ? problemaCredito(total - registrado) : null;
+      if (probCred && !puedeAutorizarCredito)
+        return probCred + " Cobrá una parte o pedile al dueño o a un administrador que la autorice.";
+      if (probCred && !autorizoCredito)
+        return probCred + " Para seguir, marcá que lo autorizás.";
       return null;
     }
 
     function confirmar() {
       if (carrito.length === 0) return;
+      autorizoCredito = false;
 
       var idCliente = resolverIdCliente();
       if (!idCliente) {
@@ -1775,6 +1827,7 @@
         TelefonoOcasional: encargoOrigen ? encargoOrigen.Telefono
                          : ((presupActual && presupActual.telefono) ? presupActual.telefono : null),
         IdEncargo: encargoOrigen ? encargoOrigen.Id : null,
+        AutorizarCredito: puedeAutorizarCredito && autorizoCredito,
         Detalle: carrito.map(function (c) {
           return { IdRepuesto: c.IdRepuesto, Cantidad: c.Cantidad, PrecioUnitario: c.PrecioUnitario };
         })
@@ -1783,6 +1836,13 @@
       fetchAuth(apiVenta, { method: "POST", body: JSON.stringify(venta) }).then(function (r) {
         if (!r.ok) {
           return leerError(r).then(function (msg) {
+            if (String(msg).indexOf("[CREDITO]") === 0) {
+              Swal.fire({ icon: "warning", title: "Supera el crédito del cliente",
+                          text: String(msg).replace("[CREDITO]", "").trim() });
+              cargarSaldoCliente();
+              restaurarBoton();
+              return;
+            }
             Swal.fire({
               icon: "error",
               title: "No se pudo registrar la venta",

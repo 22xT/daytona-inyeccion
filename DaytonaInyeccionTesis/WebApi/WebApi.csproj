@@ -192,6 +192,7 @@
     <Compile Include="Controllers\ImportacionController.cs" />
     <Compile Include="Controllers\InventarioController.cs" />
     <Compile Include="Controllers\TableroController.cs" />
+    <Compile Include="Controllers\AuditoriaController.cs" />
     <Compile Include="Controllers\ConfiguracionController.cs" />
     <Compile Include="Controllers\CuentaCorrienteController.cs" />
     <Compile Include="Controllers\DetallePresupuestoController.cs" />
@@ -235,6 +236,7 @@
     <Compile Include="Models\Importacion.cs" />
     <Compile Include="Models\Inventario.cs" />
     <Compile Include="Models\Tablero.cs" />
+    <Compile Include="Models\Auditoria.cs" />
     <Compile Include="Models\Config.cs" />
     <Compile Include="Models\Configuracion.cs" />
     <Compile Include="Models\CuentaCorriente.cs" />

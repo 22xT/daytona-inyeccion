@@ -188,6 +188,11 @@
           <div class="d">Días desde que se avisó al cliente para marcarlo como "no retiró".</div>
           <div class="valor"><button type="button" class="pill" id="vEncargo" onclick="editarNumero('DiasRetiroEncargo','Encargos sin retirar',' días')">—</button></div>
         </div>
+        <div class="param">
+          <div class="t">Deuda vieja en cuenta corriente</div>
+          <div class="d">Si la deuda más antigua de un cliente pasa estos días, no se le fía más hasta que pague o lo autorice el dueño. 0 = no se controla. El límite en plata se pone en la ficha de cada cliente.</div>
+          <div class="valor"><button type="button" class="pill" id="vDeudaVieja" onclick="editarNumero('DiasMaximoDeudaCtaCte','Deuda vieja en cuenta corriente',' días')">—</button></div>
+        </div>
       </div>
       <div id="vOtros"></div>
     </div>
@@ -337,13 +342,14 @@
     })();
 
     /* ================= VENTAS Y CLIENTES ================= */
-    var CONOCIDOS = ["MargenGeneral", "DescuentoMecanico", "DescuentosPublico", "DiasValidezPresupuesto", "DiasRetiroEncargo", "CostosFijosMensuales"];
+    var CONOCIDOS = ["MargenGeneral", "DescuentoMecanico", "DescuentosPublico", "DiasValidezPresupuesto", "DiasRetiroEncargo", "CostosFijosMensuales", "DiasMaximoDeudaCtaCte"];
 
     function pintarVentas() {
       var v;
       v = valorParametro("DescuentoMecanico"); document.getElementById("vMecanico").textContent = v != null ? v + "%" : "—";
       v = valorParametro("DiasValidezPresupuesto"); document.getElementById("vPresupuesto").textContent = v != null ? v + " días" : "—";
       v = valorParametro("DiasRetiroEncargo"); document.getElementById("vEncargo").textContent = v != null ? v + " días" : "—";
+      v = valorParametro("DiasMaximoDeudaCtaCte"); document.getElementById("vDeudaVieja").textContent = v == null ? "—" : (Number(v) === 0 ? "No se controla" : v + " días");
       pintarDescuentosPublico();
 
       // Si algun dia aparece otro parametro editable, se muestra con su descripcion

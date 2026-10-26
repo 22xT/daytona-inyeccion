@@ -21,6 +21,13 @@ namespace WebApi.Models
         // Marca de mecanico: habilita cuenta corriente y 10% de descuento fijo
         public bool EsMecanico { get; set; }
 
+        // Limite de credito (script 82). Solo los mecanicos tienen cuenta
+        // corriente. Vacio = sin limite. CambiarLimite lo manda la pantalla;
+        // CambiarCredito lo decide el controlador: solo Dueño o Administrador.
+        public decimal? LimiteCredito { get; set; }
+        public bool CambiarLimite { get; set; }
+        public bool CambiarCredito { get; set; }
+
         // Listar todos
         public DataTable ListarTodos()
         {
@@ -81,6 +88,7 @@ namespace WebApi.Models
             sqlCom.Parameters.Add("@Calle", SqlDbType.NVarChar).Value = (object)Calle ?? DBNull.Value;
             sqlCom.Parameters.Add("@Numero", SqlDbType.NVarChar).Value = (object)Numero ?? DBNull.Value;
             sqlCom.Parameters.Add("@EsMecanico", SqlDbType.Bit).Value = EsMecanico;
+            AgregarCredito(sqlCom);
 
             sqlCnn.Open();
             object resultado = sqlCom.ExecuteScalar();
@@ -108,10 +116,38 @@ namespace WebApi.Models
             sqlCom.Parameters.Add("@Calle", SqlDbType.NVarChar).Value = (object)Calle ?? DBNull.Value;
             sqlCom.Parameters.Add("@Numero", SqlDbType.NVarChar).Value = (object)Numero ?? DBNull.Value;
             sqlCom.Parameters.Add("@EsMecanico", SqlDbType.Bit).Value = EsMecanico;
+            AgregarCredito(sqlCom);
 
             sqlCnn.Open();
             sqlCom.ExecuteNonQuery();
             sqlCnn.Close();
+        }
+
+        private void AgregarCredito(SqlCommand sqlCom)
+        {
+            SqlParameter pLim = sqlCom.Parameters.Add("@LimiteCredito", SqlDbType.Decimal);
+            pLim.Precision = 12; pLim.Scale = 2;
+            pLim.Value = LimiteCredito.HasValue ? (object)LimiteCredito.Value : DBNull.Value;
+            sqlCom.Parameters.Add("@CambiarCredito", SqlDbType.Bit).Value = CambiarCredito;
+        }
+
+        // Situacion de credito: saldo, limite, disponible, deuda mas vieja
+        // y las ultimas autorizaciones para pasar el limite
+        public DataSet Credito()
+        {
+            using (SqlConnection cnn = new SqlConnection(connectionstring))
+            using (SqlCommand cmd = new SqlCommand("SP_Cliente_Credito", cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add("@IdCliente", SqlDbType.Int).Value = Id;
+                DataSet ds = new DataSet();
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                {
+                    cnn.Open();
+                    da.Fill(ds);
+                }
+                return ds;
+            }
         }
 
         // Baja logica: marca el cliente como inactivo (no borra)

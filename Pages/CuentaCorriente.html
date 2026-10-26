@@ -368,8 +368,29 @@
       });
     }
 
+    // Limite de credito y deuda mas vieja (script 82)
+    function cargarCredito(id) {
+      fetchAuth(api + "Cliente/" + id + "/Credito")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var el = document.getElementById("credInfo");
+          var c = d && d.Situacion && d.Situacion[0];
+          if (!el || !c || clienteActual !== id) return;
+          var partes = [];
+          partes.push(c.LimiteCredito === null || c.LimiteCredito === undefined ? "Sin límite de crédito"
+            : "Límite " + formatearMoneda(c.LimiteCredito) + " · disponible " + formatearMoneda(Math.max(0, Number(c.Disponible))));
+          if (c.DeudaDesde)
+            partes.push((Number(c.Atrasado) === 1 ? "<strong style='color:#ffd1d1'>" : "<span>") +
+              "Debe desde el " + fecha(c.DeudaDesde) + " (" + c.DiasAtraso + " días)" + (Number(c.Atrasado) === 1 ? " · frenado</strong>" : "</span>"));
+          var aut = (d.Autorizaciones || [])[0];
+          if (aut) partes.push("Última excepción: " + fecha(aut.Fecha) + " por " + escapeHtml(aut.Usuario));
+          el.innerHTML = partes.join(" · ");
+        }).catch(function () { });
+    }
+
     function pintarDetalle(c) {
       var saldo = Number(c.Saldo);
+      setTimeout(function () { cargarCredito(clienteActual); }, 0);
 
       var filas = "";
       if (movimientos.length === 0) {
@@ -410,6 +431,7 @@
                 'Última compra: ' + fecha(c.UltimaCompra) + ' · ' +
                 'Último pago: ' + fecha(c.UltimoPago) +
               '</div>' +
+              '<div class="datos mt-1" id="credInfo"></div>' +
             '</div>' +
             '<div class="text-end">' +
               '<div class="cifra-lbl">' + textoSaldo(saldo).toUpperCase() + '</div>' +

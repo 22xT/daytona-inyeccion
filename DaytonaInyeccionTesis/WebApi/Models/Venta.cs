@@ -60,6 +60,12 @@ namespace WebApi.Models
         // Si la venta entrega un encargo: el SP aplica la seña y lo cierra
         public int? IdEncargo { get; set; }
 
+        // Pasar el limite de credito o fiar con deuda atrasada: lo puede
+        // autorizar el Dueño o un Administrador (el SP verifica el rol)
+        public bool AutorizarCredito { get; set; }
+        // Lo completa el controlador con el rol del token
+        public string RolUsuario { get; set; }
+
         // Listar todas
         public DataTable ListarTodos()
         {
@@ -178,6 +184,9 @@ namespace WebApi.Models
 
             sqlCom.Parameters.Add("@IdEncargo", SqlDbType.Int).Value =
                 IdEncargo.HasValue ? (object)IdEncargo.Value : DBNull.Value;
+            sqlCom.Parameters.Add("@AutorizarCredito", SqlDbType.Bit).Value = AutorizarCredito;
+            sqlCom.Parameters.Add("@RolUsuario", SqlDbType.NVarChar, 30).Value =
+                string.IsNullOrEmpty(RolUsuario) ? (object)DBNull.Value : RolUsuario;
 
             // El SP devuelve IdVenta, Total, Descuento, Entrega y SaldoGenerado.
             // Se leen todos: el saldo generado es lo que hay que informarle
