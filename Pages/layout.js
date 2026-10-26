@@ -125,7 +125,7 @@
       section: 'Sistema',
       icon: 'bi-gear',
       items: [
-        { key: 'configuracion', label: 'Beneficios y parámetros', icon: 'bi-percent', href: 'Configuracion.html',
+        { key: 'configuracion', label: 'Configuración comercial', icon: 'bi-percent', href: 'Configuracion.html',
           roles: ['Dueño', 'Administrador'] },
         { key: 'usuarios', label: 'Usuarios', icon: 'bi-people-fill', href: 'UsuariosListado.html',
           roles: ['Administrador'] },

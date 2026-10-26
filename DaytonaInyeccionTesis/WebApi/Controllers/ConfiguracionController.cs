@@ -109,5 +109,58 @@ namespace WebApi.Controllers
                 return BadRequest("No se pudo guardar el margen.");
             }
         }
+    
+
+        /* ---------- Costos fijos (script 80) ---------- */
+        public class CostoFijoDto
+        {
+            public int? Id { get; set; }
+            public string Concepto { get; set; }
+            public int? IdTipoGasto { get; set; }
+            public decimal MontoMensual { get; set; }
+        }
+
+        // GET api/Configuracion/CostosFijos — la lista, con lo pagado segun Gastos
+        [HttpGet]
+        [Route("api/Configuracion/CostosFijos")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador")]
+        public IHttpActionResult CostosFijos()
+        {
+            DataSet ds = new Configuracion().ListarCostosFijos();
+            return Ok(new
+            {
+                Costos = ds.Tables.Count > 0 ? ds.Tables[0] : null,
+                Sugeridos = ds.Tables.Count > 1 ? ds.Tables[1] : null
+            });
+        }
+
+        // POST api/Configuracion/CostosFijos — alta o cambio (con Id)
+        [HttpPost]
+        [Route("api/Configuracion/CostosFijos")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador")]
+        public IHttpActionResult GuardarCostoFijo([FromBody] CostoFijoDto d)
+        {
+            if (d == null) return BadRequest("No llegaron los datos.");
+            try
+            {
+                int id = new Configuracion().GuardarCostoFijo(d.Id, d.Concepto, d.IdTipoGasto, d.MontoMensual);
+                return Ok(new { Id = id });
+            }
+            catch (SqlException ex)
+            {
+                if (ex.Number >= 50000) return BadRequest(ex.Message);
+                return BadRequest("No se pudo guardar el costo fijo.");
+            }
+        }
+
+        // DELETE api/Configuracion/CostosFijos/5
+        [HttpDelete]
+        [Route("api/Configuracion/CostosFijos/{id:int}")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador")]
+        public IHttpActionResult QuitarCostoFijo(int id)
+        {
+            try { new Configuracion().QuitarCostoFijo(id); return Ok(); }
+            catch (SqlException) { return BadRequest("No se pudo quitar el costo fijo."); }
+        }
     }
 }

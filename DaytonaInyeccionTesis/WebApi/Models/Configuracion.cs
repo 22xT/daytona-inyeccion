@@ -92,5 +92,43 @@ namespace WebApi.Models
             sqlCom.ExecuteNonQuery();
             sqlCnn.Close();
         }
+    
+
+        /* ---------- Costos fijos (script 80) ---------- */
+        public DataSet ListarCostosFijos()
+        {
+            return EjecutarCF("SP_CostoFijo_Listar", null);
+        }
+
+        public int GuardarCostoFijo(int? id, string concepto, int? idTipoGasto, decimal monto)
+        {
+            DataSet ds = EjecutarCF("SP_CostoFijo_Guardar", c =>
+            {
+                c.Parameters.Add("@Id", SqlDbType.Int).Value = id.HasValue && id.Value > 0 ? (object)id.Value : DBNull.Value;
+                c.Parameters.Add("@Concepto", SqlDbType.NVarChar, 80).Value = (object)concepto ?? DBNull.Value;
+                c.Parameters.Add("@IdTipoGasto", SqlDbType.Int).Value = idTipoGasto.HasValue && idTipoGasto.Value > 0 ? (object)idTipoGasto.Value : DBNull.Value;
+                SqlParameter pm = c.Parameters.Add("@MontoMensual", SqlDbType.Decimal);
+                pm.Precision = 12; pm.Scale = 2; pm.Value = monto;
+            });
+            return Convert.ToInt32(ds.Tables[0].Rows[0]["Id"]);
+        }
+
+        public void QuitarCostoFijo(int id)
+        {
+            EjecutarCF("SP_CostoFijo_Quitar", c => c.Parameters.Add("@Id", SqlDbType.Int).Value = id);
+        }
+
+        private DataSet EjecutarCF(string sp, Action<SqlCommand> parametros)
+        {
+            using (SqlConnection cnn = new SqlConnection(connectionstring))
+            using (SqlCommand cmd = new SqlCommand(sp, cnn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                if (parametros != null) parametros(cmd);
+                DataSet ds = new DataSet();
+                new SqlDataAdapter(cmd).Fill(ds);
+                return ds;
+            }
+        }
     }
 }

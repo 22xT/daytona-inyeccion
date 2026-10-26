@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Análisis del negocio - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="tablero-comun.js"></script>
+  <style>
+    /* =================================================================
+       ANALISIS POR AREA (script 81)
+       Cada panel es una pregunta del negocio con su respuesta: un
+       grafico o una tabla y una frase con lo que conviene hacer.
+       ================================================================= */
+    .tb-main { padding: 16px 24px 36px !important; max-width: none; width: 100%; }
+    .tb-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+    .tb-top h1 { font-size: 1.35rem; font-weight: 800; color: var(--navy); margin: 0; display: flex; align-items: center; gap: 8px; }
+    .tb-top h1 i { color: var(--red); }
+    .volver { font-size: 0.82rem; font-weight: 700; color: var(--navy-soft); text-decoration: none; }
+    .volver:hover { text-decoration: underline; }
+    .periodo { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .seg { display: inline-flex; border: 1px solid #c9d3e0; border-radius: 9px; overflow: hidden; background: #fff; flex-wrap: wrap; }
+    .seg button { border: none; background: none; padding: 7px 12px; font-size: 0.83rem; font-weight: 600; color: #4a5568; white-space: nowrap; }
+    .seg button + button { border-left: 1px solid #c9d3e0; }
+    .seg button.on { background: var(--navy); color: #fff; }
+    .seg button:focus-visible, .tab:focus-visible { outline: 3px solid #8fb3e0; outline-offset: -3px; }
+    .fechas { display: none; gap: 6px; align-items: center; }
+    .fechas.visible { display: inline-flex; }
+    .fechas input { width: 140px; }
+    .rango-txt { font-size: 0.8rem; color: #6b7685; }
+
+    .tabs { display: flex; gap: 4px; border-bottom: 2px solid #dde3ea; margin-bottom: 16px; overflow-x: auto; scrollbar-width: thin; }
+    .tab { border: none; background: none; padding: 10px 16px; font-weight: 700; font-size: 0.92rem; color: #5f6b7a; border-bottom: 3px solid transparent; margin-bottom: -2px; display: flex; gap: 7px; align-items: center; white-space: nowrap; }
+    .tab i { font-size: 1rem; }
+    .tab:hover { color: var(--navy); }
+    .tab.on { color: var(--navy); border-bottom-color: var(--red); }
+
+    .grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grilla .ancho { grid-column: 1 / -1; }
+    .pn { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; min-width: 0; display: flex; flex-direction: column; }
+    .pn-h { padding: 13px 16px 4px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+    .pn-h h3 { font-size: 1rem; font-weight: 800; color: var(--navy); margin: 0; }
+    .pn-h .sub { font-size: 0.8rem; color: #6b7685; }
+    .pn-h .ms-auto { margin-left: auto; }
+    .pn-b { padding: 8px 16px 12px; min-width: 0; flex: 1; }
+    .dato { margin: 0 16px 14px; padding: 9px 12px; border-radius: 8px; background: #f2f6fb; color: #23384f; font-size: 0.87rem; display: flex; gap: 8px; }
+    .dato i { color: #c98a00; margin-top: 2px; }
+    .dato.alerta { background: #fdf3e6; }
+    .dato.vacio { background: #f5f6f8; color: #6b7685; }
+    .dato.vacio i { color: #9aa6b4; }
+    .chart { position: relative; height: 260px; }
+    .chart.alto { height: 320px; }
+    .chart.bajo { height: 200px; }
+
+    .mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .mini > div { border: 1px solid #e6eaef; border-radius: 10px; padding: 10px 12px; min-width: 0; }
+    .mini .t { font-size: 0.74rem; color: #6b7685; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+    .mini .v { font-size: 1.25rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mini .s { font-size: 0.76rem; font-weight: 700; }
+    .bien { color: #1f8a4c; } .mal { color: #c0392b; } .neutro { color: #6b7685; }
+
+    .tabla-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; border: 1px solid #edf0f4; border-radius: 8px; }
+    table.tb { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+    table.tb th { position: sticky; top: 0; background: #f6f8fa; color: #4a5568; font-weight: 700; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.3px; padding: 8px 10px; text-align: left; white-space: nowrap; z-index: 1; border-bottom: 1px solid #e3e7ec; }
+    table.tb td { padding: 7px 10px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+    table.tb th.n, table.tb td.n { text-align: right; white-space: nowrap; }
+    table.tb tr.clic { cursor: pointer; }
+    table.tb tr.clic:hover td { background: #f5f8fc; }
+    table.tb td .cod { font-family: Consolas, monospace; font-size: 0.78rem; color: #5f6b7a; }
+    table.tb td .chico { font-size: 0.76rem; color: #6b7685; }
+    .tag { display: inline-block; font-size: 0.72rem; font-weight: 700; border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+    .tag.ok { background: #e3f4e9; color: #146c43; } .tag.mal { background: #fbe5e2; color: #a5281b; } .tag.med { background: #fff4d6; color: #8a6300; } .tag.info { background: #e8eef7; color: #2a4a72; }
+    .barrita { height: 6px; background: #edf0f4; border-radius: 3px; overflow: hidden; min-width: 60px; margin-top: 4px; }
+    .barrita span { display: block; height: 100%; background: var(--navy-soft); }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .toolbar input { max-width: 260px; }
+    .mas { margin-top: 8px; }
+
+    .heat { border-collapse: separate; border-spacing: 3px; font-size: 0.78rem; width: 100%; }
+    .heat th { font-weight: 700; color: #5f6b7a; text-align: center; padding: 2px 4px; white-space: nowrap; }
+    .heat th.r { text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+    .heat td { text-align: center; border-radius: 5px; padding: 6px 2px; min-width: 34px; font-variant-numeric: tabular-nums; }
+
+    .dos-listas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .dos-listas h4 { font-size: 0.86rem; font-weight: 800; margin: 0 0 6px; }
+    .lista-s { list-style: none; margin: 0; padding: 0; font-size: 0.85rem; }
+    .lista-s li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f0f2f5; }
+    .lista-s li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .estado { padding: 40px 10px; text-align: center; color: #6b7685; }
+    .wa { color: #1f8a4c; text-decoration: none; font-weight: 600; white-space: nowrap; }
+
+    .ficha-n { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .ficha-n > div { background: #f6f8fa; border-radius: 8px; padding: 8px 10px; }
+    .ficha-n .t { font-size: 0.72rem; color: #6b7685; font-weight: 700; text-transform: uppercase; }
+    .ficha-n .v { font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 1100px) { .grilla { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .tb-main { padding: 12px 14px 28px !important; }
+      .dos-listas { grid-template-columns: 1fr; }
+      .tab { padding: 9px 11px; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+
+<body data-page="dashboard">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content tb-main">
+    <div class="tb-top">
+      <div>
+        <a class="volver" href="Dashboard.html">← Dashboard</a>
+        <h1><i class="bi bi-clipboard-data"></i> Análisis del negocio</h1>
+      </div>
+      <div class="periodo" id="periodoBox">
+        <div class="seg" role="group" aria-label="Período">
+          <button type="button" data-p="3m">3 meses</button>
+          <button type="button" data-p="6m">6 meses</button>
+          <button type="button" data-p="12m" class="on">12 meses</button>
+          <button type="button" data-p="anio">Este año</button>
+          <button type="button" data-p="anioAnterior">Año pasado</button>
+          <button type="button" data-p="otro">Elegir</button>
+        </div>
+        <div class="fechas" id="fechas">
+          <input type="date" id="desde" class="form-control form-control-sm" aria-label="Desde">
+          <input type="date" id="hasta" class="form-control form-control-sm" aria-label="Hasta">
+          <button class="btn btn-sm btn-primary" id="btnAplicar">Ver</button>
+        </div>
+        <span class="rango-txt" id="rangoTxt"></span>
+      </div>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="Áreas">
+      <button class="tab" role="tab" data-a="ventas"><i class="bi bi-cart-check"></i> Ventas</button>
+      <button class="tab" role="tab" data-a="productos"><i class="bi bi-box-seam"></i> Productos</button>
+      <button class="tab" role="tab" data-a="proveedores"><i class="bi bi-truck"></i> Proveedores</button>
+      <button class="tab" role="tab" data-a="clientes"><i class="bi bi-people"></i> Clientes</button>
+      <button class="tab" role="tab" data-a="stock"><i class="bi bi-boxes"></i> Stock</button>
+      <button class="tab" role="tab" data-a="rentabilidad"><i class="bi bi-piggy-bank"></i> Rentabilidad</button>
+    </nav>
+
+    <div id="contenido"><div class="estado">Cargando…</div></div>
+  </div>
+
+  <!-- Ficha de un producto -->
+  <div class="modal fade" id="modalFicha" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="fichaTitulo">Producto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body" id="fichaCuerpo"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+    TB.baseChart();
+
+    var C = TB.COLOR, esc = TB.esc, $d = TB.dinero, $c = TB.dineroCorto, n = TB.n;
+    var AREAS = ["ventas", "productos", "proveedores", "clientes", "stock", "rentabilidad"];
+    var area = AREAS.indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : (TB.leer("area") || "ventas");
+    var periodo = TB.leer("periodoTablero") || "12m";
+    var rango = periodo === "otro" ? TB.rango("12m") : TB.rango(periodo);
+    var pedido = 0;   // descarta respuestas viejas si se cambia rapido de pestaña
+
+    /* ---------------- piezas ---------------- */
+    function panel(titulo, sub, cuerpo, dato, clase, extraHeader) {
+      return '<section class="pn ' + (clase || "") + '"><div class="pn-h"><h3>' + titulo + '</h3>' +
+        (sub ? '<span class="sub">' + sub + '</span>' : '') + (extraHeader || '') + '</div>' +
+        '<div class="pn-b">' + cuerpo + '</div>' + (dato ? dato : '') + '</section>';
+    }
+    function dato(txt, tipo) {
+      if (!txt) return "";
+      var ic = tipo === "vacio" ? "bi-info-circle" : tipo === "alerta" ? "bi-exclamation-triangle" : "bi-lightbulb";
+      return '<div class="dato ' + (tipo || "") + '"><i class="bi ' + ic + '"></i><span>' + txt + '</span></div>';
+    }
+    function canvas(id, cls) { return '<div class="chart ' + (cls || "") + '"><canvas id="' + id + '"></canvas></div>'; }
+    function tabla(cols, filas, opts) {
+      opts = opts || {};
+      if (!filas.length) return '<div class="estado" style="padding:18px">' + (opts.vacio || "Sin datos en el período.") + '</div>';
+      return '<div class="tabla-wrap"' + (opts.alto ? ' style="max-height:' + opts.alto + 'px"' : '') + '><table class="tb"><thead><tr>' +
+        cols.map(function (c) { return '<th class="' + (c.n ? "n" : "") + '">' + c.t + '</th>'; }).join("") + '</tr></thead><tbody>' +
+        filas.map(function (f, i) {
+          return '<tr' + (opts.clic ? ' class="clic" data-id="' + esc(opts.clic(f)) + '"' : '') + '>' +
+            cols.map(function (c) { return '<td class="' + (c.n ? "n" : "") + '">' + c.v(f, i) + '</td>'; }).join("") + '</tr>';
+        }).join("") + '</tbody></table></div>';
+    }
+    function mini(items) {
+      return '<div class="mini">' + items.map(function (x) {
+        return '<div><div class="t">' + x.t + '</div><div class="v">' + x.v + '</div>' + (x.s ? '<div class="s ' + (x.c || "neutro") + '">' + x.s + '</div>' : '') + '</div>';
+      }).join("") + '</div>';
+    }
+    function margen(gan, imp) { return n(imp) ? n(gan) * 100 / n(imp) : null; }
+    function tagMargen(m) {
+      if (m === null) return '<span class="tag info">sin dato</span>';
+      return '<span class="tag ' + (m < 10 ? "mal" : m < 25 ? "med" : "ok") + '">' + TB.pct(m) + '</span>';
+    }
+    function telefono(t) {
+      if (!t) return '<span class="chico">—</span>';
+      var dig = String(t).replace(/\D/g, "");
+      if (dig.length >= 8) {
+        var ar = dig.indexOf("54") === 0 ? dig : "549" + dig.replace(/^0/, "");
+        return '<a class="wa" href="https://wa.me/' + ar + '" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> ' + esc(t) + '</a>';
+      }
+      return esc(t);
+    }
+    function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+    function suma(arr, k) { return arr.reduce(function (a, x) { return a + n(x[k]); }, 0); }
+    function maxPor(arr, k) { return arr.reduce(function (m, x) { return !m || n(x[k]) > n(m[k]) ? x : m; }, null); }
+    function minPor(arr, k) { return arr.reduce(function (m, x) { return !m || n(x[k]) < n(m[k]) ? x : m; }, null); }
+    function opcionesPesos(extra) {
+      return Object.assign({
+        scales: { x: { grid: { display: false } }, y: Object.assign({ beginAtZero: true }, TB.ejePesos()) },
+        plugins: { tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + $d(c.raw); } } } }
+      }, extra || {});
+    }
+    function colorCalor(t) {   // 0..1 -> celeste muy claro a azul marino
+      t = Math.max(0, Math.min(1, t));
+      var a = [243, 246, 250], b = [0, 31, 63];
+      var c = a.map(function (x, i) { return Math.round(x + (b[i] - x) * t); });
+      return { bg: "rgb(" + c.join(",") + ")", fg: t > 0.55 ? "#fff" : "#1f2d3d" };
+    }
+    // Cuantas veces cae cada dia de la semana en el rango (0 = lunes)
+    function diasEnRango(desde, hasta) {
+      var r = [0, 0, 0, 0, 0, 0, 0], d = TB.aFecha(desde), h = TB.aFecha(hasta);
+      for (var x = new Date(d); x <= h; x.setDate(x.getDate() + 1)) r[(x.getDay() + 6) % 7]++;
+      return r;
+    }
+
+    /* ---------------- navegacion ---------------- */
+    function elegirArea(a) {
+      area = a; TB.guardar("area", a);
+      if (location.hash !== "#" + a) history.replaceState(null, "", "#" + a);
+      document.querySelectorAll(".tab").forEach(function (t) { var on = t.dataset.a === a; t.classList.toggle("on", on); t.setAttribute("aria-selected", on); });
+      document.getElementById("periodoBox").style.visibility = a === "stock" ? "hidden" : "visible";
+      cargar();
+    }
+    function elegirPeriodo(p) {
+      periodo = p;
+      document.querySelectorAll("#periodoBox .seg button").forEach(function (b) { b.classList.toggle("on", b.dataset.p === p); });
+      document.getElementById("fechas").classList.toggle("visible", p === "otro");
+      if (p === "otro") {
+        document.getElementById("desde").value = rango.desde; document.getElementById("hasta").value = rango.hasta;
+        return;
+      }
+      TB.guardar("periodoTablero", p);
+      rango = TB.rango(p);
+      cargar();
+    }
+    function cargar() {
+      var mio = ++pedido;
+      document.getElementById("rangoTxt").textContent = TB.fecha(rango.desde) + " al " + TB.fecha(rango.hasta);
+      var cont = document.getElementById("contenido");
+      cont.innerHTML = '<div class="estado">Cargando…</div>';
+      var ruta = "Tablero/" + cap(area);
+      var params = area === "stock" ? null : { desde: rango.desde, hasta: rango.hasta };
+      TB.get(ruta, params).then(function (d) {
+        if (mio !== pedido) return;
+        PINTAR[area](d, cont);
+      }).catch(function (m) {
+        if (mio !== pedido) return;
+        cont.innerHTML = '<div class="estado"><i class="bi bi-exclamation-circle"></i> ' + esc(typeof m === "string" ? m : "No se pudo cargar.") + '</div>';
+        console.error(m);
+      });
+    }
+
+    var PINTAR = {};
+
+    /* ================= VENTAS ================= */
+    PINTAR.ventas = function (d, cont) {
+      var M = d.Mensual || [], cmp = d.Comparacion || [], act = cmp[0] || {}, ant = cmp[1] || {};
+      var ult12 = M.slice(-12).filter(function (x) { return n(x.Ventas) > 0; });
+      var mejor = maxPor(ult12, "Ventas");
+      var prom12 = ult12.length ? suma(ult12, "Ventas") / ult12.length : 0;
+      var actual = M[M.length - 1] || {}, haceUnAnio = M.length >= 13 ? M[M.length - 13] : null;
+
+      var txtMes = mejor ? "El mejor mes del último año fue <b>" + TB.mesLargo(mejor.Mes) + "</b> con " + $d(mejor.Ventas) +
+        (prom12 ? ", un " + TB.pct((n(mejor.Ventas) / prom12 - 1) * 100) + " arriba del promedio mensual (" + $c(prom12) + ")" : "") + ". " : "";
+      if (haceUnAnio && n(haceUnAnio.Ventas) > 0)
+        txtMes += "Este mes va " + $d(actual.Ventas) + "; en " + TB.mesLargo(haceUnAnio.Mes) + " se vendió " + $d(haceUnAnio.Ventas) + " en todo el mes.";
+
+      // dias de la semana: promedio por dia (no total) para que sea justo
+      var veces = diasEnRango(rango.desde, rango.hasta);
+      var DS = (d.DiaSemana || []).map(function (x) { return { dia: x.Dia, ventas: n(x.Ventas), ops: n(x.Operaciones), prom: veces[x.Dia] ? n(x.Ventas) / veces[x.Dia] : 0 }; });
+      var porDia = [0, 1, 2, 3, 4, 5, 6].map(function (i) { return DS.filter(function (x) { return x.dia === i; })[0] || { dia: i, ventas: 0, ops: 0, prom: 0 }; });
+      var abiertos = porDia.filter(function (x) { return x.ops > 0; });
+      var dMejor = maxPor(abiertos, "prom"), dPeor = minPor(abiertos, "prom");
+      var txtDia = dMejor && dPeor && dMejor !== dPeor
+        ? "Los <b>" + TB.DIAS[dMejor.dia].toLowerCase() + "</b> se vende en promedio " + $d(dMejor.prom) + " por día; los " + TB.DIAS[dPeor.dia].toLowerCase() +
+          ", " + $d(dPeor.prom) + ". " + (dPeor.prom > 0 && dMejor.prom / dPeor.prom >= 1.4 ? "Es buen día para tareas internas (inventario, pedidos, limpieza)." : "")
+        : "";
+
+      var H = d.Hora || [];
+      var hMax = maxPor(H, "Operaciones");
+      var hAbiertas = H.filter(function (x) { return n(x.Operaciones) > 0; });
+      var hMin = minPor(hAbiertas, "Operaciones");
+      var txtHora = hMax ? "El pico es de <b>" + hMax.Hora + " a " + (hMax.Hora + 1) + " h</b> (" + TB.num(hMax.Operaciones) + " ventas en el período)" +
+        (hMin && hMin !== hMax ? "; la hora más tranquila es de " + hMin.Hora + " a " + (hMin.Hora + 1) + " h." : ".") + " Conviene que en el pico haya dos personas en el mostrador." : "";
+
+      var MP = d.MediosPago || [], totMP = suma(MP, "Monto"), comis = suma(MP, "Comision");
+      var mpTop = MP[0];
+      var txtMP = mpTop ? "Lo más usado es <b>" + esc(mpTop.Medio) + "</b> (" + TB.pct(n(mpTop.Monto) * 100 / (totMP || 1)) + " de lo cobrado). " +
+        (comis > 0 ? "Las comisiones de cobro costaron " + $d(comis) + " (" + TB.pct(comis * 100 / (totMP || 1)) + " de lo vendido)." : "") : "";
+
+      var TC = d.TipoCliente || [], totTC = suma(TC, "Ventas");
+      var mec = TC.filter(function (x) { return x.Tipo.indexOf("Mec") === 0; })[0], pub = TC.filter(function (x) { return x.Tipo.indexOf("Mec") !== 0; })[0];
+      var txtTC = mec && pub ? "Los mecánicos son el " + TB.pct(n(mec.Ventas) * 100 / (totTC || 1)) + " de la venta con un margen de " + TB.pct(margen(mec.Ganancia, mec.Ventas)) +
+        "; el público deja " + TB.pct(margen(pub.Ganancia, pub.Ventas)) + "." : "";
+
+      var VD = d.Vendedores || [];
+
+      var vAnt = TB.variacion(act.Ventas, ant.Ventas), gAnt = TB.variacion(act.Ganancia, ant.Ganancia),
+          oAnt = TB.variacion(act.Operaciones, ant.Operaciones);
+      var tAct = n(act.Operaciones) ? n(act.Ventas) / n(act.Operaciones) : 0, tAnt = n(ant.Operaciones) ? n(ant.Ventas) / n(ant.Operaciones) : 0;
+      var tkAnt = TB.variacion(tAct, tAnt);
+      function sinAnio(v) { return n(ant.Ventas) ? v.txt.replace("período anterior", "año pasado") : "sin datos del año pasado"; }
+
+      cont.innerHTML = '<div class="grilla">' +
+        panel("¿Cómo vienen las ventas?", "últimos 24 meses", canvas("chMes", "alto"), dato(txtMes), "ancho") +
+        panel("¿Contra el mismo período del año pasado?", TB.fecha(ant.Desde) + " al " + TB.fecha(ant.Hasta),
+          mini([
+            { t: "Ventas", v: $c(act.Ventas), s: sinAnio(vAnt), c: vAnt.clase },
+            { t: "Ganancia", v: $c(act.Ganancia), s: sinAnio(gAnt), c: gAnt.clase },
+            { t: "Operaciones", v: TB.num(act.Operaciones), s: sinAnio(oAnt), c: oAnt.clase },
+            { t: "Ticket promedio", v: $d(tAct), s: sinAnio(tkAnt), c: tkAnt.clase }
+          ]),
+          n(ant.Ventas) ? "" : dato("No hay ventas cargadas del mismo período del año pasado. Esta comparación se va a llenar sola con el tiempo.", "vacio")) +
+        panel("¿Qué días se vende más?", "promedio por día de cada tipo", canvas("chDia"), dato(txtDia)) +
+        panel("¿A qué hora?", "cantidad de ventas por hora", canvas("chHora"), dato(txtHora)) +
+        panel("¿Cómo pagan?", "lo cobrado en el período",
+          '<div class="row g-2 align-items-center"><div class="col-sm-5">' + canvas("chMP", "bajo") + '</div><div class="col-sm-7">' +
+          tabla([
+            { t: "Medio", v: function (x) { return esc(x.Medio); } },
+            { t: "Cobrado", n: 1, v: function (x) { return $d(x.Monto); } },
+            { t: "%", n: 1, v: function (x) { return TB.pct(n(x.Monto) * 100 / (totMP || 1)); } },
+            { t: "Comisión", n: 1, v: function (x) { return n(x.Comision) ? $d(x.Comision) : "—"; } }
+          ], MP) + '</div></div>', dato(txtMP)) +
+        panel("¿Mecánicos o público?", "", tabla([
+            { t: "Tipo", v: function (x) { return esc(x.Tipo); } },
+            { t: "Ventas", n: 1, v: function (x) { return TB.num(x.Operaciones); } },
+            { t: "Facturado", n: 1, v: function (x) { return $d(x.Ventas); } },
+            { t: "% del total", n: 1, v: function (x) { return TB.pct(n(x.Ventas) * 100 / (totTC || 1)); } },
+            { t: "Margen", n: 1, v: function (x) { return tagMargen(margen(x.Ganancia, x.Ventas)); } }
+          ], TC), dato(txtTC)) +
+        panel("¿Quién vende?", "", tabla([
+            { t: "Vendedor", v: function (x) { return esc(x.Vendedor); } },
+            { t: "Ventas", n: 1, v: function (x) { return TB.num(x.Operaciones); } },
+            { t: "Facturado", n: 1, v: function (x) { return $d(x.Ventas); } },
+            { t: "Ticket", n: 1, v: function (x) { return $d(n(x.Ventas) / (n(x.Operaciones) || 1)); } },
+            { t: "Ganancia", n: 1, v: function (x) { return $d(x.Ganancia); } },
+            { t: "Margen", n: 1, v: function (x) { return tagMargen(margen(x.Ganancia, x.Ventas)); } }
+          ], VD), VD.length > 1 ? dato("Un margen bajo en un vendedor suele ser exceso de descuentos.") : "", "ancho") +
+        '</div>';
+
+      TB.grafico("chMes", {
+        type: "bar",
+        data: { labels: M.map(function (x) { return TB.mesCorto(x.Mes); }), datasets: [
+          { type: "line", label: "Ganancia", data: M.map(function (x) { return n(x.Ganancia); }), borderColor: C.verde, backgroundColor: C.verde, tension: 0.3, pointRadius: 2, order: 0 },
+          { label: "Ventas", data: M.map(function (x) { return n(x.Ventas); }), backgroundColor: M.map(function (x, i) { return i >= M.length - 12 ? C.navy : "#b7c4d4"; }), borderRadius: 4, order: 1 }
+        ] },
+        options: opcionesPesos()
+      });
+      TB.grafico("chDia", {
+        type: "bar",
+        data: { labels: TB.DIAS.map(function (x) { return x.slice(0, 3); }), datasets: [{ label: "Promedio por día", data: porDia.map(function (x) { return Math.round(x.prom); }),
+          backgroundColor: porDia.map(function (x) { return dMejor && x.dia === dMejor.dia ? C.navy : "#8ea3bd"; }), borderRadius: 4 }] },
+        options: opcionesPesos({ plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return $d(c.raw) + " por día"; } } } } })
+      });
+      var hs = H.map(function (x) { return x.Hora; }), h0 = hs.length ? Math.min.apply(null, hs) : 8, h1 = hs.length ? Math.max.apply(null, hs) : 20;
+      var horas = []; for (var h = h0; h <= h1; h++) horas.push(h);
+      TB.grafico("chHora", {
+        type: "bar",
+        data: { labels: horas.map(function (h) { return h + " h"; }), datasets: [{ label: "Ventas", data: horas.map(function (h) { var x = H.filter(function (y) { return y.Hora === h; })[0]; return x ? n(x.Operaciones) : 0; }),
+          backgroundColor: horas.map(function (h) { return hMax && h === hMax.Hora ? C.navy : "#8ea3bd"; }), borderRadius: 4 }] },
+        options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: C.grilla }, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }
+      });
+      TB.grafico("chMP", {
+        type: "doughnut",
+        data: { labels: MP.map(function (x) { return x.Medio; }), datasets: [{ data: MP.map(function (x) { return n(x.Monto); }), backgroundColor: [C.navy, "#4a6a8f", "#8ea3bd", "#c98a00", "#1f8a4c", "#b7c4d4", "#d92020"], borderWidth: 1 }] },
+        options: { cutout: "62%", plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return c.label + ": " + $d(c.raw); } } } } }
+      });
+    };
+
+    /* ================= PRODUCTOS ================= */
+    var prodEstado = { orden: "Importe", filtro: "", limite: 50, datos: [] };
+    PINTAR.productos = function (d, cont) {
+      var R = d.Ranking || [], RU = d.Rubros || [], MA = d.Marcas || [], T = d.Temporada || [], hi = (d.Historia || [])[0] || {}, ABC = d.Abc || [], TE = d.Tendencia || [];
+      prodEstado.datos = R; prodEstado.limite = 50;
+
+      var topU = maxPor(R, "Unidades"), topG = maxPor(R, "Ganancia");
+      var txtRank = topU && topG ? (topU.Id === topG.Id
+        ? "<b>" + esc(topU.Descripcion) + "</b> es el que más se vende y también el que más ganancia deja (" + $d(topG.Ganancia) + ")."
+        : "El que más se vende es <b>" + esc(topU.Descripcion) + "</b> (" + TB.num(topU.Unidades) + " u.), pero el que más ganancia deja es <b>" + esc(topG.Descripcion) + "</b> (" + $d(topG.Ganancia) + ").") +
+        " Tocá un producto para ver su historia mes a mes." : "";
+      var sinCostoPorc = n(hi.ImporteTotal) ? n(hi.ImporteSinCosto) * 100 / n(hi.ImporteTotal) : 0;
+      var avisoCosto = sinCostoPorc >= 1 ? dato("El " + TB.pct(sinCostoPorc) + " de lo vendido no tiene costo registrado (ventas viejas o repuestos sin costo): la ganancia de esos productos se ve más alta de lo real.", "alerta") : "";
+
+      // Rubros
+      var totRu = suma(RU, "Importe");
+      var ruGrandes = RU.filter(function (x) { return n(x.Importe) >= totRu * 0.05; });
+      var ruMejorM = ruGrandes.reduce(function (m, x) { return !m || margen(x.Ganancia, x.Importe) > margen(m.Ganancia, m.Importe) ? x : m; }, null);
+      var ruPeorM = ruGrandes.reduce(function (m, x) { return !m || margen(x.Ganancia, x.Importe) < margen(m.Ganancia, m.Importe) ? x : m; }, null);
+      var txtRu = RU.length ? "<b>" + esc(RU[0].Rubro) + "</b> es el rubro que más factura (" + TB.pct(n(RU[0].Importe) * 100 / (totRu || 1)) + ")." +
+        (ruMejorM && ruPeorM && ruMejorM !== ruPeorM ? " Entre los rubros grandes, " + esc(ruMejorM.Rubro) + " deja el mejor margen (" + TB.pct(margen(ruMejorM.Ganancia, ruMejorM.Importe)) + ") y " + esc(ruPeorM.Rubro) + " el peor (" + TB.pct(margen(ruPeorM.Ganancia, ruPeorM.Importe)) + ")." : "") : "";
+
+      // Temporada
+      var rubrosT = []; T.forEach(function (x) { if (rubrosT.indexOf(x.Rubro) < 0) rubrosT.push(x.Rubro); });
+      var temporadas = [];
+      var heat = '<div style="overflow-x:auto"><table class="heat"><thead><tr><th class="r">Rubro</th>' +
+        TB.MESES.map(function (m) { return '<th>' + cap(m.slice(0, 3)) + '</th>'; }).join("") + '</tr></thead><tbody>' +
+        rubrosT.map(function (ru) {
+          var u = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+          T.forEach(function (x) { if (x.Rubro === ru) u[x.Mes - 1] += n(x.Unidades); });
+          var prom = u.reduce(function (a, b) { return a + b; }, 0) / 12;
+          var altos = [];
+          var celdas = u.map(function (v, i) {
+            var idx = prom ? v / prom : 0;
+            if (idx >= 1.3) altos.push(TB.MESES[i]);
+            var col = colorCalor((idx - 0.6) / 1.2);
+            return '<td style="background:' + col.bg + ';color:' + col.fg + '" title="' + TB.num(v) + ' u. · ' + TB.dec(idx * 100) + '% del promedio">' + (v ? TB.dec(idx) : "·") + '</td>';
+          }).join("");
+          if (altos.length && altos.length <= 4) temporadas.push("<b>" + esc(ru) + "</b>: " + altos.join(", "));
+          return '<tr><th class="r" title="' + esc(ru) + '">' + esc(ru) + '</th>' + celdas + '</tr>';
+        }).join("") + '</tbody></table></div>';
+      var meses = n(hi.MesesConVentas);
+      var txtTemp = (meses < 12 ? dato("Hay " + meses + (meses === 1 ? " mes" : " meses") + " de ventas cargadas. La temporada se ve bien con al menos 12 (mejor 24): por ahora tomalo como orientativo.", "vacio") : "") +
+        dato(temporadas.length ? "Temporada alta (30% o más arriba del promedio): " + temporadas.slice(0, 5).join(" · ") + ". Conviene comprar antes de esos meses." : "Ningún rubro tiene meses claramente más fuertes que otros todavía.");
+
+      // ABC
+      var abc = { A: { Productos: 0, Importe: 0 }, B: { Productos: 0, Importe: 0 }, C: { Productos: 0, Importe: 0 } };
+      ABC.forEach(function (x) { abc[x.Clase] = x; });
+      var totP = n(abc.A.Productos) + n(abc.B.Productos) + n(abc.C.Productos);
+      var txtAbc = totP ? "<b>" + TB.num(abc.A.Productos) + " productos</b> (" + TB.pct(n(abc.A.Productos) * 100 / totP) + " de los " + TB.num(totP) + " que se vendieron) hacen el 80% de la facturación. Esos nunca deberían faltar: revisá su stock mínimo." : "";
+
+      // Tendencia
+      var suben = TE.filter(function (x) { return n(x.Ultimos90) > n(x.Anteriores90); }).slice(0, 12);
+      var bajan = TE.filter(function (x) { return n(x.Ultimos90) < n(x.Anteriores90); }).slice(0, 12);
+      function itemT(x) {
+        var v = n(x.Anteriores90) ? (n(x.VariacionPorc) > 0 ? "+" : "−") + TB.pct(Math.abs(n(x.VariacionPorc))) : "nuevo";
+        return '<li><span title="' + esc(x.Descripcion) + '">' + esc(x.Descripcion) + '</span><span class="chico">' + TB.num(x.Anteriores90) + ' → <b>' + TB.num(x.Ultimos90) + '</b> u. (' + v + ')</span></li>';
+      }
+
+      cont.innerHTML = '<div class="grilla">' +
+        panel("¿Qué se vende y qué deja plata?", "tocá un producto para ver su ficha",
+          '<div class="toolbar"><div class="seg" role="group" aria-label="Ordenar" id="ordenProd">' +
+          [["Importe", "Facturación"], ["Unidades", "Unidades"], ["Ganancia", "Ganancia"], ["Margen", "Margen"]].map(function (o) {
+            return '<button type="button" data-o="' + o[0] + '"' + (prodEstado.orden === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>'; }).join("") +
+          '</div><input type="search" id="buscaProd" class="form-control form-control-sm" placeholder="Filtrar por código, descripción o rubro" value="' + esc(prodEstado.filtro) + '"></div><div id="rankProd"></div>',
+          dato(txtRank) + avisoCosto, "ancho") +
+        panel("¿Qué rubros dejan más?", "facturación y ganancia", canvas("chRubros", "alto") +
+          '<div class="mt-2">' + tabla([
+            { t: "Rubro", v: function (x) { return esc(x.Rubro); } },
+            { t: "Unidades", n: 1, v: function (x) { return TB.num(x.Unidades); } },
+            { t: "Facturado", n: 1, v: function (x) { return $d(x.Importe); } },
+            { t: "Ganancia", n: 1, v: function (x) { return $d(x.Ganancia); } },
+            { t: "Margen", n: 1, v: function (x) { return tagMargen(margen(x.Ganancia, x.Importe)); } }
+          ], RU, { alto: 260 }) + '</div>', dato(txtRu)) +
+        panel("¿Cuándo es la temporada de cada rubro?", "unidades de cada mes contra el promedio del rubro (1,0 = normal), últimos 3 años",
+          rubrosT.length ? heat : '<div class="estado">Sin ventas suficientes.</div>', txtTemp) +
+        panel("¿Cuántos productos hacen la mayor parte de la venta?", "curva ABC",
+          mini([
+            { t: "A · 80% de la venta", v: TB.num(abc.A.Productos) + " prod.", s: $c(abc.A.Importe), c: "neutro" },
+            { t: "B · siguiente 15%", v: TB.num(abc.B.Productos) + " prod.", s: $c(abc.B.Importe), c: "neutro" },
+            { t: "C · último 5%", v: TB.num(abc.C.Productos) + " prod.", s: $c(abc.C.Importe), c: "neutro" }
+          ]), dato(txtAbc)) +
+        panel("¿Qué se vende cada vez más o menos?", "últimos 90 días contra los 90 anteriores",
+          '<div class="dos-listas"><div><h4 class="bien"><i class="bi bi-arrow-up-right"></i> Cada vez más</h4><ul class="lista-s">' + (suben.map(itemT).join("") || '<li class="chico">Nada para destacar</li>') + '</ul></div>' +
+          '<div><h4 class="mal"><i class="bi bi-arrow-down-right"></i> Cada vez menos</h4><ul class="lista-s">' + (bajan.map(itemT).join("") || '<li class="chico">Nada para destacar</li>') + '</ul></div></div>',
+          dato("Lo que sube: asegurá stock antes de que falte. Lo que baja: no lo repongas en la misma cantidad.")) +
+        panel("¿Qué marcas se venden?", "", tabla([
+            { t: "Marca", v: function (x) { return esc(x.Marca); } },
+            { t: "Productos", n: 1, v: function (x) { return TB.num(x.Productos); } },
+            { t: "Unidades", n: 1, v: function (x) { return TB.num(x.Unidades); } },
+            { t: "Facturado", n: 1, v: function (x) { return $d(x.Importe); } },
+            { t: "Margen", n: 1, v: function (x) { return tagMargen(margen(x.Ganancia, x.Importe)); } }
+          ], MA, { alto: 320 }),
+          dato('¿Y lo que te piden y no tenés? Está en <a href="ReporteBusquedas.html">Reportes → Búsquedas</a>.')) +
+        '</div>';
+
+      pintarRanking();
+      document.querySelectorAll("#ordenProd button").forEach(function (b) {
+        b.addEventListener("click", function () {
+          prodEstado.orden = b.dataset.o; prodEstado.limite = 50;
+          document.querySelectorAll("#ordenProd button").forEach(function (x) { x.classList.toggle("on", x === b); });
+          pintarRanking();
+        });
+      });
+      document.getElementById("buscaProd").addEventListener("input", function (e) { prodEstado.filtro = e.target.value; prodEstado.limite = 50; pintarRanking(); });
+
+      var ruTop = RU.slice(0, 12);
+      TB.grafico("chRubros", {
+        type: "bar",
+        data: { labels: ruTop.map(function (x) { return x.Rubro.length > 26 ? x.Rubro.slice(0, 25) + "…" : x.Rubro; }), datasets: [
+          { label: "Facturado", data: ruTop.map(function (x) { return n(x.Importe); }), backgroundColor: C.navy, borderRadius: 3 },
+          { label: "Ganancia", data: ruTop.map(function (x) { return n(x.Ganancia); }), backgroundColor: C.verde, borderRadius: 3 }
+        ] },
+        options: { indexAxis: "y", scales: { y: { grid: { display: false } }, x: Object.assign({ beginAtZero: true }, TB.ejePesos()) },
+          plugins: { tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + $d(c.raw); } } } } }
+      });
+    };
+
+    function pintarRanking() {
+      var f = prodEstado.filtro.trim().toLowerCase();
+      var R = prodEstado.datos.filter(function (x) {
+        return !f || ((x.Codigo || "") + " " + (x.Descripcion || "") + " " + (x.Rubro || "") + " " + (x.Marca || "")).toLowerCase().indexOf(f) >= 0;
+      }).slice();
+      var o = prodEstado.orden;
+      R.sort(function (a, b) {
+        if (o === "Margen") return (margen(b.Ganancia, b.Importe) || -999) - (margen(a.Ganancia, a.Importe) || -999);
+        return n(b[o]) - n(a[o]);
+      });
+      var maxV = R.length ? Math.max.apply(null, R.map(function (x) { return o === "Margen" ? (margen(x.Ganancia, x.Importe) || 0) : n(x[o]); })) : 1;
+      var vis = R.slice(0, prodEstado.limite);
+      document.getElementById("rankProd").innerHTML = tabla([
+        { t: "#", n: 1, v: function (x, i) { return i + 1; } },
+        { t: "Producto", v: function (x) {
+            var val = o === "Margen" ? (margen(x.Ganancia, x.Importe) || 0) : n(x[o]);
+            return '<span class="cod">' + esc(x.Codigo || "") + '</span> ' + esc(x.Descripcion) +
+              '<div class="chico">' + esc(x.Rubro) + ' · ' + esc(x.Marca) + '</div><div class="barrita"><span style="width:' + (maxV > 0 ? Math.max(0, val / maxV * 100) : 0) + '%"></span></div>'; } },
+        { t: "Unidades", n: 1, v: function (x) { return TB.num(x.Unidades); } },
+        { t: "Facturado", n: 1, v: function (x) { return $d(x.Importe); } },
+        { t: "Ganancia", n: 1, v: function (x) { return $d(x.Ganancia) + (n(x.SinCosto) ? ' <i class="bi bi-exclamation-circle text-warning" title="Hay ventas sin costo registrado"></i>' : ''); } },
+        { t: "Margen", n: 1, v: function (x) { return tagMargen(margen(x.Ganancia, x.Importe)); } },
+        { t: "Stock", n: 1, v: function (x) { return n(x.Stock) > 0 ? TB.num(x.Stock) : '<span class="tag mal">0</span>'; } }
+      ], vis, { clic: function (x) { return x.Id; }, vacio: "No hay productos con ese filtro." }) +
+        (R.length > vis.length ? '<button class="btn btn-sm btn-outline-secondary mas" id="masProd">Mostrar más (' + (R.length - vis.length) + ')</button>' : '');
+      var mas = document.getElementById("masProd");
+      if (mas) mas.addEventListener("click", function () { prodEstado.limite += 100; pintarRanking(); });
+      document.querySelectorAll("#rankProd tr.clic").forEach(function (tr) { tr.addEventListener("click", function () { abrirFicha(tr.dataset.id); }); });
+    }
+
+    function abrirFicha(id) {
+      var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById("modalFicha"));
+      document.getElementById("fichaTitulo").textContent = "Cargando…";
+      document.getElementById("fichaCuerpo").innerHTML = '<div class="estado">Cargando…</div>';
+      modal.show();
+      TB.get("Tablero/Producto/" + id).then(function (d) {
+        var f = (d.Ficha || [])[0] || {}, M = d.Mensual || [], CO = d.Compras || [];
+        document.getElementById("fichaTitulo").textContent = (f.Codigo ? f.Codigo + " · " : "") + (f.Descripcion || "Producto");
+        var disp = n(f.Stock) - n(f.Reservado);
+        var mes = maxPor(M.filter(function (x) { return n(x.Unidades) > 0; }), "Unidades");
+        var u90 = M.slice(-3).reduce(function (a, x) { return a + n(x.Unidades); }, 0);
+        var alcanza = u90 > 0 ? Math.round(disp / (u90 / 90)) : null;
+        var txt = (mes ? "Su mejor mes fue " + TB.mesLargo(mes.Mes) + " (" + TB.num(mes.Unidades) + " u.). " : "") +
+          (alcanza !== null ? (disp <= 0 ? "Hoy no hay disponible y se vendieron " + TB.num(u90) + " en los últimos 3 meses: conviene reponer." :
+            "Con el ritmo de los últimos 3 meses, el stock alcanza para unos " + TB.num(alcanza) + " días.") : "No se vendió en los últimos 3 meses.");
+        document.getElementById("fichaCuerpo").innerHTML =
+          '<div class="chico mb-2">' + esc(f.Rubro) + ' · ' + esc(f.Marca) + '</div>' +
+          '<div class="ficha-n">' +
+          '<div><div class="t">Stock disponible</div><div class="v">' + TB.num(disp) + (n(f.Reservado) ? ' <span class="chico">(' + TB.num(f.Reservado) + ' reservado)</span>' : '') + '</div></div>' +
+          '<div><div class="t">Precio de venta</div><div class="v">' + $d(f.PrecioDeVenta) + '</div></div>' +
+          '<div><div class="t">Costo actual</div><div class="v">' + (n(f.PrecioCompra) ? $d(f.PrecioCompra) : "—") + '</div></div>' +
+          '<div><div class="t">Vendido en 12 meses</div><div class="v">' + TB.num(f.Unidades365) + ' u.</div></div>' +
+          '<div><div class="t">Ganancia 12 meses</div><div class="v">' + $d(f.Ganancia365) + '</div></div>' +
+          '<div><div class="t">Última venta</div><div class="v">' + TB.hace(f.UltimaVenta) + '</div></div>' +
+          '</div>' + canvas("chFicha") + dato(txt).replace('class="dato', 'style="margin:12px 0" class="dato') +
+          '<h6 class="mt-3" style="font-weight:800;color:var(--navy)">Últimas compras</h6>' +
+          tabla([
+            { t: "Fecha", v: function (x) { return TB.fecha(x.Fecha); } },
+            { t: "Proveedor", v: function (x) { return esc(x.Proveedor); } },
+            { t: "Cantidad", n: 1, v: function (x) { return TB.num(x.Cantidad); } },
+            { t: "Costo unit.", n: 1, v: function (x) { return $d(x.CostoUnitario); } }
+          ], CO, { vacio: "No hay compras registradas con recepción." });
+        TB.grafico("chFicha", {
+          type: "bar",
+          data: { labels: M.map(function (x) { return TB.mesCorto(x.Mes); }), datasets: [{ label: "Unidades", data: M.map(function (x) { return n(x.Unidades); }), backgroundColor: C.navy, borderRadius: 3 }] },
+          options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: C.grilla } } }, plugins: { legend: { display: false } } }
+        });
+      }).catch(function (m) { document.getElementById("fichaCuerpo").innerHTML = '<div class="estado">' + esc(typeof m === "string" ? m : "No se pudo cargar.") + '</div>'; });
+    }
+
+    /* ================= PROVEEDORES ================= */
+    var TIPO_INC = { FACTURADO_NO_RECIBIDO: "Facturado y no llegó", RECIBIDO_NO_FACTURADO: "Llegó sin facturar", DANADO: "Llegó roto", NO_PEDIDO: "No estaba pedido" };
+    var provLleg = [];
+    PINTAR.proveedores = function (d, cont) {
+      var P = d.Proveedores || [], L = d.Llegadas || [], PR = d.Precios || [], PB = d.Problemas || [], CM = d.ComprasMensuales || [];
+      provLleg = L;
+
+      // cuando suele llegar cada uno
+      var habitual = {};
+      P.forEach(function (p) {
+        var mis = L.filter(function (x) { return x.IdProveedor === p.IdProveedor; });
+        if (!mis.length) return;
+        var porDia = [0, 0, 0, 0, 0, 0, 0], porHora = {};
+        mis.forEach(function (x) { porDia[x.Dia] += n(x.Cantidad); porHora[x.Hora] = (porHora[x.Hora] || 0) + n(x.Cantidad); });
+        var tot = porDia.reduce(function (a, b) { return a + b; }, 0);
+        var dMax = porDia.indexOf(Math.max.apply(null, porDia));
+        var hMax = Object.keys(porHora).sort(function (a, b) { return porHora[b] - porHora[a]; })[0];
+        habitual[p.IdProveedor] = { txt: (tot >= 2 && porDia[dMax] / tot >= 0.4 ? TB.DIAS[dMax].slice(0, 3) + " · " : "") + hMax + " a " + (+hMax + 1) + " h", tot: tot };
+      });
+
+      var conLleg = P.filter(function (p) { return n(p.PedidosLlegados) >= 2; });
+      var rapido = minPor(conLleg, "DemoraDias");
+      var incompleto = conLleg.filter(function (p) { return p.CompletoPorc !== null && n(p.CompletoPorc) < 90; }).sort(function (a, b) { return n(a.CompletoPorc) - n(b.CompletoPorc); })[0];
+      var problemas = P.filter(function (p) { return n(p.UnidadesFacturadas) > 0; }).map(function (p) { return { p: p, pct: n(p.UnidadesConProblema) * 100 / n(p.UnidadesFacturadas) }; })
+        .sort(function (a, b) { return b.pct - a.pct; })[0];
+      var txtP = (rapido ? "<b>" + esc(rapido.Proveedor) + "</b> es el que entrega más rápido (" + TB.dec(rapido.DemoraDias) + " días hábiles en promedio). " : "") +
+        (incompleto ? esc(incompleto.Proveedor) + " manda completo solo el " + TB.pct(incompleto.CompletoPorc) + " de lo pedido. " : "") +
+        (problemas && problemas.pct >= 3 ? esc(problemas.p.Proveedor) + " tiene problemas en el " + TB.pct(problemas.pct) + " de lo que factura (faltantes, rotos o mal facturado)." : "");
+
+      // calor de llegadas
+      var horasL = L.map(function (x) { return x.Hora; });
+      var hA = horasL.length ? Math.min.apply(null, horasL) : 8, hB = horasL.length ? Math.max.apply(null, horasL) : 18;
+
+      // precios
+      var masSube = PR[0];
+      var txtPR = masSube && n(masSube.VariacionPromedio) > 0 ? "<b>" + esc(masSube.Proveedor) + "</b> es el que más aumentó: " + TB.pct(masSube.VariacionPromedio) +
+        " en promedio sobre " + TB.num(masSube.Articulos) + " artículos. Revisá los precios de venta de esos repuestos (Proveedores → Listas de precios)." : "";
+
+      // compras vs costo vendido
+      var ult3 = CM.slice(-3), compras3 = suma(ult3, "Compras"), costo3 = suma(ult3, "CostoVendido");
+      var txtCM = compras3 || costo3 ? "En los últimos 3 meses compraste " + $d(compras3) + " y lo vendido costó " + $d(costo3) + ". " +
+        (compras3 > costo3 * 1.15 ? "Estás comprando más de lo que vendés: el stock crece y se inmoviliza plata." :
+          compras3 < costo3 * 0.85 ? "Estás vendiendo más de lo que reponés: atento a faltantes." : "Compras y ventas van parejas.") : "";
+
+      cont.innerHTML = '<div class="grilla">' +
+        panel("¿Cómo entrega cada proveedor?", "demora en días hábiles desde que se envía el pedido hasta que llega la factura",
+          tabla([
+            { t: "Proveedor", v: function (x) { return esc(x.Proveedor) + (n(x.DiasPago) ? '<div class="chico">paga a ' + x.DiasPago + ' días</div>' : ''); } },
+            { t: "Compras", n: 1, v: function (x) { return $d(x.Compras); } },
+            { t: "Entregas", n: 1, v: function (x) { return TB.num(x.Entregas); } },
+            { t: "Cada cuánto", n: 1, v: function (x) { return x.CadaCuantosDias != null ? TB.dec(x.CadaCuantosDias) + " días" : "—"; } },
+            { t: "Suele llegar", v: function (x) { var h = habitual[x.IdProveedor]; return h ? esc(h.txt) : "—"; } },
+            { t: "Demora / prometido", n: 1, v: function (x) {
+                if (x.DemoraDias == null) return "—";
+                var tarde = n(x.DemoraDias) > n(x.DiasPrometidos);
+                return '<span class="tag ' + (tarde ? "mal" : "ok") + '">' + TB.dec(x.DemoraDias) + '</span> / ' + TB.num(x.DiasPrometidos) + '<div class="chico">máx. ' + TB.num(x.DemoraMax) + '</div>'; } },
+            { t: "A tiempo", n: 1, v: function (x) { return x.ATiempoPorc != null ? TB.pct(x.ATiempoPorc) : "—"; } },
+            { t: "Llega completo", n: 1, v: function (x) { return x.CompletoPorc != null ? '<span class="tag ' + (n(x.CompletoPorc) >= 95 ? "ok" : n(x.CompletoPorc) >= 85 ? "med" : "mal") + '">' + TB.pct(Math.min(n(x.CompletoPorc), 100)) + '</span>' : "—"; } },
+            { t: "Con problemas", n: 1, v: function (x) { return n(x.UnidadesFacturadas) ? TB.pct(n(x.UnidadesConProblema) * 100 / n(x.UnidadesFacturadas)) + (n(x.Rotos) ? '<div class="chico">' + TB.num(x.Rotos) + ' rotos</div>' : '') : "—"; } },
+            { t: "Reclamos abiertos", n: 1, v: function (x) { return n(x.ReclamosAbiertos) ? $d(x.ReclamosAbiertos) : "—"; } },
+            { t: "Le debés", n: 1, v: function (x) { return n(x.Deuda) ? $d(x.Deuda) : "—"; } }
+          ], P, { vacio: "No hubo pedidos ni entregas en el período." }), dato(txtP), "ancho") +
+        panel("¿Cuándo llegan los repartidores?", "entregas por día y hora",
+          '<div class="toolbar"><select id="provLleg" class="form-select form-select-sm" style="max-width:280px"><option value="">Todos los proveedores</option>' +
+          P.filter(function (p) { return habitual[p.IdProveedor]; }).map(function (p) { return '<option value="' + p.IdProveedor + '">' + esc(p.Proveedor) + '</option>'; }).join("") +
+          '</select></div><div id="calorLleg"></div>', '<div id="datoLleg"></div>') +
+        panel("¿Quién aumentó los precios?", "cambios en sus listas durante el período", tabla([
+            { t: "Proveedor", v: function (x) { return esc(x.Proveedor); } },
+            { t: "Artículos", n: 1, v: function (x) { return TB.num(x.Articulos); } },
+            { t: "Suben / bajan", n: 1, v: function (x) { return TB.num(x.Suben) + " / " + TB.num(x.Bajan); } },
+            { t: "Variación prom.", n: 1, v: function (x) { return '<span class="tag ' + (n(x.VariacionPromedio) > 5 ? "mal" : n(x.VariacionPromedio) > 0 ? "med" : "ok") + '">' + (n(x.VariacionPromedio) > 0 ? "+" : "") + TB.pct(x.VariacionPromedio) + '</span>'; } },
+            { t: "Última lista", n: 1, v: function (x) { return TB.fecha(x.Ultima); } }
+          ], PR, { vacio: "No se importaron listas con cambios en el período." }), dato(txtPR)) +
+        panel("¿Qué problemas hubo al recibir?", "faltantes, rotos y errores de factura", tabla([
+            { t: "Proveedor", v: function (x) { return esc(x.Proveedor); } },
+            { t: "Problema", v: function (x) { return esc(TIPO_INC[x.Tipo] || x.Tipo); } },
+            { t: "Veces", n: 1, v: function (x) { return TB.num(x.Casos); } },
+            { t: "Unidades", n: 1, v: function (x) { return TB.num(x.Unidades); } },
+            { t: "Importe", n: 1, v: function (x) { return $d(x.Importe); } }
+          ], PB, { vacio: "Sin problemas registrados en las recepciones del período." }),
+          PB.length ? dato("Los reclamos abiertos se siguen desde Proveedores → Cuenta de proveedores.") : "") +
+        panel("¿Compro más de lo que vendo?", "compras recibidas contra el costo de lo vendido, últimos 12 meses", canvas("chCompras"), dato(txtCM)) +
+        '</div>';
+
+      function pintarCalor() {
+        var sel = document.getElementById("provLleg").value;
+        var data = provLleg.filter(function (x) { return !sel || String(x.IdProveedor) === sel; });
+        var m = {}, max = 0, porDia = [0, 0, 0, 0, 0, 0, 0], porHora = {};
+        data.forEach(function (x) { var k = x.Dia + "-" + x.Hora; m[k] = (m[k] || 0) + n(x.Cantidad); max = Math.max(max, m[k]); porDia[x.Dia] += n(x.Cantidad); porHora[x.Hora] = (porHora[x.Hora] || 0) + n(x.Cantidad); });
+        if (!data.length) { document.getElementById("calorLleg").innerHTML = '<div class="estado" style="padding:18px">Sin entregas en el período.</div>'; document.getElementById("datoLleg").innerHTML = ""; return; }
+        var horas = []; for (var h = hA; h <= hB; h++) horas.push(h);
+        var dias = [0, 1, 2, 3, 4, 5].concat(porDia[6] ? [6] : []);
+        document.getElementById("calorLleg").innerHTML = '<div style="overflow-x:auto"><table class="heat"><thead><tr><th></th>' +
+          horas.map(function (h) { return '<th>' + h + '</th>'; }).join("") + '</tr></thead><tbody>' +
+          dias.map(function (dd) {
+            return '<tr><th class="r">' + TB.DIAS[dd].slice(0, 3) + '</th>' + horas.map(function (h) {
+              var v = m[dd + "-" + h] || 0, col = colorCalor(max ? v / max : 0);
+              return '<td style="background:' + col.bg + ';color:' + col.fg + '">' + (v || "") + '</td>';
+            }).join("") + '</tr>';
+          }).join("") + '</tbody></table></div>';
+        var tot = porDia.reduce(function (a, b) { return a + b; }, 0);
+        var dM = porDia.indexOf(Math.max.apply(null, porDia));
+        var hM = Object.keys(porHora).sort(function (a, b) { return porHora[b] - porHora[a]; })[0];
+        var enVentana = (porHora[hM] || 0) + (porHora[+hM + 1] || 0);
+        document.getElementById("datoLleg").innerHTML = dato("Llegan más los <b>" + TB.DIAS[dM].toLowerCase() + "</b> (" + TB.pct(porDia[dM] * 100 / tot) + ") y entre las <b>" + hM + " y las " + (+hM + 2) + " h</b> llega el " +
+          TB.pct(enVentana * 100 / tot) + " de las entregas. En ese horario conviene tener a alguien libre para recibir y sacar la foto de la factura.");
+      }
+      document.getElementById("provLleg").addEventListener("change", pintarCalor);
+      pintarCalor();
+
+      TB.grafico("chCompras", {
+        type: "bar",
+        data: { labels: CM.map(function (x) { return TB.mesCorto(x.Mes); }), datasets: [
+          { label: "Compras", data: CM.map(function (x) { return n(x.Compras); }), backgroundColor: C.navy, borderRadius: 3 },
+          { label: "Costo de lo vendido", data: CM.map(function (x) { return n(x.CostoVendido); }), backgroundColor: "#c98a00", borderRadius: 3 }
+        ] },
+        options: opcionesPesos()
+      });
+    };
+
+    /* ================= CLIENTES ================= */
+    PINTAR.clientes = function (d, cont) {
+      var R = (d.Resumen || [])[0] || {}, MJ = d.Mejores || [], PE = d.Perdidos || [], DE = d.Deudores || [], EN = (d.Encargos || [])[0] || {}, FR = d.Frecuencia || [];
+      var ident = n(R.VentasTotal) ? n(R.VentasConNombre) * 100 / n(R.VentasTotal) : 0;
+      var top10 = MJ.slice(0, 10), imp10 = suma(top10, "Importe");
+      var txtR = "El " + TB.pct(ident) + " de lo vendido tiene el cliente cargado. " +
+        (ident < 50 ? "Cargar el cliente (aunque sea nombre y teléfono) permite saber quién compra más y quién deja de venir." : "");
+      var txtMJ = top10.length && n(R.VentasTotal) ? "Los 10 mejores clientes compraron " + $d(imp10) + ", el " + TB.pct(imp10 * 100 / n(R.VentasTotal)) + " de todo lo vendido. Cuidalos: un precio especial o avisarles cuando entra lo que usan." : "";
+      var deuda = suma(DE, "Saldo"), viejos = DE.filter(function (x) { return n(x.DiasSinPagar) > 30; });
+      var conc = (n(EN.Entregados) + n(EN.Cancelados)) ? n(EN.Entregados) * 100 / (n(EN.Entregados) + n(EN.Cancelados)) : null;
+
+      cont.innerHTML = '<div class="grilla">' +
+        panel("¿Cuántos clientes compran?", "con nombre cargado (no cuenta Consumidor Final ni Mecánico Mostrador)", mini([
+            { t: "Clientes", v: TB.num(R.Clientes) },
+            { t: "Nuevos", v: TB.num(R.Nuevos), s: "primera compra en el período" },
+            { t: "Volvieron", v: TB.num(R.Recurrentes), s: R.Clientes ? TB.pct(n(R.Recurrentes) * 100 / n(R.Clientes)) + " compró 2 veces o más" : "" },
+            { t: "Venta identificada", v: TB.pct(ident), s: TB.num(R.OperacionesConNombre) + " de " + TB.num(R.Operaciones) + " ventas" }
+          ]), dato(txtR)) +
+        panel("¿Con qué frecuencia vuelven?", "clientes según cuántas veces compraron en el período", canvas("chFrec", "bajo")) +
+        panel("¿Quiénes son los mejores clientes?", "", tabla([
+            { t: "Cliente", v: function (x) { return esc(x.Cliente) + (x.EsMecanico ? ' <span class="tag info">mecánico</span>' : ''); } },
+            { t: "Compras", n: 1, v: function (x) { return TB.num(x.Operaciones); } },
+            { t: "Facturado", n: 1, v: function (x) { return $d(x.Importe); } },
+            { t: "Ganancia", n: 1, v: function (x) { return $d(x.Ganancia); } },
+            { t: "Última", n: 1, v: function (x) { return TB.hace(x.UltimaCompra); } },
+            { t: "Cuenta corriente", n: 1, v: function (x) { return n(x.Saldo) > 0 ? '<span class="tag med">debe ' + $d(x.Saldo) + '</span>' : "—"; } }
+          ], MJ, { alto: 420, vacio: "No hay ventas con cliente cargado en el período." }), dato(txtMJ), "ancho") +
+        panel("¿Quién dejó de venir?", "compraron 3 veces o más en el año y no vuelven hace más de 60 días", tabla([
+            { t: "Cliente", v: function (x) { return esc(x.Cliente) + (x.EsMecanico ? ' <span class="tag info">mecánico</span>' : ''); } },
+            { t: "Teléfono", v: function (x) { return telefono(x.Telefono); } },
+            { t: "Compras en el año", n: 1, v: function (x) { return TB.num(x.ComprasEnElAnio) + '<div class="chico">' + $d(x.ImporteEnElAnio) + '</div>'; } },
+            { t: "Última vez", n: 1, v: function (x) { return TB.fecha(x.UltimaCompra) + '<div class="chico">hace ' + x.DiasSinVenir + ' días</div>'; } }
+          ], PE, { alto: 380, vacio: "Ningún cliente habitual dejó de venir." }),
+          PE.length ? dato("Un mensaje por WhatsApp (\"¿Cómo andás? Entró tal repuesto\") suele alcanzar para que vuelvan. Tocá el teléfono para escribirle.") : "") +
+        panel("¿Quién debe?", "saldo en cuenta corriente", tabla([
+            { t: "Cliente", v: function (x) { return esc(x.Cliente); } },
+            { t: "Teléfono", v: function (x) { return telefono(x.Telefono); } },
+            { t: "Debe", n: 1, v: function (x) { return $d(x.Saldo); } },
+            { t: "Último pago", n: 1, v: function (x) { return x.UltimoPago ? TB.fecha(x.UltimoPago) : "nunca"; } },
+            { t: "Sin pagar", n: 1, v: function (x) { return '<span class="tag ' + (n(x.DiasSinPagar) > 60 ? "mal" : n(x.DiasSinPagar) > 30 ? "med" : "ok") + '">' + x.DiasSinPagar + ' días</span>'; } }
+          ], DE, { alto: 380, vacio: "Nadie debe en cuenta corriente." }),
+          DE.length ? dato("En total te deben " + $d(deuda) + (viejos.length ? "; " + viejos.length + " no pagan hace más de 30 días (" + $d(suma(viejos, "Saldo")) + ")." : ".")) : "") +
+        panel("¿Cómo terminan los encargos?", "encargos tomados en el período", mini([
+            { t: "Tomados", v: TB.num(EN.Creados) },
+            { t: "Entregados", v: TB.num(EN.Entregados), s: conc !== null ? TB.pct(conc) + " se concretó" : "", c: conc !== null && conc >= 80 ? "bien" : "neutro" },
+            { t: "Cancelados", v: TB.num(EN.Cancelados) },
+            { t: "Abiertos", v: TB.num(EN.Abiertos) },
+            { t: "Días hasta entregar", v: EN.DiasHastaEntrega != null ? TB.dec(EN.DiasHastaEntrega) : "—" },
+            { t: "Señas retenidas", v: $c(EN.SenasRetenidas), s: "de " + $c(EN.Senas) + " cobradas" }
+          ]), n(EN.Creados) ? dato(conc !== null && conc < 70 ? "Se cae más de un encargo de cada cuatro. Pedir seña ayuda a que el cliente vuelva." : "Pedir seña y avisar apenas llega mantiene alta la concreción.") : dato("No se tomaron encargos en el período.", "vacio"), "ancho") +
+        '</div>';
+
+      TB.grafico("chFrec", {
+        type: "bar",
+        data: { labels: FR.map(function (x) { return x.Frecuencia; }), datasets: [{ label: "Clientes", data: FR.map(function (x) { return n(x.Clientes); }), backgroundColor: C.navy, borderRadius: 4 }] },
+        options: { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: C.grilla } } }, plugins: { legend: { display: false },
+          tooltip: { callbacks: { afterLabel: function (c) { return "Compraron " + $d(FR[c.dataIndex].Importe); } } } } }
+      });
+    };
+
+    /* ================= STOCK ================= */
+    PINTAR.stock = function (d, cont) {
+      var R = (d.Resumen || [])[0] || {}, Q = d.Quiebres || [], I = d.Inmovilizado || [], CB = d.Cobertura || [], RU = d.Rubros || [];
+      var pronto = CB.filter(function (x) { return n(x.DiasQueAlcanza) > 0 && n(x.DiasQueAlcanza) < 15; }).sort(function (a, b) { return n(a.DiasQueAlcanza) - n(b.DiasQueAlcanza); });
+      var sobra = CB.filter(function (x) { return n(x.DiasQueAlcanza) > 180; }).sort(function (a, b) { return n(b.DiasQueAlcanza) - n(a.DiasQueAlcanza); }).slice(0, 40);
+      var inmPorc = n(R.ValorStock) ? n(R.ValorInmovilizado) * 100 / n(R.ValorStock) : 0;
+
+      cont.innerHTML = '<div class="grilla">' +
+        panel("¿Cómo está el stock hoy?", "foto de hoy, con las ventas de los últimos 90 días", mini([
+            { t: "Valor al costo", v: $c(R.ValorStock), s: TB.num(R.ArticulosConStock) + " artículos con stock" },
+            { t: "Parado hace 6 meses", v: $c(R.ValorInmovilizado), s: TB.pct(inmPorc) + " del stock · " + TB.num(R.ArticulosInmovilizados) + " art.", c: inmPorc > 25 ? "mal" : "neutro" },
+            { t: "Sobra (más de 6 meses)", v: $c(R.ValorExceso), s: "de lo que sí se vende" },
+            { t: "Se vende y no hay", v: TB.num(R.Quiebres), s: "repuestos", c: n(R.Quiebres) ? "mal" : "bien" },
+            { t: "Bajo el mínimo", v: TB.num(R.BajoMinimo), s: "repuestos" },
+            { t: "Sin costo cargado", v: TB.num(R.ArticulosSinCosto), s: "no suman al valor", c: n(R.ArticulosSinCosto) ? "mal" : "neutro" }
+          ]), inmPorc > 20 ? dato("Una de cada " + Math.max(2, Math.round(100 / inmPorc)) + " pesos del stock está parada. Liquidar o devolver al proveedor libera plata para lo que sí rota.", "alerta") : "", "ancho") +
+        panel("¿Qué se vende y no hay?", "disponible en cero (descontando lo reservado) y con ventas en 90 días", tabla([
+            { t: "Producto", v: function (x) { return '<span class="cod">' + esc(x.Codigo || "") + '</span> ' + esc(x.Descripcion) + '<div class="chico">' + esc(x.Rubro) + '</div>'; } },
+            { t: "Vendidos 90 d", n: 1, v: function (x) { return TB.num(x.U90); } },
+            { t: "Stock", n: 1, v: function (x) { return TB.num(x.Stock) + (n(x.Reservado) ? '<div class="chico">' + TB.num(x.Reservado) + ' reservado</div>' : ''); } },
+            { t: "Encargos", n: 1, v: function (x) { return n(x.Encargos) ? '<span class="tag med">' + x.Encargos + '</span>' : "—"; } },
+            { t: "Última venta", n: 1, v: function (x) { return TB.hace(x.UltimaVenta); } }
+          ], Q, { alto: 420, vacio: "No falta nada de lo que se vende." }),
+          Q.length ? dato("Empezá por los de arriba: son los que más se venden. Se suman al pedido desde Cotizador → Reposición sugerida.") : "") +
+        panel("¿Cuánta plata está parada?", "con stock y sin ventas en 180 días", tabla([
+            { t: "Producto", v: function (x) { return '<span class="cod">' + esc(x.Codigo || "") + '</span> ' + esc(x.Descripcion) + '<div class="chico">' + esc(x.Rubro) + '</div>'; } },
+            { t: "Stock", n: 1, v: function (x) { return TB.num(x.Stock); } },
+            { t: "Valor", n: 1, v: function (x) { return n(x.Valor) ? $d(x.Valor) : '<span class="chico">sin costo</span>'; } },
+            { t: "Última venta", n: 1, v: function (x) { return TB.hace(x.UltimaVenta); } },
+            { t: "Última compra", n: 1, v: function (x) { return TB.hace(x.FechaUltimaCompra); } }
+          ], I, { alto: 420, vacio: "No hay mercadería parada." }),
+          I.length ? dato("Opciones: oferta para mecánicos, devolución al viajante o combo con algo que sí se vende.") : "") +
+        panel("¿Qué se va a acabar pronto?", "alcanza para menos de 15 días al ritmo actual", tabla([
+            { t: "Producto", v: function (x) { return '<span class="cod">' + esc(x.Codigo || "") + '</span> ' + esc(x.Descripcion); } },
+            { t: "Disponible", n: 1, v: function (x) { return TB.num(n(x.Stock) - n(x.Reservado)); } },
+            { t: "Vendidos 90 d", n: 1, v: function (x) { return TB.num(x.U90); } },
+            { t: "Alcanza", n: 1, v: function (x) { return '<span class="tag ' + (n(x.DiasQueAlcanza) < 7 ? "mal" : "med") + '">' + TB.num(x.DiasQueAlcanza) + ' días</span>'; } }
+          ], pronto, { alto: 380, vacio: "Nada se acaba en los próximos 15 días." }),
+          pronto.length ? dato("Si el proveedor tarda más que esos días, pedilo hoy.") : "") +
+        panel("¿Qué sobra?", "stock para más de 6 meses al ritmo actual", tabla([
+            { t: "Producto", v: function (x) { return '<span class="cod">' + esc(x.Codigo || "") + '</span> ' + esc(x.Descripcion); } },
+            { t: "Disponible", n: 1, v: function (x) { return TB.num(n(x.Stock) - n(x.Reservado)); } },
+            { t: "Vendidos 90 d", n: 1, v: function (x) { return TB.num(x.U90); } },
+            { t: "Alcanza", n: 1, v: function (x) { return n(x.DiasQueAlcanza) > 730 ? "más de 2 años" : Math.round(n(x.DiasQueAlcanza) / 30) + " meses"; } }
+          ], sobra, { alto: 380, vacio: "Nada sobra." }),
+          sobra.length ? dato("No los repongas hasta que bajen: la próxima compra puede esperar.") : "") +
+        panel("¿Cuántas veces por año rota cada rubro?", "costo vendido en 12 meses dividido el valor del stock de hoy", tabla([
+            { t: "Rubro", v: function (x) { return esc(x.Rubro); } },
+            { t: "Stock al costo", n: 1, v: function (x) { return $d(x.ValorStock); } },
+            { t: "Costo vendido (año)", n: 1, v: function (x) { return $d(x.CostoVendidoAnio); } },
+            { t: "Vueltas por año", n: 1, v: function (x) { return x.VueltasPorAnio != null ? '<span class="tag ' + (n(x.VueltasPorAnio) >= 3 ? "ok" : n(x.VueltasPorAnio) >= 1 ? "med" : "mal") + '">' + TB.dec(x.VueltasPorAnio) + '</span>' : "—"; } },
+            { t: "Días de stock", n: 1, v: function (x) { return n(x.VueltasPorAnio) > 0 ? TB.num(365 / n(x.VueltasPorAnio)) : "—"; } }
+          ], RU, { alto: 420 }),
+          dato("Un rubro que da menos de una vuelta por año tiene más stock del que se vende en todo un año."), "ancho") +
+        '</div>';
+    };
+
+    /* ================= RENTABILIDAD ================= */
+    PINTAR.rentabilidad = function (d, cont) {
+      var M = d.Mensual || [], G = d.Gastos || [], T = d.Totales || [], a = T[0] || {}, b = T[1] || {};
+      var res = n(a.Ganancia) - n(a.Gastos) - n(a.Comisiones), resB = n(b.Ganancia) - n(b.Gastos) - n(b.Comisiones);
+      var mg = margen(a.Ganancia, a.Ventas), mgB = margen(b.Ganancia, b.Ventas);
+      function v(x, y, menos) { var r = TB.variacion(x, y, menos); return { s: r.txt, c: r.clase }; }
+      var negativos = M.filter(function (x) { return n(x.Resultado) < 0 && (n(x.Ventas) > 0 || n(x.Gastos) > 0); });
+      var mejor = maxPor(M.filter(function (x) { return n(x.Ventas) > 0; }), "Resultado");
+      var totG = suma(G, "Importe");
+      var gTop = G[0];
+      var gSube = G.filter(function (x) { return n(x.ImporteAnterior) > 0 && n(x.Importe) > n(x.ImporteAnterior) * 1.2; })
+        .sort(function (x, y) { return (n(y.Importe) - n(y.ImporteAnterior)) - (n(x.Importe) - n(x.ImporteAnterior)); })[0];
+
+      var k1 = v(a.Ventas, b.Ventas), k2 = v(a.Ganancia, b.Ganancia), k3 = v(a.Gastos, b.Gastos, true), k4 = v(res, resB);
+      cont.innerHTML = '<div class="grilla">' +
+        panel("¿Cuánto quedó?", TB.fecha(a.Desde) + " al " + TB.fecha(a.Hasta) + ", contra los " + TB.num((TB.aFecha(a.Hasta) - TB.aFecha(a.Desde)) / 86400000 + 1) + " días anteriores", mini([
+            { t: "Ventas", v: $c(a.Ventas), s: k1.s, c: k1.c },
+            { t: "Ganancia bruta", v: $c(a.Ganancia), s: k2.s, c: k2.c },
+            { t: "Margen", v: TB.pct(mg), s: mgB !== null ? (mg >= mgB ? "▲ " : "▼ ") + TB.dec(Math.abs(mg - mgB)) + " puntos" : "", c: mg >= mgB ? "bien" : "mal" },
+            { t: "Gastos cargados", v: $c(a.Gastos), s: k3.s, c: k3.c },
+            { t: "Comisiones de cobro", v: $c(a.Comisiones) },
+            { t: "Descuentos dados", v: $c(a.Descuentos) },
+            { t: "Devoluciones", v: $c(a.NotasCredito) },
+            { t: "Resultado", v: $c(res), s: k4.s, c: res < 0 ? "mal" : k4.c }
+          ]),
+          dato("Resultado = ganancia bruta − gastos cargados − comisiones de los medios de pago. " +
+            (n(a.Descuentos) && n(a.Ganancia) ? "Los descuentos se llevaron el equivalente al " + TB.pct(n(a.Descuentos) * 100 / (n(a.Ganancia) + n(a.Descuentos))) + " de la ganancia." : "")), "ancho") +
+        panel("¿Cómo viene mes a mes?", "últimos 12 meses", canvas("chRes", "alto"),
+          dato((mejor ? "El mejor mes fue " + TB.mesLargo(mejor.Mes) + " (" + $d(mejor.Resultado) + "). " : "") +
+            (negativos.length ? negativos.length + (negativos.length === 1 ? " mes cerró" : " meses cerraron") + " en negativo: " + negativos.map(function (x) { return TB.mesCorto(x.Mes); }).join(", ") + "." : "Ningún mes cerró en negativo.") +
+            " Si no cargás todos los gastos (luz, alquiler, sueldos), el resultado se ve mejor de lo que es."), "ancho") +
+        panel("¿En qué se gasta?", "gastos cargados por tipo, contra el período anterior", tabla([
+            { t: "Tipo", v: function (x) { return esc(x.Tipo) + '<div class="chico">' + esc(x.Categoria) + '</div>'; } },
+            { t: "Importe", n: 1, v: function (x) { return $d(x.Importe); } },
+            { t: "%", n: 1, v: function (x) { return TB.pct(n(x.Importe) * 100 / (totG || 1)); } },
+            { t: "Antes", n: 1, v: function (x) { return $d(x.ImporteAnterior); } },
+            { t: "Cambio", n: 1, v: function (x) { var r = TB.variacion(x.Importe, x.ImporteAnterior, true); return r.valor === null ? "—" : '<span class="' + r.clase + '">' + (r.valor >= 0 ? "+" : "") + TB.pct(r.valor) + '</span>'; } }
+          ], G, { vacio: "No hay gastos cargados en el período." }),
+          G.length ? dato((gTop ? "<b>" + esc(gTop.Tipo) + "</b> es el gasto más grande (" + TB.pct(n(gTop.Importe) * 100 / (totG || 1)) + "). " : "") +
+            (gSube ? esc(gSube.Tipo) + " subió " + TB.pct((n(gSube.Importe) / n(gSube.ImporteAnterior) - 1) * 100) + " contra el período anterior." : "")) : "") +
+        panel("¿Cuánto hay que vender para no perder?", "punto de equilibrio con los costos fijos de Configuración comercial", '<div id="peBox"><div class="estado">Cargando…</div></div>') +
+        '</div>';
+
+      TB.grafico("chRes", {
+        type: "bar",
+        data: { labels: M.map(function (x) { return TB.mesCorto(x.Mes); }), datasets: [
+          { type: "line", label: "Resultado", data: M.map(function (x) { return n(x.Resultado); }), borderColor: C.navy, backgroundColor: C.navy, tension: 0.3, pointRadius: 3, order: 0 },
+          { label: "Ganancia bruta", data: M.map(function (x) { return n(x.Ganancia); }), backgroundColor: "#7fbf98", borderRadius: 3, order: 1 },
+          { label: "Gastos y comisiones", data: M.map(function (x) { return -(n(x.Gastos) + n(x.Comisiones)); }), backgroundColor: "#e8a29a", borderRadius: 3, order: 1 }
+        ] },
+        options: opcionesPesos({ scales: { x: { stacked: true, grid: { display: false } }, y: Object.assign({ stacked: false }, TB.ejePesos()) } })
+      });
+
+      TB.get("Analisis/PuntoEquilibrio", { desde: rango.desde, hasta: rango.hasta }).then(function (r) {
+        var p = (r || [])[0] || {};
+        var box = document.getElementById("peBox"); if (!box) return;
+        if (n(p.FaltaConfigurarCostosFijos) || !n(p.CostosFijosMensuales)) {
+          box.innerHTML = dato('Cargá los costos fijos (alquiler, sueldos, servicios) en <a href="Configuracion.html">Configuración comercial</a> para calcularlo.', "vacio").replace('class="dato', 'style="margin:0" class="dato'); return;
+        }
+        var av = p.PuntoEquilibrio ? n(p.Ventas) * 100 / n(p.PuntoEquilibrio) : 0;
+        box.innerHTML = mini([
+          { t: "Hay que vender", v: p.PuntoEquilibrio ? $c(p.PuntoEquilibrio) : "—", s: "en el período" },
+          { t: "Se vendió", v: $c(p.Ventas), s: p.PuntoEquilibrio ? TB.pct(av) + " del equilibrio" : "", c: av >= 100 ? "bien" : "mal" },
+          { t: "De cada $100 vendidos", v: "$ " + TB.dec(p.RatioContribucionPorc), s: "quedan para cubrir costos fijos" },
+          { t: "Costos fijos del período", v: $c(p.CostosFijosPeriodo), s: $c(p.CostosFijosMensuales) + " por mes" }
+        ]) + dato(p.Estado === "Cubierto" ? "El período cubrió los costos fijos con " + $d(p.MargenSobreEquilibrio) + " de margen." :
+          p.PuntoEquilibrio ? "Faltan " + $d(n(p.PuntoEquilibrio) - n(p.Ventas)) + " para cubrir los costos fijos." : "").replace('class="dato', 'style="margin:12px 0 0" class="dato');
+      }).catch(function () { var box = document.getElementById("peBox"); if (box) box.innerHTML = '<div class="estado">No se pudo calcular.</div>'; });
+    };
+
+    /* ---------------- inicio ---------------- */
+    window.onload = function () {
+      document.querySelectorAll(".tab").forEach(function (t) { t.addEventListener("click", function () { elegirArea(t.dataset.a); }); });
+      document.querySelectorAll(".seg[aria-label='Período'] button").forEach(function (b) { b.addEventListener("click", function () { elegirPeriodo(b.dataset.p); }); });
+      document.querySelectorAll(".seg[aria-label='Período'] button").forEach(function (b) { b.classList.toggle("on", b.dataset.p === (periodo === "otro" ? "12m" : periodo)); });
+      document.getElementById("btnAplicar").addEventListener("click", function () {
+        var d = document.getElementById("desde").value, h = document.getElementById("hasta").value;
+        if (!d || !h || h < d) { Swal.fire("Fechas", "Elegí un rango válido.", "warning"); return; }
+        rango = { desde: d, hasta: h }; cargar();
+      });
+      window.addEventListener("hashchange", function () { var a = location.hash.slice(1); if (AREAS.indexOf(a) >= 0 && a !== area) elegirArea(a); });
+      elegirArea(area);
+    };
+  </script>
+</body>
+</html>
