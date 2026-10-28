@@ -123,7 +123,8 @@ body {
 
 /* ============ HEADER BAR ============ */
 .header-bar {
-  background-color: var(--navy);
+  /* --area lo pone layout.js segun el area de la pantalla (Ventas, Compras...) */
+  background-color: var(--area, var(--navy));
   color: white;
   padding: 18px 25px;
   border-radius: 10px;
@@ -143,6 +144,19 @@ body {
   gap: 10px;
 }
 .header-bar h2 i { color: var(--red); }
+[data-area] .header-bar h2 i { color: #fff; opacity: .9; }
+/* Sobre el color del area, los botones del encabezado van en blanco para no perderse */
+[data-area] .header-bar .btn-danger,
+[data-area] .header-bar .btn-success,
+[data-area] .header-bar .btn-primary { background: #fff; border-color: #fff; color: var(--area); font-weight: 600; }
+[data-area] .header-bar .btn-danger:hover,
+[data-area] .header-bar .btn-success:hover,
+[data-area] .header-bar .btn-primary:hover { background: rgba(255,255,255,.88); color: var(--area); }
+[data-area] .header-bar .btn-outline-primary,
+[data-area] .header-bar .btn-outline-secondary { color: #fff; border-color: rgba(255,255,255,.6); }
+[data-area] .header-bar .btn-outline-primary:hover,
+[data-area] .header-bar .btn-outline-primary.active,
+[data-area] .header-bar .btn-outline-secondary:hover { background: #fff; color: var(--area); border-color: #fff; }
 .header-bar .subtitle {
   display: block;
   font-size: 0.85rem;
@@ -220,7 +234,7 @@ body {
   color: var(--navy);
   background: var(--bg-soft);
 }
-.panel-header i { color: var(--red); }
+.panel-header i { color: var(--area, var(--red)); }
 .panel-header .num {
   background: var(--navy);
   color: white;
@@ -620,3 +634,111 @@ body {
 /* ---- Contenedor plegable de las stat-cards ---- */
 .stats-wrap { display: none; }
 .stats-wrap.abierto { display: flex; }
+
+/* =================================================================
+   ENCABEZADO DE PANTALLA UNIFICADO (28/10)
+   Las pantallas con encabezado propio (.pg-top) se ven igual que las
+   de .header-bar: banda del color del area, titulo blanco con icono.
+   ================================================================= */
+body .main-content > .pg-top {
+  background: var(--area, var(--navy)); color: #fff; padding: 16px 22px; border-radius: 10px;
+  margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px 18px; flex-wrap: wrap; border: 0; box-shadow: none;
+}
+body .main-content > .pg-top h1,
+body .main-content > .pg-top h2 {
+  color: #fff; font-family: inherit; font-size: 1.35rem; font-weight: 600; letter-spacing: 0;
+  line-height: 1.25; margin: 0; display: flex; align-items: center; gap: 10px;
+}
+body .main-content > .pg-top h1 i,
+body .main-content > .pg-top h2 i { color: #fff; opacity: .9; }
+body .main-content > .pg-top p { color: rgba(255,255,255,.88); font-size: .85rem; margin: 3px 0 0; max-width: 780px; }
+body .main-content > .pg-top p a { color: #fff; text-decoration: underline; }
+body .main-content > .pg-top .seg,
+body .main-content > .pg-top .periodo { background: transparent; border-color: rgba(255,255,255,.35); }
+body .main-content > .pg-top button:not(.btn),
+body .main-content > .pg-top a:not(.btn) {
+  background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.35); text-decoration: none;
+}
+body .main-content > .pg-top p a:not(.btn) { background: none; border: 0; }
+body .main-content > .pg-top button:not(.btn):hover,
+body .main-content > .pg-top a:not(.btn):hover { background: rgba(255,255,255,.24); color: #fff; }
+body .main-content > .pg-top button.on:not(.btn),
+body .main-content > .pg-top button.active:not(.btn) { background: #fff; color: var(--area, var(--navy)); border-color: #fff; font-weight: 600; }
+body .main-content > .pg-top .btn-primary,
+body .main-content > .pg-top .btn-danger { background: #fff; border-color: #fff; color: var(--area, var(--navy)); font-weight: 600; }
+body .main-content > .pg-top .rango-txt,
+body .main-content > .pg-top .avance { color: rgba(255,255,255,.9); }
+body .main-content > .pg-top .volver { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: .8rem; margin-bottom: 4px; }
+
+/* =================================================================
+   ICONOS CON SIGNIFICADO (28/10)
+   En las tablas, cada accion tiene siempre el mismo color, en todas
+   las pantallas. Se reconoce por el icono que lleva el boton:
+     ver (azul pizarra) · WhatsApp (verde) · editar (azul)
+     confirmar / entregar / recibir / alta (verde)
+     borrar / cancelar / quitar / baja (rojo)
+     imprimir / adjunto / foto / mas opciones (gris)
+     clave (ambar)
+   Al pasar el mouse se llena del color. Deshabilitado: gris claro.
+   Los botones .btn de Bootstrap ya traen su color y no se tocan.
+   ================================================================= */
+:root {
+  --ic-ver: #2f5d8a;  --ic-ver-s: #eef3f9;  --ic-ver-b: #c9d8ea;
+  --ic-wa: #1e7e34;   --ic-wa-s: #e9f6ee;   --ic-wa-b: #b7dfc4;
+  --ic-edit: #1d5fa8; --ic-edit-s: #e8f0fb; --ic-edit-b: #c3d6f0;
+  --ic-ok: #1e7e34;   --ic-ok-s: #e9f6ee;   --ic-ok-b: #b7dfc4;
+  --ic-mal: #c0392b;  --ic-mal-s: #fdeeed;  --ic-mal-b: #f1c4bf;
+  --ic-neu: #475569;  --ic-neu-s: #f1f4f7;  --ic-neu-b: #d5dce4;
+  --ic-av: #b45309;   --ic-av-s: #fdf3e6;   --ic-av-b: #f0d2a8;
+}
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-eye, .bi-eye-fill, .bi-search, .bi-box-arrow-up-right)) { color: var(--ic-ver); background-color: var(--ic-ver-s); border-color: var(--ic-ver-b); }
+:is(td, .acciones) :is(button, a):not(.btn):not(:disabled):has(> i:is(.bi-eye, .bi-eye-fill, .bi-search, .bi-box-arrow-up-right)):hover { color: #fff; background-color: var(--ic-ver); border-color: var(--ic-ver); }
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-whatsapp)) { color: var(--ic-wa); background-color: var(--ic-wa-s); border-color: var(--ic-wa-b); }
+:is(td, .acciones) :is(button, a):not(.btn):not(:disabled):has(> i:is(.bi-whatsapp)):hover { color: #fff; background-color: var(--ic-wa); border-color: var(--ic-wa); }
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-pencil, .bi-pencil-square, .bi-pencil-fill)) { color: var(--ic-edit); background-color: var(--ic-edit-s); border-color: var(--ic-edit-b); }
+:is(td, .acciones) :is(button, a):not(.btn):not(:disabled):has(> i:is(.bi-pencil, .bi-pencil-square, .bi-pencil-fill)):hover { color: #fff; background-color: var(--ic-edit); border-color: var(--ic-edit); }
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-bag-check, .bi-check, .bi-check-lg, .bi-check2, .bi-check2-circle, .bi-check-circle, .bi-box-arrow-in-down, .bi-arrow-up-circle, .bi-plus, .bi-plus-lg, .bi-plus-circle, .bi-cart-plus, .bi-send, .bi-truck)) { color: var(--ic-ok); background-color: var(--ic-ok-s); border-color: var(--ic-ok-b); }
+:is(td, .acciones) :is(button, a):not(.btn):not(:disabled):has(> i:is(.bi-bag-check, .bi-check, .bi-check-lg, .bi-check2, .bi-check2-circle, .bi-check-circle, .bi-box-arrow-in-down, .bi-arrow-up-circle, .bi-plus, .bi-plus-lg, .bi-plus-circle, .bi-cart-plus, .bi-send, .bi-truck)):hover { color: #fff; background-color: var(--ic-ok); border-color: var(--ic-ok); }
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-trash, .bi-trash3, .bi-x, .bi-x-lg, .bi-x-circle, .bi-arrow-down-circle, .bi-slash-circle, .bi-ban)) { color: var(--ic-mal); background-color: var(--ic-mal-s); border-color: var(--ic-mal-b); }
+:is(td, .acciones) :is(button, a):not(.btn):not(:disabled):has(> i:is(.bi-trash, .bi-trash3, .bi-x, .bi-x-lg, .bi-x-circle, .bi-arrow-down-circle, .bi-slash-circle, .bi-ban)):hover { color: #fff; background-color: var(--ic-mal); border-color: var(--ic-mal); }
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-printer, .bi-paperclip, .bi-camera, .bi-download, .bi-file-earmark-pdf, .bi-three-dots-vertical, .bi-three-dots, .bi-tag)) { color: var(--ic-neu); background-color: var(--ic-neu-s); border-color: var(--ic-neu-b); }
+:is(td, .acciones) :is(button, a):not(.btn):not(:disabled):has(> i:is(.bi-printer, .bi-paperclip, .bi-camera, .bi-download, .bi-file-earmark-pdf, .bi-three-dots-vertical, .bi-three-dots, .bi-tag)):hover { color: #fff; background-color: var(--ic-neu); border-color: var(--ic-neu); }
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-key, .bi-key-fill)) { color: var(--ic-av); background-color: var(--ic-av-s); border-color: var(--ic-av-b); }
+:is(td, .acciones) :is(button, a):not(.btn):not(:disabled):has(> i:is(.bi-key, .bi-key-fill)):hover { color: #fff; background-color: var(--ic-av); border-color: var(--ic-av); }
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-eye, .bi-eye-fill, .bi-search, .bi-box-arrow-up-right)) > i,
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-whatsapp)) > i,
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-pencil, .bi-pencil-square, .bi-pencil-fill)) > i,
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-bag-check, .bi-check, .bi-check-lg, .bi-check2, .bi-check2-circle, .bi-check-circle, .bi-box-arrow-in-down, .bi-arrow-up-circle, .bi-plus, .bi-plus-lg, .bi-plus-circle, .bi-cart-plus, .bi-send, .bi-truck)) > i,
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-trash, .bi-trash3, .bi-x, .bi-x-lg, .bi-x-circle, .bi-arrow-down-circle, .bi-slash-circle, .bi-ban)) > i,
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-printer, .bi-paperclip, .bi-camera, .bi-download, .bi-file-earmark-pdf, .bi-three-dots-vertical, .bi-three-dots, .bi-tag)) > i,
+:is(td, .acciones) :is(button, a):not(.btn):has(> i:is(.bi-key, .bi-key-fill)) > i { color: inherit; }
+/* Deshabilitado: que se note que no se puede usar */
+:is(td, .acciones) :is(button, a):not(.btn):has(> i[class*="bi-"]):is(:disabled, .disabled, [aria-disabled="true"]) { color: #a7b1bd; background-color: #f4f6f8; border-color: #e3e7ec; cursor: not-allowed; opacity: 1; filter: none; }
+:is(td, .acciones) a:not(.btn):has(> i[class*="bi-"]) { text-decoration: none; }
+
+/* =================================================================
+   TIPOGRAFIA UNIFICADA (28/10)
+   Una sola escala para todas las pantallas:
+     titulo de pantalla ....... 1.35rem / 600 (la banda de color)
+     titulo de panel .......... 1rem / 600
+     estado vacio (titulo) .... 1.05rem / 600, azul
+     etiqueta de campo ........ .85rem / 600, normal (no mayuscula)
+     rotulo (encabezado de tabla, rotulo de un numero)
+                                .72rem / 700, MAYUSCULA, espaciado
+   El :not(#z) sube la prioridad para ganarle a los estilos propios
+   de cada pantalla sin usar !important.
+   ================================================================= */
+body .main-content:not(#z) table th {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+}
+body .main-content:not(#z) :is(h4, h5, h6):not(.modal-title) {
+  font-size: 1.05rem; font-weight: 600; color: var(--navy); letter-spacing: 0; text-transform: none;
+}
+body .main-content:not(#z) :is(.form-label, label:not(.form-check-label):not(.btn):not([class*="chip"])) {
+  font-size: .85rem; font-weight: 600; color: #3d4b5c; text-transform: none; letter-spacing: 0;
+}
+body .main-content:not(#z) :is(.stat-label, .saldo-label) {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+}
+body .main-content:not(#z) .panel-header { font-size: 1rem; font-weight: 600; }

@@ -208,7 +208,14 @@
     }
     .res-item:last-child { border-bottom: none; }
     .res-item:hover { background: var(--bg-soft); }
-    .res-item.sin-stock { opacity: 0.5; }
+    .res-item.sin-stock { opacity: 0.72; }
+    .res-item.sin-stock .btn-add, .btn-add.ext { background: #fff; color: #1d5fa8; border: 1.5px solid #1d5fa8; }
+    .res-item.sin-stock .btn-add:hover, .btn-add.ext:hover { background: #1d5fa8; color: #fff; }
+    .sec-prov { padding: 8px 12px 6px; font-size: 0.74rem; font-weight: 700; letter-spacing: .5px; color: #1d5fa8;
+      background: #f2f6fb; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; }
+    .sec-prov a { font-weight: 600; letter-spacing: 0; }
+    .sec-prov-cargando { padding: 8px 12px; font-size: 0.78rem; color: #6c7a89; }
+    .res-item.ext .res-foto-ph { color: #1d5fa8; }
 
     .res-foto {
       width: 44px; height: 44px; flex-shrink: 0;
@@ -270,6 +277,11 @@
       cursor: pointer; padding: 2px 5px; border-radius: 5px; font-size: 0.85rem;
     }
     .btn-quitar:hover { background: #ffeded; }
+    .badge-falta {
+      background: #e8f0fb; color: #1d5fa8; border: 1px solid #c9dbf2;
+      font-size: 0.66rem; padding: 1px 6px; border-radius: 8px; display: inline-block; margin-top: 3px; font-weight: 600;
+    }
+    .nota-faltantes { font-size: 0.74rem; color: #1d5fa8; background: #e8f0fb; border-radius: 8px; padding: 6px 9px; margin: 0 0 8px; }
     .badge-critico-carrito {
       background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;
       font-size: 0.66rem; padding: 1px 6px; border-radius: 8px;
@@ -721,27 +733,46 @@
       if (idMarca !== "") lista = lista.filter(function (r) { return String(r.IdMarca) === idMarca; });
       if (idModelo !== "") lista = lista.filter(function (r) { return String(r.IdModelo) === idModelo; });
       if (texto !== "") {
+        // Cada palabra por separado, en cualquier orden ("kit 25320b bosch")
+        var palabras = normalizar(texto).split(/\s+/).filter(function (w) { return w; });
         lista = lista.filter(function (r) {
-          return (r.Descripcion || "").toLowerCase().indexOf(texto) !== -1 ||
-                 (r.Codigo || "").toLowerCase().indexOf(texto) !== -1 ||
-                 (r.Marca || "").toLowerCase().indexOf(texto) !== -1;
+          if (r._txt === undefined)
+            r._txt = normalizar([r.Codigo, r.Descripcion, r.Marca, r.Rubro, r.Modelo, r.MarcaFabricante].join(" "));
+          return palabras.every(function (w) { return r._txt.indexOf(w) !== -1; });
         });
       }
-      pintarResultados(lista.slice(0, 60), lista.length);
-      anotarBusqueda(texto);
+      ultimoLocal = { lista: lista.slice(0, 60), total: lista.length };
+      if (texto !== textoProv) { externosVenta = []; textoProv = ""; }
+      pintarResultados(ultimoLocal.lista, ultimoLocal.total);
+      buscarEnProveedores(texto);
     }
 
-    // Registro de busquedas (script 78): cuando se deja de escribir,
-    // la API anota que se busco. No frena nada si falla.
-    var tAnotar = null, ultimaAnotada = "";
-    function anotarBusqueda(texto) {
-      clearTimeout(tAnotar);
-      if (!texto || texto.length < 3 || texto === ultimaAnotada) return;
-      tAnotar = setTimeout(function () {
-        ultimaAnotada = texto;
-        fetchAuth(API_BASE + "Busqueda/Registro", { method: "POST", body: JSON.stringify({ Texto: texto, Origen: "VENTA" }) })
-          .catch(function () { });
-      }, 1500);
+    function normalizar(s) {
+      return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    // Lo que no esta en el local pero se consigue (28/10): la misma busqueda
+    // del Buscador. Esa llamada tambien anota la busqueda (script 78), por eso
+    // reemplaza al registro que se hacia antes desde aca.
+    var ultimoLocal = { lista: [], total: 0 };
+    var externosVenta = [], textoProv = "", tProv = null, buscandoProv = "";
+    function buscarEnProveedores(texto) {
+      clearTimeout(tProv);
+      if (!texto || texto.length < 3 || texto === textoProv) { buscandoProv = ""; return; }
+      buscandoProv = texto;
+      tProv = setTimeout(function () {
+        fetchAuth(API_BASE + "Busqueda?texto=" + encodeURIComponent(texto) + "&origen=VENTA&tope=40")
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (ds) {
+            if (texto !== document.getElementById("buscarRepuesto").value.trim().toLowerCase()) return; // llego tarde
+            var ext = !ds ? [] : (Array.isArray(ds) ? (ds[1] || []) : (ds.Table1 || []));
+            // Solo lo que NO esta en el catalogo propio (lo propio ya sale arriba)
+            externosVenta = ext.filter(function (x) { return !x.IdRepuesto; });
+            textoProv = texto; buscandoProv = "";
+            pintarResultados(ultimoLocal.lista, ultimoLocal.total);
+          })
+          .catch(function () { buscandoProv = ""; pintarResultados(ultimoLocal.lista, ultimoLocal.total); });
+      }, 700);
     }
 
     // Miniatura: usa el campo de imagen si algun dia existe en Repuesto.
@@ -758,11 +789,13 @@
 
     function pintarResultados(lista, totalReal) {
       var cont = document.getElementById("resultados");
+      var htmlProv = seccionProveedores();
 
       if (lista.length === 0) {
-        cont.innerHTML = '<div class="p-4 text-center text-muted">' +
+        cont.innerHTML = (htmlProv && externosVenta.length ? '' :
+          '<div class="p-4 text-center text-muted">' +
           '<i class="bi bi-search" style="font-size:1.8rem;opacity:0.4;"></i>' +
-          '<div class="mt-2">No se encontraron repuestos.</div></div>';
+          '<div class="mt-2">' + (document.getElementById("buscarRepuesto").value.trim() ? 'No está en el local.' : 'No se encontraron repuestos.') + '</div></div>') + htmlProv;
         return;
       }
 
@@ -788,8 +821,8 @@
             (sinStock ? Equivalencias.chips(r.Id, 'agregar') : '') +
           '</div>' +
           '<div class="res-precio">' + formatearMoneda(r.PrecioDeVenta) + '</div>' +
-          '<button class="btn-add" onclick="agregar(' + r.Id + ')"' + (sinStock ? ' disabled' : '') +
-            ' title="Agregar"><i class="bi bi-plus-lg"></i></button>' +
+          '<button class="btn-add" onclick="agregar(' + r.Id + ')"' +
+            ' title="' + (sinStock ? 'Sumar para presupuesto o encargo (no hay stock)' : 'Agregar') + '"><i class="bi bi-plus-lg"></i></button>' +
         '</div>';
       });
 
@@ -797,8 +830,96 @@
         html += '<div class="p-2 text-center text-muted" style="font-size:0.78rem;">' +
           'Mostrando ' + lista.length + ' de ' + totalReal + '. Afiná la búsqueda.</div>';
       }
-      cont.innerHTML = html;
+      cont.innerHTML = html + htmlProv;
     }
+
+    function seccionProveedores() {
+      var texto = document.getElementById("buscarRepuesto").value.trim();
+      if (buscandoProv)
+        return '<div class="sec-prov-cargando"><span class="spinner-border spinner-border-sm"></span> Buscando en proveedores…</div>';
+      if (!externosVenta.length) return "";
+      var max = 8;
+      var html = '<div class="sec-prov"><span><i class="bi bi-truck"></i> NO ESTÁ EN EL LOCAL · SE CONSIGUE</span>' +
+        '<a href="Buscador.html?q=' + encodeURIComponent(texto) + '">Ver en el Buscador</a></div>';
+      externosVenta.slice(0, max).forEach(function (x, i) {
+        html += '<div class="res-item ext">' +
+          '<div class="res-foto-ph"><i class="bi bi-truck"></i></div>' +
+          '<div class="res-info">' +
+            '<div class="res-desc">' + (x.Articulo ? '<span class="codigo-repuesto">' + escapeHtml(x.Articulo) + '</span> ' : '') +
+              escapeHtml(x.Descripcion) + '</div>' +
+            '<div class="res-meta">' + escapeHtml(x.Proveedor || "Proveedor") + ' · se pide · solo presupuesto o encargo</div>' +
+          '</div>' +
+          '<div class="res-precio">' + formatearMoneda(Number(x.PrecioSugerido) || 0) + '</div>' +
+          '<button class="btn-add ext" onclick="agregarExterno(' + i + ')" title="Sumar para presupuesto o encargo">' +
+            '<i class="bi bi-plus-lg"></i></button>' +
+        '</div>';
+      });
+      if (externosVenta.length > max)
+        html += '<div class="p-2 text-center text-muted" style="font-size:0.78rem;">Hay ' + (externosVenta.length - max) +
+          ' más en el Buscador.</div>';
+      return html;
+    }
+
+    // Un articulo que solo esta en la lista del proveedor: se suma al catalogo
+    // (stock 0, minimo 0, igual que al encargar desde el Buscador) y va al carrito
+    // como renglon "a pedido": sirve para el presupuesto, no para vender.
+    function agregarExterno(i) {
+      var ext = externosVenta[i];
+      if (!ext) return;
+      var paso = ext.Rubro ? Promise.resolve(null) : elegirRubro(ext);
+      paso.then(function (idRubro) {
+        if (idRubro === false) return;
+        Swal.fire({ title: "Sumando al catálogo…", allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+        return fetchAuth(apiRepuesto + "/IncorporarDesdeLista", {
+          method: "POST",
+          body: JSON.stringify({ IdListaProveedor: ext.Id, IdRubro: idRubro, StockMinimo: 0 })
+        }).then(function (r) {
+          if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+          return r.json();
+        }).then(function (d) {
+          return fetchAuth(apiRepuesto).then(function (r) { return r.json(); }).then(function (lista) {
+            todosRepuestos = lista.filter(esActivo);
+            aplicarReservas();
+            externosVenta = externosVenta.filter(function (x) { return x !== ext; });
+            Swal.close();
+            agregar(d.Id);
+            buscar();
+          });
+        });
+      }).catch(function (err) {
+        Swal.fire("No se pudo sumar", (err && err.message) || "Intentá de nuevo.", "error");
+      });
+    }
+
+    function elegirRubro(ext) {
+      var opciones = Array.prototype.slice.call(document.querySelectorAll("#filtroRubro option"))
+        .filter(function (o) { return o.value; })
+        .map(function (o) { return { id: o.value, nombre: o.textContent }; });
+      var palabras = String(ext.Descripcion || "").toUpperCase().split(/[^A-ZÑ0-9]+/).filter(function (w) { return w.length > 3; });
+      var sugeridos = opciones.filter(function (o) {
+        var n = o.nombre.toUpperCase();
+        return palabras.some(function (w) { return n.indexOf(w) !== -1; });
+      }).slice(0, 8);
+      var opc = function (l) { return l.map(function (o) { return '<option value="' + o.id + '">' + escapeHtml(o.nombre) + '</option>'; }).join(""); };
+      return Swal.fire({
+        title: "¿En qué rubro va?",
+        html: '<div style="text-align:left;font-size:0.9rem;"><p class="mb-2">' + escapeHtml(ext.Descripcion) +
+          '<br><small class="text-muted">No está en tu catálogo: se suma con stock 0.</small></p>' +
+          '<select id="swRubroV" class="form-select">' +
+          (sugeridos.length ? '<optgroup label="Sugeridos">' + opc(sugeridos) + '</optgroup>' : '<option value="">Elegí un rubro…</option>') +
+          '<optgroup label="Todos">' + opc(opciones) + '</optgroup></select></div>',
+        showCancelButton: true, confirmButtonText: "Sumar", cancelButtonText: "Cancelar",
+        preConfirm: function () {
+          var v = document.getElementById("swRubroV").value;
+          if (!v) { Swal.showValidationMessage("Elegí un rubro."); return false; }
+          return parseInt(v, 10);
+        }
+      }).then(function (res) { return res.isConfirmed ? res.value : false; });
+    }
+
+    // Cuanto falta para poder venderlo (0 = se puede vender)
+    function faltaDe(c) { return Math.max(0, c.Cantidad - (Number(c.StockActual) || 0)); }
+    function hayFaltantes() { return carrito.some(function (c) { return faltaDe(c) > 0; }); }
 
     /* ================= CARRITO ================= */
 
@@ -808,12 +929,9 @@
 
       var stock = r.StockActual !== undefined ? r.StockActual : 0;
       var existente = carrito.find(function (c) { return c.IdRepuesto === idRepuesto; });
+      // Sin tope de stock: lo que falta queda marcado "a pedido" y sirve para
+      // presupuesto o encargo; la venta no se confirma hasta que haya.
       var nueva = (existente ? existente.Cantidad : 0) + 1;
-
-      if (nueva > stock) {
-        Swal.fire("Stock insuficiente", "Solo hay " + stock + " unidades de " + r.Descripcion + ".", "warning");
-        return;
-      }
 
       if (existente) {
         existente.Cantidad = nueva;
@@ -836,11 +954,6 @@
       if (!item) return;
       var cant = parseInt(valor, 10);
       if (!cant || cant <= 0) { quitar(idRepuesto); return; }
-      if (cant > item.StockActual) {
-        Swal.fire("Stock insuficiente", "Solo hay " + item.StockActual + " unidades.", "warning");
-        renderCarrito();
-        return;
-      }
       item.Cantidad = cant;
       renderCarrito();
     }
@@ -891,8 +1004,21 @@
       var btnVaciar = document.getElementById("btnVaciar");
       var hay = carrito.length > 0;
 
-      document.getElementById("btnConfirmar").disabled = !hay;
+      var faltan = hay && hayFaltantes();
+      var btnConf = document.getElementById("btnConfirmar");
+      btnConf.disabled = !hay || faltan;
+      btnConf.title = faltan ? "Hay repuestos sin stock: hacé el presupuesto o encargalos" : "";
       document.getElementById("btnPresupuesto").disabled = !hay;
+      var nota = document.getElementById("notaFaltantes");
+      if (!nota) {
+        nota = document.createElement("div");
+        nota.id = "notaFaltantes"; nota.className = "nota-faltantes";
+        var acc = document.querySelector(".acciones-carrito");
+        acc.parentNode.insertBefore(nota, acc);
+      }
+      nota.style.display = faltan ? "block" : "none";
+      nota.innerHTML = '<i class="bi bi-info-circle"></i> Hay repuestos que no están en el local. ' +
+        'Podés hacer el <strong>presupuesto</strong>; para venderlos tienen que llegar.';
       btnVaciar.style.display = hay ? "inline-block" : "none";
 
       if (!hay) {
@@ -912,8 +1038,13 @@
       carrito.forEach(function (c) {
         var subtotal = c.Cantidad * c.PrecioUnitario;
         var restante = c.StockActual - c.Cantidad;
+        var falta = faltaDe(c);
         var aviso = "";
-        if (restante === 0) {
+        if (falta > 0) {
+          aviso = '<div class="badge-falta"><i class="bi bi-truck"></i> ' +
+            (c.StockActual > 0 ? 'Hay ' + c.StockActual + ', faltan ' + falta : 'No hay en el local') +
+            ' · a pedido</div>';
+        } else if (restante === 0) {
           aviso = '<div class="badge-critico-carrito"><i class="bi bi-exclamation-triangle-fill"></i> Queda sin stock</div>';
         } else if (restante <= c.StockMinimo) {
           aviso = '<div class="badge-critico-carrito"><i class="bi bi-arrow-down"></i> Queda bajo mínimo (' + restante + ')</div>';
@@ -929,7 +1060,7 @@
           '<div class="carrito-l2">' +
             '<div class="qty-group">' +
               '<button type="button" onclick="sumar(' + c.IdRepuesto + ', -1)">−</button>' +
-              '<input type="number" min="1" max="' + c.StockActual + '" value="' + c.Cantidad + '" ' +
+              '<input type="number" min="1" value="' + c.Cantidad + '" ' +
                 'onchange="cambiarCantidad(' + c.IdRepuesto + ', this.value)">' +
               '<button type="button" onclick="sumar(' + c.IdRepuesto + ', 1)">+</button>' +
             '</div>' +
@@ -1091,7 +1222,7 @@
       d.items.forEach(function (c) {
         filas += "<tr>" +
           "<td>" + escapeHtml(c.Codigo) + "</td>" +
-          "<td>" + escapeHtml(c.Descripcion) + "</td>" +
+          "<td>" + escapeHtml(c.Descripcion) + (faltaDe(c) > 0 ? " <em>(a pedido)</em>" : "") + "</td>" +
           "<td style='text-align:center'>" + c.Cantidad + "</td>" +
           "<td style='text-align:right'>" + formatearMoneda(c.PrecioUnitario) + "</td>" +
           "<td style='text-align:right'>" + formatearMoneda(c.Cantidad * c.PrecioUnitario) + "</td>" +
@@ -1176,7 +1307,9 @@
       d.items.forEach(function (c) {
         ctx.fillStyle = "#2c3e50"; ctx.font = "13px Arial";
         var desc = (c.Codigo ? c.Codigo + "  " : "") + c.Descripcion;
-        if (desc.length > 46) desc = desc.substring(0, 44) + "…";
+        var ped = faltaDe(c) > 0 ? " (a pedido)" : "";
+        if (desc.length + ped.length > 46) desc = desc.substring(0, 44 - ped.length) + "…";
+        desc += ped;
         ctx.fillText(desc, 26, y);
         ctx.textAlign = "center"; ctx.fillText(String(c.Cantidad), 448, y);
         ctx.textAlign = "right";
@@ -1216,7 +1349,7 @@
       if (d.nombre) txt += "Cliente: " + d.nombre + "\n";
       txt += "\n";
       d.items.forEach(function (c) {
-        txt += "• " + c.Descripcion + "\n";
+        txt += "• " + c.Descripcion + (faltaDe(c) > 0 ? " _(a pedido)_" : "") + "\n";
         txt += "   " + c.Cantidad + " x " + formatearMoneda(c.PrecioUnitario) +
                " = " + formatearMoneda(c.Cantidad * c.PrecioUnitario) + "\n";
       });
@@ -1695,6 +1828,10 @@
 
     function confirmar() {
       if (carrito.length === 0) return;
+      if (hayFaltantes()) {
+        Swal.fire("Hay repuestos sin stock", "Lo que no está en el local se puede presupuestar o encargar, pero no vender. Sacalo del carrito o hacé el presupuesto.", "info");
+        return;
+      }
       autorizoCredito = false;
 
       var idCliente = resolverIdCliente();
@@ -1938,7 +2075,7 @@
         // Enter agrega el primer resultado con stock: venta sin usar el mouse
         if (e.key !== "Enter") return;
         e.preventDefault();
-        var primero = document.querySelector(".res-item:not(.sin-stock) .btn-add");
+        var primero = document.querySelector(".res-item:not(.sin-stock):not(.ext) .btn-add");
         if (primero) primero.click();
       });
 

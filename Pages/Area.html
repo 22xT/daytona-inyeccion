@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Área - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&display=swap" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <link href="estilos-areas.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-page="area">
+  <div id="sidebar-container"></div>
+
+  <!-- Lo que hay dentro de un area: Area.html?a=ventas -->
+  <main class="main-content areas-main" style="max-width: 1240px;">
+    <div class="area-cab">
+      <div>
+        <span class="etiqueta" id="etiqueta"></span>
+        <h1 id="titulo">Área</h1>
+      </div>
+      <p id="bajada"></p>
+    </div>
+    <div class="area-cards" id="cards"></div>
+  </main>
+
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+
+    (function () {
+      function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+      var m = /[?&]a=([a-z]+)/.exec(location.search);
+      var area = m ? Layout.area(m[1]) : null;
+      if (!area) { location.replace("index.html"); return; }
+
+      var usuario = Auth.getUsuario() || {};
+      document.title = area.titulo + " - Daytona Repuestos Automotor";
+      document.getElementById("etiqueta").textContent = area.titulo.toUpperCase();
+      document.querySelector(".areas-main").style.setProperty("--ac", area.color || "#d92020");
+      document.getElementById("titulo").textContent = area.titulo;
+      document.getElementById("bajada").textContent = area.bajada;
+
+      var cont = document.getElementById("cards");
+      if (area.proximamente) {
+        cont.innerHTML = [
+          { label: "Mercado Libre", icon: "bi-bag", desc: "Publicaciones sincronizadas con el stock y el precio." },
+          { label: "WhatsApp", icon: "bi-whatsapp", desc: "Consultas y presupuestos por chat." },
+          { label: "Instagram y Facebook", icon: "bi-instagram", desc: "El catálogo en las redes del local." }
+        ].map(function (it) {
+          return '<div class="area-card off"><span class="ico"><i class="bi ' + it.icon + '"></i></span>' +
+            '<b>' + esc(it.label) + '</b><span class="desc">' + esc(it.desc) + '</span><span class="pronto-txt">Próximamente</span></div>';
+        }).join("");
+        return;
+      }
+      var items = Layout.itemsVisibles(area, usuario.Rol);
+      if (!items.length) {
+        cont.outerHTML = '<div class="areas-vacio">Tu usuario no tiene pantallas en esta área.</div>';
+        return;
+      }
+      cont.innerHTML = items.map(function (it) {
+        return '<a class="area-card" href="' + it.href + '"><span class="ico"><i class="bi ' + it.icon + '"></i></span>' +
+          '<b>' + esc(it.label) + '</b><span class="desc">' + esc(it.desc || "") + '</span></a>';
+      }).join("");
+      if (Layout.refrescarIndicadores) Layout.refrescarIndicadores();
+    })();
+  </script>
+</body>
+</html>
