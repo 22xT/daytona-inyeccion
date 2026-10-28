@@ -734,7 +734,9 @@
       if (idModelo !== "") lista = lista.filter(function (r) { return String(r.IdModelo) === idModelo; });
       if (texto !== "") {
         // Cada palabra por separado, en cualquier orden ("kit 25320b bosch")
-        var palabras = normalizar(texto).split(/\s+/).filter(function (w) { return w; });
+        // "de", "la", "para"... no distinguen un repuesto de otro (igual que en la API, script 87)
+        var palabras = normalizar(texto).split(/\s+/).filter(function (w) { return w && !VACIAS[w]; });
+        if (!palabras.length) palabras = normalizar(texto).split(/\s+/).filter(function (w) { return w; });
         lista = lista.filter(function (r) {
           if (r._txt === undefined)
             r._txt = normalizar([r.Codigo, r.Descripcion, r.Marca, r.Rubro, r.Modelo, r.MarcaFabricante].join(" "));
@@ -747,6 +749,7 @@
       buscarEnProveedores(texto);
     }
 
+    var VACIAS = { de: 1, la: 1, el: 1, los: 1, las: 1, para: 1, con: 1, y: 1, en: 1, un: 1, una: 1, al: 1 };
     function normalizar(s) {
       return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     }
