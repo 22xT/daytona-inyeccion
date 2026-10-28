@@ -13,21 +13,56 @@ namespace WebApi.Controllers
     public class MovimientoCajaController : ApiController
     {
         // GET: api/MovimientoCaja  (historial) — Admin, Vendedor, Dueño
-        [AuthorizeJwt(Roles = "Administrador,Vendedor,Dueño")]
+        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor,Dueño")]
         public DataTable Get()
         {
             MovimientoCaja oCaja = new MovimientoCaja();
-            return oCaja.ListarTodos();
+            DataTable tabla = oCaja.ListarTodos();
+
+            // Arqueo ciego (script 94): con la caja abierta no se ven los
+            // movimientos del turno, si no el cierre deja de ser ciego
+            DateTime? apertura = AperturaCiega();
+            if (apertura.HasValue && tabla.Columns.Contains("Fecha"))
+            {
+                for (int i = tabla.Rows.Count - 1; i >= 0; i--)
+                {
+                    object f = tabla.Rows[i]["Fecha"];
+                    if (f != DBNull.Value && Convert.ToDateTime(f) >= apertura.Value) tabla.Rows.RemoveAt(i);
+                }
+            }
+            return tabla;
         }
 
         // GET: api/MovimientoCaja/Saldo  (saldo actual + totales del dia)
         [HttpGet]
         [Route("api/MovimientoCaja/Saldo")]
-        [AuthorizeJwt(Roles = "Administrador,Vendedor,Dueño")]
+        [AuthorizeJwt(Roles = "Administrador,Supervisor,Vendedor,Dueño")]
         public DataTable GetSaldo()
         {
             MovimientoCaja oCaja = new MovimientoCaja();
-            return oCaja.ObtenerSaldo();
+            DataTable tabla = oCaja.ObtenerSaldo();
+
+            // Arqueo ciego: el saldo y los totales del dia se ven al cerrar
+            if (AperturaCiega().HasValue)
+            {
+                foreach (DataColumn col in tabla.Columns)
+                {
+                    if (col.ColumnName != "SaldoActual" && col.ColumnName != "IngresosHoy" && col.ColumnName != "EgresosHoy") continue;
+                    col.ReadOnly = false;
+                    col.AllowDBNull = true;
+                    foreach (DataRow r in tabla.Rows) r[col] = DBNull.Value;
+                }
+            }
+            return tabla;
+        }
+
+        // Fecha de apertura si la caja esta abierta y el usuario cierra a ciegas; si no, null
+        private DateTime? AperturaCiega()
+        {
+            if (SesionCajaController.VeTeorico(User.Identity as ClaimsIdentity)) return null;
+            DataTable s = new SesionCaja().Actual(false);
+            if (s.Rows.Count == 0 || !Convert.ToBoolean(s.Rows[0]["Abierta"])) return null;
+            return Convert.ToDateTime(s.Rows[0]["FechaApertura"]);
         }
 
         // POST: api/MovimientoCaja  (registrar) — Admin y Vendedor

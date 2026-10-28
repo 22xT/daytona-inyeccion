@@ -177,8 +177,8 @@
       <div class="panel-body p-0">
         <div class="table-responsive">
           <table class="table tabla-ses mb-0">
-            <thead><tr><th>Apertura</th><th class="text-end">Inicial</th><th>Cierre</th><th class="text-end">Teórico</th><th class="text-end">Contado</th><th class="text-end">Diferencia</th><th>Motivo</th></tr></thead>
-            <tbody id="tablaSesiones"><tr><td colspan="7" class="text-center text-muted p-3">Cargando…</td></tr></tbody>
+            <thead><tr><th>Apertura</th><th class="text-end">Inicial</th><th>Cierre</th><th class="text-end">Teórico</th><th class="text-end">Contado</th><th class="text-end">Diferencia</th><th>Motivo</th><th></th></tr></thead>
+            <tbody id="tablaSesiones"><tr><td colspan="8" class="text-center text-muted p-3">Cargando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -227,19 +227,24 @@
     }
 
     function fmtMoneda(n) {
+      if (n === null || n === undefined) return "$ —";
       return "$ " + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+    // Arqueo ciego (script 94): el supervisor, el administrador y el dueño revisan las diferencias
+    const puedeAprobar = usuario && ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
 
     // ---- Cargar saldo ----
     function cargarSaldo() {
       fetchAuth(apiCaja + "/Saldo").then(r => r.json()).then(data => {
         const s = data[0] || { SaldoActual: 0, IngresosHoy: 0, EgresosHoy: 0 };
-        document.getElementById("saldoActual").textContent = fmtMoneda(s.SaldoActual);
+        // Con la caja abierta, quien cierra a ciegas no ve el saldo: vienen vacios
+        const ciego = s.SaldoActual === null;
+        document.getElementById("saldoActual").textContent = ciego ? "Se ve al cerrar" : fmtMoneda(s.SaldoActual);
+        document.getElementById("saldoActual").style.fontSize = ciego ? "1.6rem" : "";
         document.getElementById("ingresosHoy").textContent = fmtMoneda(s.IngresosHoy);
         document.getElementById("egresosHoy").textContent = fmtMoneda(s.EgresosHoy);
       }).catch(() => {});
     }
-
     // ---- Cargar historial ----
     function cargarHistorial() {
       fetchAuth(apiCaja).then(r => r.json()).then(data => {
@@ -366,18 +371,23 @@
 
     function pintarSesion() {
       const b = document.getElementById("bannerSesion");
+      const pend = sesion && Number(sesion.CierresPendientes) > 0 && puedeAprobar
+        ? '<span class="aviso-dia" style="cursor:pointer;" onclick="document.getElementById(\'panelSesiones\').scrollIntoView({behavior:\'smooth\'})">' +
+          '<i class="bi bi-exclamation-circle"></i> ' + sesion.CierresPendientes + (Number(sesion.CierresPendientes) === 1 ? ' cierre con diferencia para revisar' : ' cierres con diferencia para revisar') + '</span>'
+        : '';
       if (!sesion || !sesion.Abierta) {
         b.className = "sesion cerrada";
         b.innerHTML =
           '<i class="bi bi-lock-fill estado-ico"></i>' +
           '<div><div class="titulo">Caja cerrada</div>' +
           '<div class="det">No se pueden registrar cobros ni pagos en efectivo hasta abrirla.' +
-          (sesion && sesion.UltimoCierre ? ' Último cierre: ' + fmtHora(sesion.UltimoCierre) + '.' : '') + '</div></div>' +
+          (sesion && sesion.UltimoCierre ? ' Último cierre: ' + fmtHora(sesion.UltimoCierre) + '.' : '') + '</div>' + pend + '</div>' +
           '<div class="cifras"><div class="cifra"><div class="l">Quedó en el cajón</div><div class="v">' +
             fmtMoneda(sesion ? sesion.SaldoSugerido : 0) + '</div></div></div>' +
           (puedeSesion ? '<button class="btn btn-success" onclick="abrirCaja()"><i class="bi bi-unlock"></i> Abrir caja</button>' : '');
         return;
       }
+      const ve = !!sesion.VeTeorico;
       b.className = "sesion abierta";
       b.innerHTML =
         '<i class="bi bi-unlock-fill estado-ico"></i>' +
@@ -385,16 +395,17 @@
         '<div class="det">Desde ' + fmtHora(sesion.FechaApertura) + ' · ' + escapeHtml(sesion.UsuarioApertura || "") +
           ' · ' + sesion.Movimientos + ' movimiento' + (sesion.Movimientos === 1 ? '' : 's') + '</div>' +
         (sesion.DeOtroDia ? '<span class="aviso-dia"><i class="bi bi-exclamation-circle"></i> Quedó abierta de otro día: cerrala con el conteo actual.</span>' : '') +
-        '</div>' +
+        (ve ? '' : '<div class="det"><i class="bi bi-eye-slash"></i> Arqueo ciego: lo que debería haber se ve recién al cerrar.</div>') +
+        pend + '</div>' +
         '<div class="cifras">' +
           '<div class="cifra"><div class="l">Inicial</div><div class="v">' + fmtMoneda(sesion.SaldoInicial) + '</div></div>' +
+          (ve ?
           '<div class="cifra"><div class="l">Entró</div><div class="v" style="color:#146c43;">' + fmtMoneda(sesion.Ingresos) + '</div></div>' +
           '<div class="cifra"><div class="l">Salió</div><div class="v" style="color:#b02a37;">' + fmtMoneda(sesion.Egresos) + '</div></div>' +
-          '<div class="cifra"><div class="l">Debería haber</div><div class="v">' + fmtMoneda(sesion.SaldoTeorico) + '</div></div>' +
+          '<div class="cifra"><div class="l">Debería haber</div><div class="v">' + fmtMoneda(sesion.SaldoTeorico) + '</div></div>' : '') +
         '</div>' +
         (puedeSesion ? '<button class="btn btn-outline-danger" onclick="cerrarCaja()"><i class="bi bi-lock"></i> Cerrar caja</button>' : '');
     }
-
     function htmlConteo() {
       return '<div style="font-size:0.82rem;color:#6c757d;text-align:left;">Cantidad de billetes y monedas (opcional: también podés escribir el total abajo).</div>' +
         '<div class="conteo">' + DENOMINACIONES.map(d =>
@@ -457,81 +468,186 @@
       });
     }
 
+    /* Cierre con arqueo ciego (script 94)
+       1. Se cuenta el efectivo y se declara lo cobrado con cada medio
+          electronico mirando la app de Mercado Pago, SIN ver el sistema.
+       2. Se cierra con eso. Recien ahi se muestra la diferencia.
+       3. Si hay diferencia, se explica (ahora o despues) y la revisa
+          un supervisor. */
     function cerrarCaja() {
-      // Se pide el teorico de nuevo: pudo entrar una venta desde que se abrio la pantalla
-      fetchAuth(API_BASE + "SesionCaja/Actual").then(r => r.json()).then(d => {
-        sesion = (d && d[0]) || null;
-        if (!sesion || !sesion.Abierta) { pintarSesion(); return; }
-        const teorico = Number(sesion.SaldoTeorico);
-
+      fetchAuth(API_BASE + "SesionCaja/MediosArqueo").then(r => r.ok ? r.json() : []).catch(() => []).then(medios => {
+        medios = medios || [];
+        const htmlMedios = medios.length === 0 ? '' :
+          '<div class="mt-3 text-start"><strong>Cobrado con otros medios en el turno</strong>' +
+          '<div style="font-size:0.8rem;color:#6c757d;">Mirá en la app de Mercado Pago lo cobrado desde que abriste. Si un medio no lo controlás, dejalo vacío.</div>' +
+          '<div class="conteo">' + medios.map(m =>
+            '<label><span style="width:110px;">' + escapeHtml(m.Nombre) + '</span><input type="text" inputmode="decimal" class="form-control form-control-sm medio-dec" id="medio' + m.IdMedioPago + '" data-id="' + m.IdMedioPago + '" style="width:120px;"></label>'
+          ).join("") + '</div></div>';
         Swal.fire({
-          title: "Cerrar caja", width: 560,
-          html: '<div class="text-start mb-2" style="font-size:0.9rem;">Contá el efectivo del cajón <strong>sin mirar</strong> lo que dice el sistema, y cargalo acá.</div>' +
-                htmlConteo() +
-                '<div class="arqueo-res" id="resCierre"></div>' +
-                '<input type="text" id="motivoCierre" class="form-control mt-2" placeholder="Motivo de la diferencia (obligatorio)" style="display:none;">',
+          title: "Cerrar caja", width: 600,
+          html: '<div class="text-start mb-2" style="font-size:0.9rem;">Contá el efectivo del cajón y cargalo. El sistema te muestra la diferencia <strong>después</strong> de cerrar: lo contado ya no se puede cambiar.</div>' +
+                htmlConteo() + htmlMedios,
           showCancelButton: true, confirmButtonText: "Cerrar caja", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
           didOpen: () => {
-            // El teorico se muestra recien cuando hay un conteo: conteo ciego
-            const pintar = () => {
-              const raw = document.getElementById("totalContado").value;
-              const res = document.getElementById("resCierre");
-              if (!raw) { res.innerHTML = ""; document.getElementById("motivoCierre").style.display = "none"; return; }
-              const t = precioANumero(raw) || 0;
-              const dif = Math.round((t - teorico) * 100) / 100;
-              document.getElementById("motivoCierre").style.display = dif !== 0 ? "" : "none";
-              res.innerHTML =
-                '<div class="f"><span>Según el sistema</span><span>' + fmtMoneda(teorico) + '</span></div>' +
-                '<div class="f"><span>Contado</span><span>' + fmtMoneda(t) + '</span></div>' +
-                '<div class="f"><span>Diferencia</span>' + (dif === 0
-                  ? '<span class="dif-ok">Sin diferencia ✓</span>'
-                  : '<span class="dif-mal">' + (dif > 0 ? 'Sobran ' : 'Faltan ') + fmtMoneda(Math.abs(dif)) + '</span>') + '</div>';
-            };
-            engancharConteo(pintar);
+            engancharConteo(() => {});
+            medios.forEach(m => activarInputPrecio("medio" + m.IdMedioPago));
           },
           preConfirm: () => {
             const raw = document.getElementById("totalContado").value;
             const t = precioANumero(raw);
             if (!raw || t === null || isNaN(t) || t < 0) { Swal.showValidationMessage("Cargá el efectivo contado."); return false; }
-            const motivo = document.getElementById("motivoCierre").value.trim();
-            if (Math.round((t - teorico) * 100) !== 0 && motivo.length < 10) {
-              Swal.showValidationMessage("Hay diferencia: explicá el motivo (mínimo 10 caracteres)."); return false;
+            const dec = [];
+            for (const i of document.querySelectorAll(".medio-dec")) {
+              if (i.value.trim() === "") continue;
+              const v = precioANumero(i.value);
+              if (v === null || isNaN(v) || v < 0) { Swal.showValidationMessage("Revisá lo cargado en los medios de pago."); return false; }
+              dec.push({ IdMedioPago: parseInt(i.getAttribute("data-id"), 10), Declarado: v });
             }
-            return { EfectivoContado: t, Motivo: motivo || null };
+            return { EfectivoContado: t, Medios: dec };
           }
         }).then(r => {
           if (!r.isConfirmed) return;
           fetchAuth(API_BASE + "SesionCaja/Cerrar", { method: "POST", body: JSON.stringify(r.value) }).then(x => {
             if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo cerrar", m, "error"));
-            return x.json().then(res => {
-              const dif = Number((res && res[0] && res[0].Diferencia) || 0);
-              Swal.fire({ icon: dif === 0 ? "success" : "warning", title: "Caja cerrada",
-                text: dif === 0 ? "Sin diferencias." : "Se registró una diferencia de " + fmtMoneda(Math.abs(dif)) + (dif > 0 ? " a favor." : " en contra.") });
-              refrescarTodo();
-            });
+            return x.json().then(res => { refrescarTodo(); mostrarResultadoCierre(res); });
           });
         });
       });
+    }
+
+    // La diferencia, recien despues de cerrar
+    function mostrarResultadoCierre(res) {
+      const c = (res && res.Cierre && res.Cierre[0]) || {};
+      const M = (res && res.Medios) || [];
+      const dif = Number(c.Diferencia || 0);
+      const hayMedios = M.some(m => m.Diferencia !== null && Number(m.Diferencia) !== 0);
+      const fila = (l, v, cls) => '<div class="f"><span>' + l + '</span><span class="' + (cls || "") + '">' + v + '</span></div>';
+      const difTxt = d => d === 0 ? 'Sin diferencia ✓' : (d > 0 ? 'Sobran ' : 'Faltan ') + fmtMoneda(Math.abs(d));
+      let html = '<div class="arqueo-res"><strong>Efectivo</strong>' +
+        fila("Según el sistema", fmtMoneda(c.SaldoTeorico)) + fila("Contado", fmtMoneda(c.EfectivoContado)) +
+        fila("Diferencia", difTxt(dif), dif === 0 ? "dif-ok" : "dif-mal") + '</div>';
+      if (M.length)
+        html += '<div class="arqueo-res"><strong>Otros medios</strong>' + M.map(m => {
+          if (m.Declarado === null) return fila(escapeHtml(m.Nombre), fmtMoneda(m.Teorico) + ' <small class="text-muted">(no declarado)</small>');
+          const d = Number(m.Diferencia);
+          return fila(escapeHtml(m.Nombre) + ' <small class="text-muted">sistema ' + fmtMoneda(m.Teorico) + '</small>', difTxt(d), d === 0 ? "dif-ok" : "dif-mal");
+        }).join("") + '</div>';
+
+      if (dif === 0 && !hayMedios) {
+        Swal.fire({ icon: "success", title: "Caja cerrada", html: html, confirmButtonText: "Listo" });
+        return;
+      }
+      Swal.fire({
+        icon: "warning", title: "Caja cerrada con diferencia", width: 560,
+        html: html + '<textarea id="motivoDif" class="form-control mt-3" rows="2" placeholder="¿Qué pasó? (mínimo 10 caracteres)"></textarea>' +
+              '<div style="font-size:0.78rem;color:#6c757d;margin-top:6px;text-align:left;">Un supervisor la revisa. Si no sabés qué pasó, podés explicarlo más tarde desde Cierres de caja.</div>',
+        showCancelButton: true, confirmButtonText: "Guardar motivo", cancelButtonText: "Después",
+        preConfirm: () => {
+          const m = document.getElementById("motivoDif").value.trim();
+          if (m.length < 10) { Swal.showValidationMessage("Explicá la diferencia con al menos 10 caracteres."); return false; }
+          return m;
+        }
+      }).then(r => { if (r.isConfirmed) explicar(c.IdSesion, r.value); });
+    }
+
+    function explicar(idSesion, texto) {
+      const enviar = t => fetchAuth(API_BASE + "SesionCaja/" + idSesion + "/Explicar", { method: "POST", body: JSON.stringify({ Texto: t }) })
+        .then(x => {
+          if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo guardar", m, "error"));
+          Swal.fire({ icon: "success", title: "Motivo guardado", timer: 1200, showConfirmButton: false });
+          cargarSesiones();
+        });
+      if (texto) return enviar(texto);
+      Swal.fire({ title: "Explicar la diferencia", input: "textarea", inputPlaceholder: "¿Qué pasó? (mínimo 10 caracteres)",
+                  showCancelButton: true, confirmButtonText: "Guardar", cancelButtonText: "Cancelar",
+                  inputValidator: v => (v || "").trim().length < 10 ? "Mínimo 10 caracteres." : undefined })
+        .then(r => { if (r.isConfirmed) enviar(r.value.trim()); });
+    }
+
+    function aprobar(idSesion) {
+      Swal.fire({ title: "Aprobar la diferencia", input: "text", inputPlaceholder: "Comentario de la revisión",
+                  text: "Queda registrado quién la revisó y cuándo.", showCancelButton: true,
+                  confirmButtonText: "Aprobar", cancelButtonText: "Cancelar",
+                  inputValidator: v => (v || "").trim().length < 5 ? "Dejá un comentario (mínimo 5 caracteres)." : undefined })
+        .then(r => {
+          if (!r.isConfirmed) return;
+          fetchAuth(API_BASE + "SesionCaja/" + idSesion + "/Aprobar", { method: "POST", body: JSON.stringify({ Texto: r.value.trim() }) })
+            .then(x => {
+              if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo aprobar", m, "error"));
+              Swal.fire({ icon: "success", title: "Aprobada", timer: 1200, showConfirmButton: false });
+              refrescarTodo();
+            });
+        });
+    }
+
+    // Resumen del turno, para imprimir
+    function verResumen(idSesion) {
+      fetchAuth(API_BASE + "SesionCaja/" + idSesion + "/Resumen").then(x => {
+        if (!x.ok) return leerError(x).then(m => { throw new Error(m); });
+        return x.json();
+      }).then(d => {
+        const s = d.Sesion[0], v = (d.Ventas || [])[0] || {};
+        const tabla = (tit, filas) => filas ? '<h6 class="mt-3 mb-1" style="font-weight:800;color:#1F3864;">' + tit + '</h6><table class="table table-sm mb-0" style="font-size:0.85rem;">' + filas + '</table>' : '';
+        const tr = (a, b, cls) => '<tr><td>' + a + '</td><td class="text-end ' + (cls || "") + '">' + b + '</td></tr>';
+        const dif = Number(s.Diferencia || 0);
+        let html = '<div id="resumenTurno" class="text-start">' +
+          '<div style="font-size:0.85rem;color:#5a6270;">Turno #' + s.Id + ' · ' + fmtHora(s.FechaApertura) + ' (' + escapeHtml(s.UsuarioApertura || "") + ') → ' +
+            fmtHora(s.FechaCierre) + ' (' + escapeHtml(s.UsuarioCierre || "") + ')</div>' +
+          tabla("Ventas", tr("Ventas", (v.Ventas || 0) + " · " + fmtMoneda(v.Total || 0)) + (Number(v.Anuladas) ? tr("Anuladas", v.Anuladas) : "")) +
+          tabla("Cobrado por medio", (d.Cobrado || []).map(c => tr(escapeHtml(c.Nombre) + ' <small class="text-muted">(' + c.Operaciones + ')</small>', fmtMoneda(c.Cobrado))).join("")) +
+          tabla("Comprobantes", (d.Comprobantes || []).map(c => tr(escapeHtml(c.Tipo) + ' <small class="text-muted">(' + c.Cantidad + (Number(c.Autorizados) ? ', ' + c.Autorizados + ' con CAE' : '') + ')</small>', fmtMoneda(c.Total))).join("")) +
+          tabla("Efectivo", tr("Inicial", fmtMoneda(s.SaldoInicial)) +
+            (d.Efectivo || []).map(e => tr((e.Tipo === "Ingreso" ? "+ " : "− ") + escapeHtml(e.Concepto) + ' <small class="text-muted">(' + e.Cantidad + ')</small>', fmtMoneda(e.Total))).join("") +
+            tr("<strong>Según el sistema</strong>", "<strong>" + fmtMoneda(s.SaldoTeorico) + "</strong>") + tr("Contado", fmtMoneda(s.EfectivoContado)) +
+            tr("Diferencia", dif === 0 ? "✓" : (dif > 0 ? "+" : "−") + fmtMoneda(Math.abs(dif)), dif === 0 ? "text-success" : "text-danger fw-bold")) +
+          tabla("Otros medios (declarado vs sistema)", (d.Medios || []).map(m => tr(escapeHtml(m.Nombre) + ' <small class="text-muted">sistema ' + fmtMoneda(m.Teorico) + '</small>',
+            m.Declarado === null ? '<small class="text-muted">no declarado</small>' : fmtMoneda(m.Declarado) + (Number(m.Diferencia) !== 0 ? ' <span class="text-danger">(' + (Number(m.Diferencia) > 0 ? "+" : "−") + fmtMoneda(Math.abs(Number(m.Diferencia))) + ')</span>' : ' ✓'))).join("")) +
+          (s.MotivoDiferencia ? '<div class="mt-3" style="font-size:0.85rem;"><strong>Motivo:</strong> ' + escapeHtml(s.MotivoDiferencia) + '</div>' : '') +
+          (s.EstadoRevision === "APROBADA" ? '<div style="font-size:0.85rem;"><strong>Revisado por</strong> ' + escapeHtml(s.UsuarioRevision || "") + ' el ' + fmtHora(s.FechaRevision) + ': ' + escapeHtml(s.ComentarioRevision || "") + '</div>' :
+           s.EstadoRevision === "PENDIENTE" ? '<div style="font-size:0.85rem;color:#8a6300;"><strong>Diferencia pendiente de revisión.</strong></div>' : '') +
+          '</div>';
+        Swal.fire({ title: "Resumen del turno", html: html, width: 640, showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-printer"></i> Imprimir', cancelButtonText: "Cerrar" })
+          .then(r => {
+            if (!r.isConfirmed) return;
+            const w = window.open("", "_blank");
+            if (!w) return;
+            w.document.write('<html><head><title>Resumen del turno #' + s.Id + '</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"></head><body style="padding:24px;max-width:720px;">' +
+              '<h4>Daytona · Resumen del turno</h4>' + html + '<script>window.onload=function(){window.print();}<\/script></body></html>');
+            w.document.close();
+          });
+      }).catch(e => Swal.fire("Resumen", (e && e.message) || "No se pudo armar el resumen.", "error"));
     }
 
     function cargarSesiones() {
       fetchAuth(API_BASE + "SesionCaja/Historial").then(r => r.ok ? r.json() : Promise.reject()).then(lista => {
         const t = document.getElementById("tablaSesiones");
         const cerradas = (lista || []).filter(x => x.Estado === "CERRADA");
-        if (cerradas.length === 0) { t.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-3">Todavía no hay cierres.</td></tr>'; return; }
+        if (cerradas.length === 0) { t.innerHTML = '<tr><td colspan="8" class="text-center text-muted p-3">Todavía no hay cierres.</td></tr>'; return; }
         t.innerHTML = cerradas.map(x => {
           const dif = Number(x.Diferencia);
+          const difM = x.DiferenciaMedios === null ? null : Number(x.DiferenciaMedios);
+          let rev = '';
+          if (x.EstadoRevision === "PENDIENTE")
+            rev = '<span class="aviso-dia">' + (x.MotivoDiferencia ? 'Para revisar' : 'Falta el motivo') + '</span>';
+          else if (x.EstadoRevision === "APROBADA")
+            rev = '<span style="font-size:0.75rem;color:#146c43;" title="' + escapeHtml((x.UsuarioRevision || "") + ": " + (x.ComentarioRevision || "")) + '"><i class="bi bi-check2-circle"></i> Revisado</span>';
+          const acciones =
+            '<button class="btn btn-sm btn-outline-secondary" onclick="verResumen(' + x.Id + ')" title="Resumen del turno"><i class="bi bi-receipt"></i></button>' +
+            (x.EstadoRevision === "PENDIENTE" && !x.MotivoDiferencia && puedeSesion ? ' <button class="btn btn-sm btn-outline-warning" onclick="explicar(' + x.Id + ')">Explicar</button>' : '') +
+            (x.EstadoRevision === "PENDIENTE" && x.MotivoDiferencia && puedeAprobar ? ' <button class="btn btn-sm btn-success" onclick="aprobar(' + x.Id + ')">Aprobar</button>' : '');
           return '<tr><td>' + fmtHora(x.FechaApertura) + '<div class="text-muted" style="font-size:0.74rem;">' + escapeHtml(x.UsuarioApertura || "") + '</div></td>' +
             '<td class="text-end">' + fmtMoneda(x.SaldoInicial) + '</td>' +
             '<td>' + fmtHora(x.FechaCierre) + '<div class="text-muted" style="font-size:0.74rem;">' + escapeHtml(x.UsuarioCierre || "") + '</div></td>' +
             '<td class="text-end">' + fmtMoneda(x.SaldoTeorico) + '</td>' +
             '<td class="text-end">' + fmtMoneda(x.EfectivoContado) + '</td>' +
             '<td class="text-end" style="font-weight:700;color:' + (dif === 0 ? '#146c43' : '#b02a37') + ';">' +
-              (dif === 0 ? '✓' : (dif > 0 ? '+' : '−') + fmtMoneda(Math.abs(dif))) + '</td>' +
-            '<td style="font-size:0.8rem;">' + escapeHtml(x.MotivoDiferencia || "") + '</td></tr>';
+              (dif === 0 ? '✓' : (dif > 0 ? '+' : '−') + fmtMoneda(Math.abs(dif))) +
+              (difM !== null && difM !== 0 ? '<div style="font-size:0.72rem;font-weight:600;">medios ' + (difM > 0 ? '+' : '−') + fmtMoneda(Math.abs(difM)) + '</div>' : '') + '</td>' +
+            '<td style="font-size:0.8rem;">' + escapeHtml(x.MotivoDiferencia || "") + (rev ? '<div>' + rev + '</div>' : '') + '</td>' +
+            '<td class="text-end" style="white-space:nowrap;">' + acciones + '</td></tr>';
         }).join("");
       }).catch(() => { document.getElementById("panelSesiones").style.display = "none"; });
-
       fetchAuth(API_BASE + "SesionCaja/Diferencias").then(r => r.ok ? r.json() : []).then(d => {
         const x = (d || [])[0];
         if (!x || !x.Cierres) return;
@@ -539,7 +655,6 @@
           " con diferencia · neto " + (Number(x.Neto) >= 0 ? "+" : "−") + fmtMoneda(Math.abs(Number(x.Neto)));
       }).catch(() => {});
     }
-
     function refrescarTodo() {
       cargarSesion(); cargarSaldo(); cargarHistorial(); cargarSesiones();
     }

@@ -28,6 +28,11 @@
    <add key="Jwt:Issuer" value="DaytonaInyeccion" />
     <add key="Jwt:Audience" value="DaytonaInyeccionUsers" />
     <add key="Jwt:ExpirationHours" value="8" />
+
+    <!-- ARCA (factura electronica). El .pfx y su clave NUNCA van a Git:
+         el archivo vive fuera del repositorio (C:\DaytonaProject\ARCA). -->
+    <add key="Arca:CertPath" value="C:\DaytonaProject\ARCA\daytona-homo.pfx" />
+    <add key="Arca:CertPassword" value="COMPLETAR" />
   </appSettings>
 
   <system.web>

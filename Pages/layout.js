@@ -76,9 +76,11 @@
       icon: 'bi-cash-coin', color: '#6b3fa0',
       items: [
         { key: 'caja', label: 'Caja', icon: 'bi-cash-stack', href: 'Caja.html',
-          desc: 'Abrir, cerrar y arqueo.', roles: ['Dueño', 'Administrador', 'Vendedor'] },
+          desc: 'Abrir, cerrar y arqueo.', roles: ['Dueño', 'Administrador', 'Supervisor', 'Vendedor'] },
         { key: 'comprobantes', label: 'Comprobantes', icon: 'bi-file-earmark-text', href: 'Comprobantes.html',
           desc: 'Facturas y notas de crédito y débito.', roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] },
+        { key: 'libro-iva', label: 'Libro IVA', icon: 'bi-journal-bookmark', href: 'LibroIva.html',
+          desc: 'Débito, crédito y archivos para ARCA.', roles: ['Dueño', 'Administrador', 'Analista'] },
         { key: 'movimientos-especiales', label: 'Movimientos especiales', icon: 'bi-arrow-left-right', href: 'MovimientosEspeciales.html',
           desc: 'Aportes, retiros y transferencias.', roles: ['Dueño', 'Administrador', 'Analista'] },
         { key: 'gastos', label: 'Gastos', icon: 'bi-receipt-cutoff', href: 'Gastos.html',

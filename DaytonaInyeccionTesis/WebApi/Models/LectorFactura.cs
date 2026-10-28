@@ -81,7 +81,42 @@ Reglas:
 - Si un dato no se lee o no está, poné null. No inventes nada.
 - Un renglón por artículo. Ignorá subtotales, percepciones, IVA y leyendas.";
 
-        public async Task<Resultado> Leer(byte[] contenido, string mime)
+        /* Datos fiscales de una factura de compra (script 95): para el Libro
+           IVA compras y la constatacion del CAE. Solo lee: la persona revisa. */
+        public const string InstruccionesFiscales =
+@"Sos un asistente que transcribe los datos fiscales de comprobantes de proveedores de Argentina (facturas, notas de crédito y de débito A, B o C).
+Leé el comprobante y devolvé SOLO un objeto JSON, sin texto antes ni después y sin bloques de código, con esta forma exacta:
+{
+  ""cuitEmisor"": ""11 números sin guiones"" | null,
+  ""letra"": ""A"" | ""B"" | ""C"" | null,
+  ""clase"": ""FACTURA"" | ""NOTA_CREDITO"" | ""NOTA_DEBITO"" | null,
+  ""puntoVenta"": número | null,
+  ""numero"": número | null,
+  ""fecha"": ""AAAA-MM-DD"" | null,
+  ""cae"": ""14 números"" | null,
+  ""caeVencimiento"": ""AAAA-MM-DD"" | null,
+  ""iva"": [ { ""alicuota"": 21 | 10.5 | 27 | 5 | 2.5 | 0, ""neto"": número, ""importe"": número } ],
+  ""noGravado"": número | null,
+  ""exento"": número | null,
+  ""percepcionIva"": número | null,
+  ""percepcionIibb"": número | null,
+  ""impuestosInternos"": número | null,
+  ""otrosTributos"": número | null,
+  ""total"": número | null
+}
+
+Reglas:
+- Los números van con punto decimal y sin separador de miles: 36131.51, no 36.131,51.
+- En la factura C no hay IVA discriminado: iva va vacío.
+- Las percepciones de Ingresos Brutos (de cualquier provincia) van sumadas en percepcionIibb.
+- Si un dato no se lee o no está, poné null. No inventes nada.";
+
+        public Task<Resultado> Leer(byte[] contenido, string mime)
+        {
+            return Leer(contenido, mime, Instrucciones);
+        }
+
+        public async Task<Resultado> Leer(byte[] contenido, string mime, string instrucciones)
         {
             var r = new Resultado();
             var reloj = Stopwatch.StartNew();
@@ -112,7 +147,7 @@ Reglas:
                             new JProperty("role", "user"),
                             new JProperty("content", new JArray(
                                 bloqueArchivo,
-                                new JObject(new JProperty("type", "text"), new JProperty("text", Instrucciones))))))));
+                                new JObject(new JProperty("type", "text"), new JProperty("text", instrucciones ?? Instrucciones))))))));
 
                 using (var req = new HttpRequestMessage(HttpMethod.Post, Url))
                 {

@@ -62,6 +62,30 @@ namespace WebApi.Models
             });
         }
 
+        public DataTable Emisor()
+        {
+            return Ejecutar("SP_Emisor_Get", cmd => { }).Tables[0];
+        }
+
+        // Anula un borrador o rechazado y genera uno nuevo con los datos actuales del cliente
+        public DataTable Rehacer(int id, int idUsuario)
+        {
+            DataSet ds = Ejecutar("SP_Comprobante_Rehacer", cmd =>
+            {
+                cmd.Parameters.Add("@Id", SqlDbType.Int).Value = id;
+                cmd.Parameters.Add("@IdUsuario", SqlDbType.Int).Value = idUsuario;
+            });
+            return ds.Tables.Count > 0 ? ds.Tables[ds.Tables.Count - 1] : null;
+        }
+
+        public DataTable HistorialArca(int idComprobante)
+        {
+            return Ejecutar("SP_ArcaSolicitud_GetByComprobante", cmd =>
+            {
+                cmd.Parameters.Add("@IdComprobante", SqlDbType.Int).Value = idComprobante;
+            }).Tables[0];
+        }
+
         public DataTable Pendientes()
         {
             return Ejecutar("SP_Comprobante_Pendientes", cmd => { }).Tables[0];

@@ -93,6 +93,7 @@
     <Reference Include="System.Web.Routing" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Configuration" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <Private>True</Private>
@@ -206,6 +207,8 @@
     <Compile Include="Controllers\MovimientoStockController.cs" />
     <Compile Include="Controllers\NotasClienteController.cs" />
     <Compile Include="Controllers\ComprobantesController.cs" />
+    <Compile Include="Controllers\OrdenesPagoController.cs" />
+    <Compile Include="Controllers\LibroIvaController.cs" />
     <Compile Include="Controllers\EncargosController.cs" />
     <Compile Include="Controllers\NotificacionController.cs" />
     <Compile Include="Controllers\PresupuestoController.cs" />
@@ -264,6 +267,10 @@
     <Compile Include="Models\MovimientoStock.cs" />
     <Compile Include="Models\NotaCliente.cs" />
     <Compile Include="Models\Comprobante.cs" />
+    <Compile Include="Models\Arca.cs" />
+    <Compile Include="Models\ArcaEmision.cs" />
+    <Compile Include="Models\OrdenPago.cs" />
+    <Compile Include="Models\LibroIva.cs" />
     <Compile Include="Models\Encargo.cs" />
     <Compile Include="Models\Notificacion.cs" />
     <Compile Include="Models\Pedido.cs" />

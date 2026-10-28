@@ -11,6 +11,7 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="tablero-comun.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     /* =================================================================
        COMPROBANTES (script 92): facturas, notas de credito y de debito
@@ -94,6 +95,13 @@
     .df-cae { margin-top: 12px; border-top: 1px dashed #9aa6b4; padding-top: 8px; font-size: 0.82rem; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .df-sinvalidez { margin-top: 10px; text-align: center; font-weight: 800; letter-spacing: .5px; color: #a5281b; border: 1.5px dashed #a5281b; border-radius: 6px; padding: 6px; font-size: 0.85rem; }
     .df-notas { margin-top: 10px; font-size: 0.82rem; }
+    .df-prueba { margin-bottom: 8px; text-align: center; font-weight: 800; color: #8a6300; background: #fff4d6; border: 1px solid #f1d58a; border-radius: 6px; padding: 5px; font-size: 0.8rem; }
+    .df-emisor .doc { font-size: 0.76rem; color: #4a5568; line-height: 1.35; }
+    .df-qr { display: flex; gap: 14px; align-items: center; margin-top: 12px; border-top: 1px dashed #9aa6b4; padding-top: 10px; font-size: 0.82rem; }
+    .df-qr .qr { width: 110px; height: 110px; flex: 0 0 auto; }
+    .acc-arca { display: flex; gap: 6px; flex-wrap: nowrap; }
+    .hist { margin-top: 12px; font-size: 0.78rem; color: #4a5568; }
+    .hist div { border-top: 1px solid #eef1f5; padding: 3px 0; }
 
     @media print {
       body * { visibility: hidden; }
@@ -127,6 +135,8 @@
           <button type="button" data-p="mesAnterior">Mes anterior</button>
           <button type="button" data-p="otro">Otro</button>
         </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnEstadoArca" style="display:none;"><i class="bi bi-plug"></i> Conexión con ARCA</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btnCaeTodos" style="display:none;"><i class="bi bi-send-check"></i> Pedir CAE a los borradores</button>
         <div class="fechas" id="fechas">
           <input type="date" id="fDesde" class="form-control form-control-sm" aria-label="Desde">
           <input type="date" id="fHasta" class="form-control form-control-sm" aria-label="Hasta">
@@ -137,8 +147,8 @@
 
     <div class="aviso-fase">
       <i class="bi bi-info-circle"></i>
-      <div>Todavía no están conectados con ARCA: se generan como <strong>borrador</strong>, con la letra, el receptor y el IVA
-        que van a llevar. Cuando se conecte ARCA se les pide el CAE y recién ahí tienen validez fiscal.</div>
+      <div>Cada venta y nota genera su comprobante como <strong>borrador</strong>. Con <strong>Pedir CAE</strong> se manda a ARCA:
+        recién autorizado tiene validez fiscal. Mientras el punto de venta sea de <strong>homologación</strong>, todo es de prueba.</div>
     </div>
 
     <div class="pend" id="pend">
@@ -189,6 +199,8 @@
         <div class="modal-body"><div id="docImprimible" class="doc-fiscal"></div></div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-outline-warning" id="mdRehacer" style="display:none;"><i class="bi bi-arrow-repeat"></i> Rehacer</button>
+          <button type="button" class="btn btn-success" id="mdCae" style="display:none;"><i class="bi bi-send-check"></i> Pedir CAE</button>
           <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
         </div>
       </div>
@@ -208,6 +220,8 @@
     function pesos(v) { return fmt.format(Number(v) || 0); }
     var ESTADOS = { BORRADOR: "Borrador", PENDIENTE: "Pendiente de CAE", AUTORIZADO: "Autorizado", RECHAZADO: "Rechazado", ANULADO: "Anulado" };
     var DOCS = { 80: "CUIT", 86: "CUIL", 96: "DNI", 99: "Sin identificar" };
+    var SE_ENVIA = { BORRADOR: true, RECHAZADO: true, PENDIENTE: true };
+    var ultimaLista = [];
 
     function rangoDe(p) {
       if (p === "hoy" || p === "7d") {
@@ -248,6 +262,9 @@
     }
 
     function pintar(L) {
+      ultimaLista = L;
+      document.getElementById("btnCaeTodos").style.display =
+        puedeGenerar && L.some(function (c) { return SE_ENVIA[c.Estado] && c.Estado !== "RECHAZADO"; }) ? "" : "none";
       // Totales: notas de credito restan
       var vig = L.filter(function (c) { return c.Estado !== "ANULADO" && c.Estado !== "RECHAZADO"; });
       function suma(clase, campo) { return vig.filter(function (c) { return c.Clase === clase; }).reduce(function (a, c) { return a + Number(c[campo]); }, 0); }
@@ -277,7 +294,10 @@
           '<td class="num">' + pesos(c.ImporteIva) + '</td>' +
           '<td class="num"><strong>' + pesos(c.ImporteTotal) + '</strong></td>' +
           '<td><span class="est e-' + esc(c.Estado) + '">' + esc(ESTADOS[c.Estado] || c.Estado) + '</span></td>' +
-          '<td><button type="button" class="btn btn-sm btn-outline-primary" onclick="ver(' + Number(c.Id) + ')"><i class="bi bi-eye"></i> Ver</button></td>' +
+          '<td><div class="acc-arca"><button type="button" class="btn btn-sm btn-outline-primary" onclick="ver(' + Number(c.Id) + ')"><i class="bi bi-eye"></i> Ver</button>' +
+            (puedeGenerar && SE_ENVIA[c.Estado] ? '<button type="button" class="btn btn-sm btn-success" onclick="pedirCae(' + Number(c.Id) + ', this)"><i class="bi bi-send-check"></i> ' +
+              (c.Estado === "PENDIENTE" ? "Reintentar" : "Pedir CAE") + '</button>' : '') +
+            '</div></td>' +
           '</tr>';
       }).join("");
       document.getElementById("pie").textContent = L.length + (L.length === 1 ? " comprobante" : " comprobantes");
@@ -328,7 +348,15 @@
       }).then(function (d) {
         var c = d.Comprobante[0];
         document.getElementById("mdTitulo").textContent = c.Tipo + " · " + numeroDe(c);
-        document.getElementById("docImprimible").innerHTML = documento(c, d.Renglones || [], d.Iva || [], d.Notas || []);
+        document.getElementById("docImprimible").innerHTML = documento(c, d.Renglones || [], d.Iva || [], d.Notas || [], (d.Emisor || [])[0] || {});
+        if (d.Qr && window.QRCode) new QRCode(document.getElementById("qrDoc"), { text: d.Qr, width: 110, height: 110, correctLevel: QRCode.CorrectLevel.M });
+        var bCae = document.getElementById("mdCae"), bReh = document.getElementById("mdRehacer");
+        bCae.style.display = puedeGenerar && SE_ENVIA[c.Estado] ? "" : "none";
+        bCae.innerHTML = '<i class="bi bi-send-check"></i> ' + (c.Estado === "PENDIENTE" ? "Reintentar" : "Pedir CAE");
+        bCae.onclick = function () { pedirCae(c.Id, bCae); };
+        bReh.style.display = puedeGenerar && (c.Estado === "BORRADOR" || c.Estado === "RECHAZADO") ? "" : "none";
+        bReh.onclick = function () { rehacer(c.Id); };
+        if (puedeGenerar && c.Estado !== "BORRADOR") cargarHistorial(c.Id);
         modal = modal || new bootstrap.Modal(document.getElementById("mdDoc"));
         modal.show();
       }).catch(function (e) {
@@ -337,10 +365,17 @@
       });
     }
 
-    function documento(c, R, I, N) {
+    function documento(c, R, I, N, E) {
       var esA = c.Letra === "A";
-      var html = '<div class="df-cab">' +
-        '<div class="df-emisor"><b>Daytona Repuestos Automotor</b><div class="doc">Responsable inscripto</div></div>' +
+      var cuitE = String(E.Cuit || "");
+      if (cuitE.length === 11) cuitE = cuitE.slice(0, 2) + "-" + cuitE.slice(2, 10) + "-" + cuitE.slice(10);
+      var emisor = '<b>' + esc(E.RazonSocial || "Daytona Repuestos Automotor") + '</b><div class="doc">' +
+        [E.Domicilio, E.CondicionIva || "Responsable inscripto", cuitE ? "CUIT " + cuitE : "",
+         E.IngresosBrutos ? "IIBB " + E.IngresosBrutos : "", E.InicioActividades ? "Inicio de actividades " + E.InicioActividades : ""]
+          .filter(function (x) { return x; }).map(esc).join("<br>") + '</div>';
+      var html = (c.Entorno === "HOMOLOGACION" ? '<div class="df-prueba">PRUEBA · ARCA HOMOLOGACIÓN · SIN VALIDEZ FISCAL</div>' : '') +
+        '<div class="df-cab">' +
+        '<div class="df-emisor">' + emisor + '</div>' +
         '<div class="df-letra"><b>' + esc(c.Letra) + '</b><small>Cód. ' + String(c.IdTipoComprobante).padStart(3, "0") + '</small></div>' +
         '<div class="df-tipo"><div class="t">' + esc(c.Tipo.replace(/ [AB]$/, "")) + '</div>' +
           '<div>N° ' + esc(numeroDe(c)) + '</div><div>Fecha ' + TB.fecha(c.Fecha) + '</div></div>' +
@@ -385,7 +420,9 @@
       html += '</div>';
 
       if (c.Estado === "AUTORIZADO")
-        html += '<div class="df-cae"><span>CAE N° <strong>' + esc(c.Cae) + '</strong></span><span>Vto. CAE ' + TB.fecha(c.CaeVencimiento) + '</span></div>';
+        html += '<div class="df-qr"><div class="qr" id="qrDoc"></div><div><div>CAE N° <strong>' + esc(c.Cae) + '</strong></div>' +
+                '<div>Vencimiento del CAE: ' + TB.fecha(c.CaeVencimiento) + '</div>' +
+                '<div class="doc">Comprobante autorizado por ARCA.</div></div></div>';
       else
         html += '<div class="df-sinvalidez">' + (c.Estado === "ANULADO" ? "ANULADO · " : "") + 'DOCUMENTO NO VÁLIDO COMO FACTURA · ' +
                 esc((ESTADOS[c.Estado] || c.Estado).toUpperCase()) + '</div>';
@@ -395,7 +432,96 @@
         html += '<div class="df-notas"><strong>Notas que la corrigen:</strong> ' + N.map(function (n) {
           return esc(n.Tipo) + ' por ' + pesos(n.ImporteTotal) + ' (' + esc(ESTADOS[n.Estado] || n.Estado).toLowerCase() + ')';
         }).join(" · ") + '</div>';
+      html += '<div class="hist" id="histArca"></div>';
       return html;
+    }
+
+    /* ---------- ARCA ---------- */
+    function pedirCae(id, btn) {
+      if (btn) btn.disabled = true;
+      return fetchAuth(API_BASE + "Comprobantes/" + id + "/Autorizar", { method: "POST" }).then(function (r) {
+        if (!r.ok) return leerError(r, "No se pudo pedir el CAE.").then(function (m) { throw new Error(m); });
+        return r.json();
+      }).then(function (res) {
+        var ok = res.Estado === "AUTORIZADO";
+        if (btn !== null)
+          Swal.fire({ icon: ok ? "success" : "warning", title: ok ? "Autorizado " + (res.Numero || "") : "No autorizado",
+                      html: (ok ? "CAE <strong>" + esc(res.Cae) + "</strong><br>" : "") + esc(res.Mensaje || "") });
+        if (modal) modal.hide();
+        cargar();
+        return res;
+      }).catch(function (e) {
+        if (btn) btn.disabled = false;
+        if (e && (e.message === "401 Unauthorized" || e.message === "403 Forbidden")) return null;
+        if (btn !== null) Swal.fire("ARCA", (e && e.message) || "Error de conexión.", "error");
+        cargar();
+        return { Estado: "ERROR", Mensaje: (e && e.message) || "Error de conexión." };
+      });
+    }
+
+    // De a uno y en orden: primero las facturas, despues las notas que las corrigen
+    function caeTodos() {
+      var cola = ultimaLista.filter(function (c) { return c.Estado === "BORRADOR" || c.Estado === "PENDIENTE"; })
+        .sort(function (a, b) { return (a.Clase === "FC" ? 0 : 1) - (b.Clase === "FC" ? 0 : 1) || a.Id - b.Id; });
+      if (!cola.length) return;
+      Swal.fire({ title: "¿Pedir CAE a " + cola.length + (cola.length === 1 ? " comprobante?" : " comprobantes?"),
+                  text: "Se mandan a ARCA de a uno, en orden.", icon: "question", showCancelButton: true,
+                  confirmButtonText: "Pedir CAE", cancelButtonText: "Cancelar" }).then(function (q) {
+        if (!q.isConfirmed) return;
+        var ok = 0, mal = [];
+        Swal.fire({ title: "Pidiendo CAE…", html: '<span id="caeProg">0 de ' + cola.length + '</span>', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+        cola.reduce(function (p, c, i) {
+          return p.then(function () {
+            return pedirCae(c.Id, null).then(function (res) {
+              if (res && res.Estado === "AUTORIZADO") ok++;
+              else mal.push(c.Tipo + " #" + c.Id + ": " + ((res && res.Mensaje) || "sin respuesta"));
+              var el = document.getElementById("caeProg"); if (el) el.textContent = (i + 1) + " de " + cola.length;
+            });
+          });
+        }, Promise.resolve()).then(function () {
+          Swal.fire({ icon: mal.length ? "warning" : "success", title: ok + " autorizados" + (mal.length ? ", " + mal.length + " con problemas" : ""),
+                      html: mal.map(esc).join("<br>") });
+          cargar();
+        });
+      });
+    }
+
+    function rehacer(id) {
+      Swal.fire({ title: "¿Rehacer el comprobante?", text: "Se anula este y se genera uno nuevo con los datos actuales del cliente.",
+                  icon: "question", showCancelButton: true, confirmButtonText: "Rehacer", cancelButtonText: "Cancelar" }).then(function (q) {
+        if (!q.isConfirmed) return;
+        fetchAuth(API_BASE + "Comprobantes/" + id + "/Rehacer", { method: "POST" }).then(function (r) {
+          if (!r.ok) return leerError(r, "No se pudo rehacer.").then(function (m) { throw new Error(m); });
+          return r.json();
+        }).then(function (res) {
+          if (modal) modal.hide();
+          Swal.fire({ icon: "success", title: "Rehecho", text: (res && res.Tipo ? res.Tipo + " nuevo en borrador." : ""), timer: 1600, showConfirmButton: false });
+          cargar();
+        }).catch(function (e) { Swal.fire("No se pudo rehacer", (e && e.message) || "Error de conexión.", "warning"); });
+      });
+    }
+
+    function cargarHistorial(id) {
+      TB.get("Comprobantes/" + id + "/Arca").then(function (H) {
+        var el = document.getElementById("histArca");
+        if (!el || !H || !H.length) return;
+        el.innerHTML = "<strong>Pedidos a ARCA</strong>" + H.slice(0, 8).map(function (h) {
+          return "<div>" + esc(TB.fecha(h.Fecha)) + " " + esc(String(h.Fecha).slice(11, 16)) + " · " + esc(h.Metodo) + " · " +
+                 esc(h.Resultado) + (h.Mensaje ? " · " + esc(h.Mensaje) : "") + "</div>";
+        }).join("");
+      }).catch(function () { });
+    }
+
+    function estadoArca() {
+      Swal.fire({ title: "Probando la conexión…", allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+      TB.get("Arca/Estado").then(function (P) {
+        var todoOk = P.every(function (p) { return p.Ok; });
+        Swal.fire({ icon: todoOk ? "success" : "warning", title: todoOk ? "ARCA conectado" : "Falta algo",
+          html: '<div class="text-start" style="font-size:0.9rem;">' + P.map(function (p) {
+            return '<div style="margin:4px 0;"><i class="bi ' + (p.Ok ? "bi-check-circle-fill text-success" : "bi-x-circle-fill text-danger") + '"></i> <strong>' +
+                   esc(p.Paso) + ':</strong> ' + esc(p.Detalle) + '</div>';
+          }).join("") + '</div>' });
+      }).catch(function (m) { Swal.fire("ARCA", typeof m === "string" ? m : "No se pudo probar la conexión.", "error"); });
     }
 
     /* ---------- Filtros ---------- */
@@ -424,6 +550,11 @@
         });
       });
       document.getElementById("fEstado").addEventListener("change", function (e) { estado.est = e.target.value; cargar(); });
+      if (usuario && (usuario.Rol === "Dueño" || usuario.Rol === "Administrador")) {
+        var b = document.getElementById("btnEstadoArca");
+        b.style.display = ""; b.addEventListener("click", estadoArca);
+      }
+      document.getElementById("btnCaeTodos").addEventListener("click", caeTodos);
       elegirPeriodo("mes");
       cargarPendientes();
     };

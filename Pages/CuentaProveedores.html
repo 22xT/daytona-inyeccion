@@ -49,6 +49,21 @@
     .t-COMPRA, .t-ND { background:#fdecee; color:#b02a37; } .t-PAGO, .t-NC { background:#e3f4e9; color:#146c43; }
     .t-AJUSTE { background:#fff4d6; color:#8a6300; } .t-ANULACION { background:var(--bg); color:var(--text-muted); }
     .vacio { padding:36px; text-align:center; color:var(--text-muted); }
+    /* Orden de pago y datos fiscales (script 95) */
+    .op-tabla { width:100%; font-size:0.84rem; border-collapse:collapse; }
+    .op-tabla th { font-size:0.68rem; text-transform:uppercase; color:#6c757d; padding:5px 6px; border-bottom:1px solid #e3e7ec; text-align:left; }
+    .op-tabla td { padding:5px 6px; border-bottom:1px solid #f0f1f3; vertical-align:middle; }
+    .op-tabla input.imp { width:120px; text-align:right; }
+    .op-tot { display:flex; justify-content:flex-end; gap:18px; font-size:0.9rem; margin:8px 0; flex-wrap:wrap; }
+    .op-tot b { font-variant-numeric:tabular-nums; }
+    .op-sec { font-weight:800; color:var(--navy); font-size:0.85rem; margin:12px 0 4px; text-align:left; }
+    .op-ok { color:#146c43; font-weight:700; } .op-mal { color:#b02a37; font-weight:700; }
+    .fis { font-size:0.68rem; font-weight:700; border-radius:7px; padding:1px 7px; white-space:nowrap; }
+    .fis-ok { background:#e3f4e9; color:#146c43; } .fis-no { background:#F3F4F6; color:#6b7280; }
+    .fg { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px 12px; text-align:left; }
+    .fg label { font-size:0.74rem; font-weight:700; color:#5a6270; margin-bottom:2px; display:block; }
+    @media (max-width: 640px) { .fg { grid-template-columns:1fr 1fr; } }
+    .t-OP { background:#e0eaff; color:#1e40af; }
   </style>
 </head>
 
@@ -88,7 +103,7 @@
     const puedeReclamar = ["Dueño", "Administrador", "Supervisor", "Vendedor"].indexOf(usuario.Rol) !== -1;
     const puedeResolver = ["Dueño", "Administrador", "Supervisor"].indexOf(usuario.Rol) !== -1;
     let proveedores = [], cuentas = [], actual = null, tab = "facturas";
-    let facturas = [], incidencias = [], movimientos = [];
+    let facturas = [], incidencias = [], movimientos = [], ordenes = [], fiscales = {};
 
     function escapeHtml(s) {
       if (s === null || s === undefined) return "";
@@ -133,8 +148,14 @@
       Promise.all([
         fetchAuth(API + "Facturas?idProveedor=" + id).then(r => r.ok ? r.json() : []),
         fetchAuth(API + "Incidencias?idProveedor=" + id).then(r => r.ok ? r.json() : []),
-        fetchAuth(API + "CuentasProveedor/" + id).then(r => r.ok ? r.json() : [])
-      ]).then(([f, i, m]) => { facturas = f || []; incidencias = i || []; movimientos = m || []; pintarDetalle(); });
+        fetchAuth(API + "CuentasProveedor/" + id).then(r => r.ok ? r.json() : []),
+        fetchAuth(API + "OrdenesPago?idProveedor=" + id).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetchAuth(API + "DatosFiscales?idProveedor=" + id).then(r => r.ok ? r.json() : []).catch(() => [])
+      ]).then(([f, i, m, o, df]) => {
+        facturas = f || []; incidencias = i || []; movimientos = m || []; ordenes = o || [];
+        fiscales = {}; (df || []).forEach(x => fiscales[x.IdMovimiento] = x);
+        pintarDetalle();
+      });
     }
 
     /* ================= DETALLE ================= */
@@ -149,7 +170,7 @@
             '<div class="plazo">Paga a ' + p.DiasPago + ' días de la factura' + (esPlata ? ' · <a href="#" onclick="cambiarPlazo();return false;">cambiar</a>' : '') +
               (Number(p.ImporteAReclamar) > 0 ? ' · ' + formatearMoneda(p.ImporteAReclamar) + ' a acreditar por reclamos' : '') + '</div></div>' +
           '<div class="d-flex gap-2 flex-wrap">' +
-            (esPlata ? '<button class="btn btn-success" onclick="pagar()"><i class="bi bi-cash-coin"></i> Pagar</button>' +
+            (esPlata ? '<button class="btn btn-success" onclick="ordenPago()"><i class="bi bi-cash-coin"></i> Orden de pago</button>' +
                        '<button class="btn btn-outline-primary" onclick="notaCredito()"><i class="bi bi-receipt-cutoff"></i> Nota de crédito</button>' +
                        '<button class="btn btn-outline-secondary" onclick="saldoInicial()" title="Cargar lo que ya se debía, desde el resumen del proveedor">Saldo inicial</button>' +
                        '<button class="btn btn-outline-secondary" onclick="ajuste()" title="Corrección puntual">Ajuste</button>' : '') +
@@ -157,6 +178,7 @@
         '<div class="tabs-p">' +
           tabBtn("facturas", "Facturas a pagar", facturas.length) +
           tabBtn("reclamos", "Reclamos", incidencias.length) +
+          tabBtn("ordenes", "Órdenes de pago", ordenes.filter(o => o.Estado === "VIGENTE").length) +
           tabBtn("movimientos", "Movimientos", movimientos.length) +
         '</div><div id="tabCuerpo"></div>';
       document.getElementById("panelDetalle").innerHTML = html;
@@ -189,9 +211,9 @@
               '<td class="text-end">' + formatearMoneda(f.Importe) + '</td>' +
               '<td class="text-end" style="color:#146c43;">' + (Number(f.Importe) - Number(f.Pendiente) > 0.005 ? formatearMoneda(Number(f.Importe) - Number(f.Pendiente)) : '') + '</td>' +
               '<td class="text-end"><strong>' + formatearMoneda(f.Pendiente) + '</strong></td>' +
-              '<td class="text-end" style="white-space:nowrap;">' + accionesFoto(f.IdRecepcion, f.IdAdjunto, () => elegir(actual)) + '</td></tr>';
+              '<td class="text-end" style="white-space:nowrap;">' + botonFiscal(f.IdMovimiento) + ' ' + accionesFoto(f.IdRecepcion, f.IdAdjunto, () => elegir(actual)) + '</td></tr>';
           }).join("") + '</tbody></table></div>' +
-          '<div class="sub p-3"><i class="bi bi-info-circle"></i> Los pagos cancelan primero las facturas más viejas. Los reclamos no se descuentan: la nota de crédito se toma cuando llega.</div>';
+          '<div class="sub p-3"><i class="bi bi-info-circle"></i> La orden de pago cancela las facturas que elegís; los pagos sueltos de antes cancelan las más viejas. Los reclamos no se descuentan: la nota de crédito se toma cuando llega.</div>';
         return;
       }
       if (tab === "reclamos") {
@@ -218,6 +240,21 @@
         if (t) t.addEventListener("change", () => document.querySelectorAll(".chk-inc").forEach(x => x.checked = t.checked));
         return;
       }
+      if (tab === "ordenes") {
+        if (!ordenes.length) { c.innerHTML = '<div class="vacio">Todavía no hay órdenes de pago a este proveedor.</div>'; return; }
+        c.innerHTML = '<div class="table-responsive"><table class="table tabla mb-0"><thead><tr><th>N°</th><th>Fecha</th><th class="text-center">Facturas</th><th class="text-end">Facturas</th><th class="text-end">Notas de crédito</th><th class="text-end">Pagado</th><th>Estado</th><th></th></tr></thead><tbody>' +
+          ordenes.map(o => '<tr' + (o.Estado === "ANULADA" ? ' style="color:#9aa6b4;"' : '') + '><td><strong>' + String(o.Id).padStart(6, "0") + '</strong></td>' +
+            '<td>' + fmtFecha(o.Fecha) + '<div class="sub">' + escapeHtml(o.Usuario || "") + '</div></td>' +
+            '<td class="text-center">' + o.Facturas + '</td>' +
+            '<td class="text-end">' + formatearMoneda(o.TotalImputado) + '</td>' +
+            '<td class="text-end">' + (Number(o.TotalNotasCredito) > 0 ? '−' + formatearMoneda(o.TotalNotasCredito) : '') + '</td>' +
+            '<td class="text-end"><strong>' + formatearMoneda(o.TotalPagado) + '</strong></td>' +
+            '<td>' + (o.Estado === "ANULADA" ? '<span class="tipo t-ANULACION">Anulada</span>' : '<span class="tipo t-PAGO">Vigente</span>') + '</td>' +
+            '<td class="text-end" style="white-space:nowrap;"><button class="btn btn-sm btn-outline-secondary" onclick="verOrden(' + o.Id + ')"><i class="bi bi-printer"></i> Ver</button>' +
+              (esPlata && o.Estado === "VIGENTE" ? ' <button class="btn btn-sm btn-outline-danger" onclick="anularOrden(' + o.Id + ')">Anular</button>' : '') + '</td></tr>'
+          ).join("") + '</tbody></table></div>';
+        return;
+      }
       // Movimientos
       if (!movimientos.length) { c.innerHTML = '<div class="vacio">Sin movimientos.</div>'; return; }
       c.innerHTML = '<div class="table-responsive"><table class="table tabla mb-0"><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="text-end">Debe</th><th class="text-end">Haber</th><th class="text-end">Saldo</th><th></th></tr></thead><tbody>' +
@@ -229,6 +266,7 @@
             '<td class="text-end">' + (monto < 0 ? formatearMoneda(-monto) : '') + '</td>' +
             '<td class="text-end"><strong>' + formatearMoneda(m.SaldoAcumulado) + '</strong></td>' +
             '<td class="text-end" style="white-space:nowrap;">' +
+              (m.Tipo === "COMPRA" || m.Tipo === "ND" || m.Tipo === "NC" ? botonFiscal(m.Id) + ' ' : '') +
               (m.Tipo === "COMPRA" ? accionesFoto(m.IdRecepcion, m.IdAdjunto, () => elegir(actual)) : '') +
               (esPlata && m.Tipo === "PAGO" && m.IdPagoProveedor ? '<button class="btn btn-sm btn-outline-danger" onclick="anularPago(' + m.IdPagoProveedor + ')">Anular</button>' : '') +
             '</td></tr>';
@@ -365,6 +403,297 @@
           .then(x => x.ok ? (Swal.fire({ icon: "success", title: "Pago registrado", timer: 1400, showConfirmButton: false }), cargarSaldos(actual))
                           : leerError(x).then(m => Swal.fire("No se pudo pagar", m, "error")));
       });
+    }
+
+    /* ================= ORDEN DE PAGO (script 95) =================
+       Se eligen las facturas y cuanto de cada una, las notas de crédito
+       que se aplican y con qué se paga. Tiene que cerrar:
+         facturas = notas de crédito + lo pagado */
+    function ordenPago() {
+      const p = prov();
+      if (!facturas.length) { Swal.fire("Sin facturas", "Este proveedor no tiene facturas impagas.", "info"); return; }
+      fetchAuth(API + "Proveedor/" + actual + "/NotasCreditoDisponibles").then(r => r.ok ? r.json() : []).catch(() => []).then(ncs => {
+        ncs = ncs || [];
+        const filaF = f => '<tr><td><input type="checkbox" class="form-check-input op-f" data-id="' + f.IdMovimiento + '"' + (f.DiasParaVencer <= 7 ? ' checked' : '') + '></td>' +
+          '<td>' + escapeHtml(f.Documento) + '<div class="sub">' + fmtFecha(f.FechaDoc) + ' · vence ' + fmtFecha(f.Vencimiento) + '</div></td>' +
+          '<td class="text-end">' + formatearMoneda(f.Pendiente) + '</td>' +
+          '<td class="text-end"><input type="text" inputmode="decimal" class="form-control form-control-sm imp op-fi" id="opf' + f.IdMovimiento + '" data-max="' + f.Pendiente + '"></td></tr>';
+        const filaN = n => '<tr><td><input type="checkbox" class="form-check-input op-n" data-id="' + n.Id + '"></td>' +
+          '<td>Nota de crédito ' + escapeHtml(n.Numero) + '<div class="sub">' + fmtFecha(n.Fecha) + '</div></td>' +
+          '<td class="text-end">' + formatearMoneda(n.Disponible) + '</td>' +
+          '<td class="text-end"><input type="text" inputmode="decimal" class="form-control form-control-sm imp op-ni" id="opn' + n.Id + '" data-max="' + n.Disponible + '"></td></tr>';
+        const opcCuentas = cuentas.map(c => '<option value="' + c.Id + '">' + escapeHtml(c.Nombre) + '</option>').join("");
+        Swal.fire({
+          title: "Orden de pago · " + p.RazonSocial, width: 860,
+          html: '<div class="text-start">' +
+            '<div class="op-sec">Facturas que se pagan</div>' +
+            '<div style="max-height:260px;overflow:auto;"><table class="op-tabla"><thead><tr><th></th><th>Comprobante</th><th class="text-end">Falta pagar</th><th class="text-end">Se paga</th></tr></thead><tbody>' +
+              facturas.map(filaF).join("") + '</tbody></table></div>' +
+            (ncs.length ? '<div class="op-sec">Notas de crédito que se aplican</div><table class="op-tabla"><tbody>' + ncs.map(filaN).join("") + '</tbody></table>' : '') +
+            '<div class="op-sec">Con qué se paga</div><table class="op-tabla"><tbody id="opMedios"></tbody></table>' +
+            '<button type="button" class="btn btn-sm btn-link px-0" id="opMas">+ otro medio</button>' +
+            '<div class="op-tot"><span>Facturas <b id="opTF">$ 0,00</b></span><span>Notas de crédito <b id="opTN">$ 0,00</b></span>' +
+              '<span>A pagar <b id="opTP">$ 0,00</b></span><span>Medios <b id="opTM">$ 0,00</b></span><span id="opEstado"></span></div>' +
+            '<input type="text" id="opObs" class="form-control form-control-sm" maxlength="250" placeholder="Observación (opcional)">' +
+            '</div>',
+          showCancelButton: true, confirmButtonText: "Registrar orden de pago", cancelButtonText: "Cancelar", confirmButtonColor: "#28a745",
+          didOpen: () => {
+            const num = id => precioANumero(document.getElementById(id).value) || 0;
+            const red = x => Math.round(x * 100) / 100;
+            const agregarMedio = monto => {
+              const k = document.querySelectorAll(".op-m").length;
+              const tr = document.createElement("tr");
+              tr.className = "op-m";
+              tr.innerHTML = '<td style="width:40%;"><select class="form-select form-select-sm op-mc">' + opcCuentas + '</select></td>' +
+                '<td><input type="text" class="form-control form-control-sm op-mr" maxlength="100" placeholder="Referencia (n° de transferencia, recibo)"></td>' +
+                '<td class="text-end"><input type="text" inputmode="decimal" class="form-control form-control-sm imp op-mi" id="opm' + k + '"></td>';
+              document.getElementById("opMedios").appendChild(tr);
+              const mp = cuentas.find(c => !c.EsCaja); if (mp) tr.querySelector(".op-mc").value = mp.Id;
+              activarInputPrecio("opm" + k);
+              const inp = document.getElementById("opm" + k);
+              if (monto) inp.value = numeroAPrecio(monto);
+              inp.addEventListener("input", totales);
+            };
+            const totales = () => {
+              let tf = 0, tn = 0, tm = 0;
+              document.querySelectorAll(".op-f").forEach(c => { const i = document.getElementById("opf" + c.dataset.id); i.disabled = !c.checked; if (c.checked) tf += num(i.id); });
+              document.querySelectorAll(".op-n").forEach(c => { const i = document.getElementById("opn" + c.dataset.id); i.disabled = !c.checked; if (c.checked) tn += num(i.id); });
+              document.querySelectorAll(".op-mi").forEach(i => tm += num(i.id));
+              tf = red(tf); tn = red(tn); tm = red(tm);
+              const ap = red(tf - tn);
+              document.getElementById("opTF").textContent = formatearMoneda(tf);
+              document.getElementById("opTN").textContent = formatearMoneda(tn);
+              document.getElementById("opTP").textContent = formatearMoneda(ap);
+              document.getElementById("opTM").textContent = formatearMoneda(tm);
+              document.getElementById("opEstado").innerHTML = ap < 0 ? '<span class="op-mal">Las notas superan a las facturas</span>'
+                : (red(ap - tm) === 0 ? '<span class="op-ok">Cierra ✓</span>' : '<span class="op-mal">Faltan ' + formatearMoneda(red(ap - tm)) + '</span>');
+              return { tf, tn, tm, ap };
+            };
+            // Al marcar: se propone pagar todo lo que falta de esa factura / aplicar la nota entera
+            const enganchar = (chkSel, pref) => document.querySelectorAll(chkSel).forEach(c => {
+              const i = document.getElementById(pref + c.dataset.id);
+              activarInputPrecio(i.id);
+              if (c.checked) i.value = numeroAPrecio(Number(i.dataset.max));
+              c.addEventListener("change", () => { i.value = c.checked ? numeroAPrecio(Number(i.dataset.max)) : ""; totales(); ajustarMedio(); });
+              i.addEventListener("input", () => { totales(); ajustarMedio(); });
+            });
+            // Con un solo medio, su importe sigue a lo que hay que pagar
+            const ajustarMedio = () => {
+              const ms = document.querySelectorAll(".op-mi");
+              if (ms.length === 1) { const t = totales(); ms[0].value = t.ap > 0 ? numeroAPrecio(t.ap) : ""; totales(); }
+            };
+            enganchar(".op-f", "opf"); enganchar(".op-n", "opn");
+            agregarMedio(0);
+            document.getElementById("opMas").addEventListener("click", () => { agregarMedio(0); totales(); });
+            ajustarMedio();
+            window._opTotales = totales;
+          },
+          preConfirm: () => {
+            const t = window._opTotales();
+            const num = el => precioANumero(el.value) || 0;
+            const fact = [], nc = [], med = [];
+            for (const c of document.querySelectorAll(".op-f:checked")) {
+              const i = document.getElementById("opf" + c.dataset.id), v = num(i);
+              if (v <= 0) { Swal.showValidationMessage("Poné cuánto se paga de cada factura marcada."); return false; }
+              if (v > Number(i.dataset.max) + 0.001) { Swal.showValidationMessage("No se puede pagar más de lo que falta de una factura."); return false; }
+              fact.push({ IdMovimiento: parseInt(c.dataset.id, 10), Importe: v });
+            }
+            if (!fact.length) { Swal.showValidationMessage("Marcá al menos una factura."); return false; }
+            for (const c of document.querySelectorAll(".op-n:checked")) {
+              const i = document.getElementById("opn" + c.dataset.id), v = num(i);
+              if (v <= 0 || v > Number(i.dataset.max) + 0.001) { Swal.showValidationMessage("Revisá lo aplicado de las notas de crédito."); return false; }
+              nc.push({ IdNotaCredito: parseInt(c.dataset.id, 10), Importe: v });
+            }
+            for (const tr of document.querySelectorAll(".op-m")) {
+              const v = num(tr.querySelector(".op-mi"));
+              if (v <= 0) continue;
+              med.push({ IdCuentaFinanciera: parseInt(tr.querySelector(".op-mc").value, 10), Importe: v, Referencia: tr.querySelector(".op-mr").value.trim() || null });
+            }
+            if (t.ap < 0) { Swal.showValidationMessage("Las notas de crédito no pueden superar a las facturas."); return false; }
+            if (Math.round((t.ap - t.tm) * 100) !== 0) { Swal.showValidationMessage("Lo pagado con los medios tiene que ser igual a lo que hay que pagar."); return false; }
+            return { IdProveedor: actual, Facturas: fact, NotasCredito: nc, Medios: med, Observacion: document.getElementById("opObs").value.trim() || null };
+          }
+        }).then(r => {
+          if (!r.isConfirmed) return;
+          fetchAuth(API + "OrdenesPago", { method: "POST", body: JSON.stringify(r.value) }).then(x => {
+            if (!x.ok) return leerError(x).then(m => Swal.fire("No se pudo registrar", m, "error"));
+            return x.json().then(res => {
+              tab = "ordenes";
+              cargarSaldos(actual);
+              Swal.fire({ icon: "success", title: "Orden de pago N° " + String(res.IdOrdenPago).padStart(6, "0"), showCancelButton: true,
+                          confirmButtonText: '<i class="bi bi-printer"></i> Ver e imprimir', cancelButtonText: "Listo" })
+                .then(q => { if (q.isConfirmed) verOrden(res.IdOrdenPago); });
+            });
+          });
+        });
+      });
+    }
+
+    function verOrden(id) {
+      fetchAuth(API + "OrdenesPago/" + id).then(r => r.ok ? r.json() : Promise.reject()).then(d => {
+        const o = d.Orden[0];
+        const tr = (a, b) => '<tr><td>' + a + '</td><td class="text-end">' + b + '</td></tr>';
+        const html = '<div class="text-start" style="font-size:0.88rem;">' +
+          (o.Estado === "ANULADA" ? '<div class="alert alert-danger py-1">ANULADA el ' + fmtFecha(o.FechaAnulacion) + ': ' + escapeHtml(o.MotivoAnulacion || "") + '</div>' : '') +
+          '<div><strong>' + escapeHtml(o.Proveedor) + '</strong>' + (o.CuitProveedor ? ' · CUIT ' + escapeHtml(o.CuitProveedor) : '') + '</div>' +
+          '<div class="sub">Fecha ' + fmtFecha(o.Fecha) + ' · ' + escapeHtml(o.Usuario || "") + '</div>' +
+          '<h6 class="mt-3 mb-1">Facturas que cancela</h6><table class="table table-sm mb-0">' +
+            d.Facturas.map(f => tr(escapeHtml(f.Documento) + ' <span class="sub">' + fmtFecha(f.FechaDoc) + '</span>', formatearMoneda(f.Importe))).join("") +
+            tr('<strong>Total</strong>', '<strong>' + formatearMoneda(o.TotalImputado) + '</strong>') + '</table>' +
+          (d.NotasCredito.length ? '<h6 class="mt-3 mb-1">Notas de crédito aplicadas</h6><table class="table table-sm mb-0">' +
+            d.NotasCredito.map(n => tr('Nota de crédito ' + escapeHtml(n.Numero) + ' <span class="sub">' + fmtFecha(n.Fecha) + '</span>', '−' + formatearMoneda(n.Importe))).join("") + '</table>' : '') +
+          '<h6 class="mt-3 mb-1">Pagado con</h6><table class="table table-sm mb-0">' +
+            d.Medios.map(m => tr(escapeHtml(m.Cuenta) + (m.Referencia ? ' · ' + escapeHtml(m.Referencia) : '') + (m.Estado === "ANULADO" ? ' <span class="sub">(anulado)</span>' : ''), formatearMoneda(m.Importe))).join("") +
+            tr('<strong>Total pagado</strong>', '<strong>' + formatearMoneda(o.TotalPagado) + '</strong>') + '</table>' +
+          (o.Observacion ? '<div class="mt-2"><strong>Observación:</strong> ' + escapeHtml(o.Observacion) + '</div>' : '') +
+          '<div class="mt-4 sub">Recibí conforme: ______________________________</div></div>';
+        Swal.fire({ title: "Orden de pago N° " + String(o.Id).padStart(6, "0"), html: html, width: 640, showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-printer"></i> Imprimir', cancelButtonText: "Cerrar" }).then(r => {
+          if (!r.isConfirmed) return;
+          const w = window.open("", "_blank"); if (!w) return;
+          w.document.write('<html><head><title>Orden de pago ' + o.Id + '</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><style>.sub{color:#6c757d;font-size:0.8rem;}</style></head><body style="padding:28px;max-width:720px;">' +
+            '<h4>Daytona · Orden de pago N° ' + String(o.Id).padStart(6, "0") + '</h4>' + html + '<script>window.onload=function(){window.print();}<\/script></body></html>');
+          w.document.close();
+        });
+      }).catch(() => Swal.fire("Error", "No se pudo abrir la orden de pago.", "error"));
+    }
+
+    function anularOrden(id) {
+      Swal.fire({ title: "Anular la orden de pago", input: "text", inputPlaceholder: "Motivo (mínimo 10 caracteres)",
+                  text: "Se anulan todos sus pagos: la plata vuelve a su cuenta y las facturas vuelven a quedar impagas.",
+                  icon: "warning", showCancelButton: true, confirmButtonText: "Anular", cancelButtonText: "Cancelar", confirmButtonColor: "#c0392b",
+                  inputValidator: v => (v || "").trim().length < 10 ? "Mínimo 10 caracteres." : undefined }).then(r => {
+        if (!r.isConfirmed) return;
+        fetchAuth(API + "OrdenesPago/" + id + "/Anular", { method: "POST", body: JSON.stringify({ Motivo: r.value.trim() }) })
+          .then(x => x.ok ? (Swal.fire({ icon: "success", title: "Orden anulada", timer: 1300, showConfirmButton: false }), cargarSaldos(actual))
+                          : leerError(x).then(m => Swal.fire("No se pudo anular", m, "error")));
+      });
+    }
+
+    /* ================= DATOS FISCALES DE LA COMPRA (script 95) ================= */
+    const TIPOS_ARCA = { 1: "Factura A", 2: "Nota de débito A", 3: "Nota de crédito A", 6: "Factura B", 7: "Nota de débito B",
+                         8: "Nota de crédito B", 11: "Factura C", 12: "Nota de débito C", 13: "Nota de crédito C" };
+    const ALICUOTAS = [{ id: 5, p: 21, n: "21%" }, { id: 4, p: 10.5, n: "10,5%" }, { id: 6, p: 27, n: "27%" }];
+
+    function botonFiscal(idMov) {
+      const f = fiscales[idMov];
+      const cls = f ? "fis fis-ok" : "fis fis-no";
+      const txt = f ? '<i class="bi bi-check2"></i> Fiscal' : 'Sin datos fiscales';
+      return '<a href="#" class="' + cls + '" onclick="datosFiscales(' + idMov + ');return false;" title="Tipo, número, CAE, neto e IVA">' + txt + '</a>';
+    }
+
+    function datosFiscales(idMov) {
+      fetchAuth(API + "DatosFiscales/" + idMov).then(r => r.ok ? r.json() : Promise.reject()).then(d => {
+        const c = d.Comprobante[0], iva = d.Iva || [];
+        const esNC = c.TipoMovimiento === "NC", esND = c.TipoMovimiento === "ND";
+        const tipos = Object.keys(TIPOS_ARCA).map(Number).filter(t => esNC ? [3, 8, 13].includes(t) : esND ? [2, 7, 12].includes(t) : [1, 6, 11, 2, 7, 12].includes(t));
+        // Propuesta desde lo cargado en la recepcion: letra y "0003-00045678"
+        let tipoDef = c.TipoArca, pvDef = c.PuntoVenta, nroDef = c.Numero;
+        if (!tipoDef) {
+          const letra = (c.TipoComprobante || "").slice(-1);
+          tipoDef = esNC ? (letra === "B" ? 8 : letra === "C" ? 13 : 3) : (letra === "B" ? 6 : letra === "C" ? 11 : 1);
+          const m = String(c.NumeroComprobante || c.NumeroNC || "").match(/(\d{1,5})\D+(\d{1,8})/);
+          if (m) { pvDef = parseInt(m[1], 10); nroDef = parseInt(m[2], 10); }
+        }
+        const fechaDef = (c.Fecha || c.FechaComprobante || c.FechaNC || "").slice(0, 10);
+        const ivaDe = id => iva.find(x => x.IdArcaIva === id) || {};
+        const adj = c.IdAdjunto || c.IdAdjuntoNC;
+        const campo = (id, l, v, extra) => '<div><label for="' + id + '">' + l + '</label><input id="' + id + '" class="form-control form-control-sm" value="' + (v === null || v === undefined ? '' : escapeHtml(String(v))) + '" ' + (extra || '') + '></div>';
+        const din = (id, l, v) => campo(id, l, v ? numeroAPrecio(v) : '', 'inputmode="decimal" style="text-align:right;"');
+        Swal.fire({
+          title: "Datos fiscales", width: 760,
+          html: '<div class="text-start sub mb-2">' + escapeHtml(c.Proveedor) + (c.CuitProveedor ? ' · CUIT ' + escapeHtml(c.CuitProveedor) : ' · <span class="op-mal">sin CUIT cargado</span>') +
+                ' · en la cuenta: <strong>' + formatearMoneda(c.ImporteCuenta) + '</strong>' +
+                (c.Constatado === true ? ' · <span class="op-ok">constatado en ARCA</span>' : '') + '</div>' +
+            (adj ? '<div class="text-start mb-2"><button type="button" class="btn btn-sm btn-outline-primary" id="dfLeer"><i class="bi bi-magic"></i> Leer de la foto</button> <span class="sub" id="dfLeerEst"></span></div>' : '') +
+            '<div class="fg">' +
+              '<div><label for="dfTipo">Tipo</label><select id="dfTipo" class="form-select form-select-sm">' + tipos.map(t => '<option value="' + t + '"' + (t === tipoDef ? ' selected' : '') + '>' + TIPOS_ARCA[t] + '</option>').join("") + '</select></div>' +
+              campo("dfPV", "Punto de venta", pvDef, 'inputmode="numeric"') + campo("dfNro", "Número", nroDef, 'inputmode="numeric"') +
+              campo("dfFecha", "Fecha", fechaDef, 'type="date"') + campo("dfCae", "CAE", c.Cae, 'maxlength="14" inputmode="numeric"') +
+              campo("dfVto", "Vencimiento del CAE", c.CaeVencimiento ? String(c.CaeVencimiento).slice(0, 10) : '', 'type="date"') +
+            '</div>' +
+            '<div class="op-sec" id="dfIvaTit">Neto e IVA por alícuota</div><div class="fg" id="dfIva">' +
+              ALICUOTAS.map(a => din("dfB" + a.id, "Neto " + a.n, ivaDe(a.id).BaseImponible) + din("dfI" + a.id, "IVA " + a.n, ivaDe(a.id).Importe) + '<div></div>').join("") +
+            '</div>' +
+            '<div class="op-sec">Otros conceptos</div><div class="fg">' +
+              din("dfNG", "No gravado (en la C: el importe)", c.ImporteNoGravado) + din("dfEx", "Exento", c.ImporteExento) +
+              din("dfPI", "Percepción IVA", c.PercepcionIva) + din("dfPB", "Percepción Ingresos Brutos", c.PercepcionIibb) +
+              din("dfII", "Impuestos internos", c.ImpuestosInternos) + din("dfOT", "Otros tributos", c.OtrosTributos) +
+            '</div>' +
+            '<div class="op-tot"><span>Suma <b id="dfSuma">$ 0,00</b></span><span>Total del comprobante <b>' + formatearMoneda(c.ImporteCuenta) + '</b></span><span id="dfEst"></span></div>',
+          showCancelButton: true, confirmButtonText: esPlata ? "Guardar" : "Cerrar", showConfirmButton: esPlata, cancelButtonText: "Cancelar",
+          didOpen: () => {
+            const ids = ["dfNG", "dfEx", "dfPI", "dfPB", "dfII", "dfOT"].concat(ALICUOTAS.flatMap(a => ["dfB" + a.id, "dfI" + a.id]));
+            ids.forEach(id => { activarInputPrecio(id); document.getElementById(id).addEventListener("input", sumar); });
+            // El IVA se propone desde el neto; se puede corregir a mano
+            ALICUOTAS.forEach(a => document.getElementById("dfB" + a.id).addEventListener("input", () => {
+              const b = precioANumero(document.getElementById("dfB" + a.id).value) || 0;
+              document.getElementById("dfI" + a.id).value = b > 0 ? numeroAPrecio(Math.round(b * a.p) / 100) : "";
+              sumar();
+            }));
+            const esC = () => [11, 12, 13].includes(parseInt(document.getElementById("dfTipo").value, 10));
+            const verIva = () => {
+              document.getElementById("dfIva").style.display = esC() ? "none" : "";
+              document.getElementById("dfIvaTit").style.display = esC() ? "none" : "";
+              if (esC() && !document.getElementById("dfNG").value) document.getElementById("dfNG").value = numeroAPrecio(Number(c.ImporteCuenta));
+              sumar();
+            };
+            document.getElementById("dfTipo").addEventListener("change", verIva);
+            function sumar() {
+              let s = 0;
+              ids.forEach(id => { if (esC() && /^df[BI]\d/.test(id)) return; s += precioANumero(document.getElementById(id).value) || 0; });
+              s = Math.round(s * 100) / 100;
+              document.getElementById("dfSuma").textContent = formatearMoneda(s);
+              document.getElementById("dfEst").innerHTML = Math.abs(s - Number(c.ImporteCuenta)) <= 0.01 ? '<span class="op-ok">Cierra ✓</span>'
+                : '<span class="op-mal">Diferencia ' + formatearMoneda(Math.round((Number(c.ImporteCuenta) - s) * 100) / 100) + '</span>';
+            }
+            verIva();
+            const bl = document.getElementById("dfLeer");
+            if (bl) bl.addEventListener("click", () => {
+              bl.disabled = true; document.getElementById("dfLeerEst").textContent = "Leyendo…";
+              fetchAuth(API + "DatosFiscales/Leer", { method: "POST", body: JSON.stringify({ IdAdjunto: adj }) }).then(x => {
+                if (!x.ok) return leerError(x).then(m => { throw new Error(m); });
+                return x.json();
+              }).then(f => {
+                const pon = (id, v, plata) => { if (v !== null && v !== undefined && v !== "") document.getElementById(id).value = plata ? numeroAPrecio(Number(v)) : v; };
+                if (f.TipoArca && tipos.includes(f.TipoArca)) document.getElementById("dfTipo").value = f.TipoArca;
+                pon("dfPV", f.PuntoVenta); pon("dfNro", f.Numero); pon("dfFecha", f.Fecha); pon("dfCae", f.Cae); pon("dfVto", f.CaeVencimiento);
+                ALICUOTAS.forEach(a => { document.getElementById("dfB" + a.id).value = ""; document.getElementById("dfI" + a.id).value = ""; });
+                (f.Iva || []).forEach(i => { if (document.getElementById("dfB" + i.IdArcaIva)) { pon("dfB" + i.IdArcaIva, i.BaseImponible, true); pon("dfI" + i.IdArcaIva, i.Importe, true); } });
+                pon("dfNG", f.ImporteNoGravado, true); pon("dfEx", f.ImporteExento, true); pon("dfPI", f.PercepcionIva, true);
+                pon("dfPB", f.PercepcionIibb, true); pon("dfII", f.ImpuestosInternos, true); pon("dfOT", f.OtrosTributos, true);
+                verIva();
+                let aviso = "Revisá los datos antes de guardar.";
+                if (f.CuitEmisor && c.CuitProveedor && f.CuitEmisor.replace(/\D/g, "") !== String(c.CuitProveedor).replace(/\D/g, ""))
+                  aviso = "Ojo: el CUIT de la factura (" + f.CuitEmisor + ") no es el del proveedor.";
+                document.getElementById("dfLeerEst").textContent = aviso;
+              }).catch(e => { document.getElementById("dfLeerEst").textContent = (e && e.message) || "No se pudo leer."; })
+                .then(() => { bl.disabled = false; });
+            });
+          },
+          preConfirm: () => {
+            const v = id => document.getElementById(id).value.trim();
+            const n = id => precioANumero(document.getElementById(id).value) || 0;
+            const tipo = parseInt(v("dfTipo"), 10), esC = [11, 12, 13].includes(tipo);
+            const pv = parseInt(v("dfPV"), 10), nro = parseInt(v("dfNro"), 10);
+            if (!(pv >= 1 && pv <= 99999)) { Swal.showValidationMessage("El punto de venta va de 1 a 99999."); return false; }
+            if (!(nro >= 1 && nro <= 99999999)) { Swal.showValidationMessage("El número va de 1 a 99999999."); return false; }
+            if (!v("dfFecha")) { Swal.showValidationMessage("Cargá la fecha del comprobante."); return false; }
+            if (v("dfCae") && !/^\d{14}$/.test(v("dfCae"))) { Swal.showValidationMessage("El CAE tiene 14 números."); return false; }
+            const ivaL = esC ? [] : ALICUOTAS.map(a => ({ IdArcaIva: a.id, BaseImponible: n("dfB" + a.id), Importe: n("dfI" + a.id) })).filter(x => x.BaseImponible > 0 || x.Importe > 0);
+            const dto = { TipoArca: tipo, PuntoVenta: pv, Numero: nro, Fecha: v("dfFecha"), Cae: v("dfCae") || null, CaeVencimiento: v("dfVto") || null,
+                          ImporteNoGravado: n("dfNG"), ImporteExento: n("dfEx"), PercepcionIva: n("dfPI"), PercepcionIibb: n("dfPB"),
+                          ImpuestosInternos: n("dfII"), OtrosTributos: n("dfOT"), ImporteTotal: Number(c.ImporteCuenta), Iva: ivaL };
+            const suma = Math.round((ivaL.reduce((a, x) => a + x.BaseImponible + x.Importe, 0) + dto.ImporteNoGravado + dto.ImporteExento + dto.PercepcionIva +
+                                     dto.PercepcionIibb + dto.ImpuestosInternos + dto.OtrosTributos) * 100) / 100;
+            if (Math.abs(suma - dto.ImporteTotal) > 0.01) { Swal.showValidationMessage("Las partes no suman el total del comprobante."); return false; }
+            return fetchAuth(API + "DatosFiscales/" + idMov, { method: "POST", body: JSON.stringify(dto) }).then(x => {
+              if (!x.ok) return leerError(x).then(m => { Swal.showValidationMessage(m); return false; });
+              return true;
+            });
+          }
+        }).then(r => { if (r.isConfirmed && r.value) { Swal.fire({ icon: "success", title: "Datos fiscales guardados", timer: 1200, showConfirmButton: false }); elegir(actual); } });
+      }).catch(() => Swal.fire("Error", "No se pudieron abrir los datos fiscales.", "error"));
     }
 
     function cambiarPlazo() {

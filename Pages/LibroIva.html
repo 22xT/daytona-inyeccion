@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Libro IVA - Daytona Repuestos Automotor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="estilos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script src="tablero-comun.js"></script>
+  <style>
+    /* =================================================================
+       LIBRO IVA (script 96): ventas, compras y posicion del periodo
+       ================================================================= */
+    .li-main { padding: 16px 24px 32px !important; max-width: none; width: 100%; }
+    .li-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    .li-top h1 { font-size: 1.35rem; font-weight: 800; color: var(--navy); margin: 0; display: flex; gap: 8px; align-items: center; }
+    .li-top p { margin: 2px 0 0; color: #5f6b7a; font-size: 0.9rem; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .kpi { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; padding: 10px 14px; }
+    .kpi .l { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .3px; color: #6b7685; font-weight: 700; }
+    .kpi .v { font-size: 1.3rem; font-weight: 800; color: #1f2d3d; font-variant-numeric: tabular-nums; }
+    .kpi .s { font-size: 0.78rem; color: #6b7685; }
+    .kpi.saldo { border-color: var(--area, #6b3fa0); border-width: 2px; }
+    .aviso { border-radius: 10px; padding: 9px 14px; font-size: 0.86rem; margin-bottom: 10px; display: flex; gap: 10px; align-items: flex-start; }
+    .aviso.amarillo { background: #fff8e6; border: 1px solid #f1d58a; color: #7a5300; }
+    .aviso.violeta { background: #f4effa; border: 1px solid #ddd0ee; color: #4b2a7a; }
+    .aviso ul { margin: 4px 0 0; padding-left: 18px; }
+    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid #dde3ea; margin-bottom: 0; }
+    .tabs button { border: none; background: none; padding: 9px 14px; font-weight: 700; font-size: 0.86rem; color: #6b7685; border-bottom: 2px solid transparent; }
+    .tabs button.on { color: var(--navy); border-bottom-color: var(--navy); }
+    .caja { background: #fff; border: 1px solid #dde3ea; border-radius: 0 0 12px 12px; border-top: none; overflow: hidden; }
+    .tabla-wrap { overflow-x: auto; }
+    table.li { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    table.li th { background: #f6f8fa; color: #4a5568; font-weight: 700; font-size: 0.72rem; text-transform: uppercase; padding: 7px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid #e3e7ec; }
+    table.li td { padding: 6px 10px; border-bottom: 1px solid #f0f2f5; }
+    table.li .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.li tfoot td { font-weight: 800; border-top: 2px solid #e3e7ec; background: #fafbfc; }
+    tr.nc td { color: #0f766e; }
+    .doc { font-size: 0.76rem; color: #6b7685; }
+    .vacio { padding: 30px; text-align: center; color: #6b7685; }
+    .alic { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; padding: 12px; }
+    .alic h6 { font-weight: 800; color: var(--navy); font-size: 0.85rem; }
+    @media (max-width: 640px) { .li-main { padding: 12px 14px 28px !important; } }
+  </style>
+</head>
+
+<body data-page="libro-iva">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content li-main">
+    <div class="li-top pg-top">
+      <div>
+        <h1><i class="bi bi-journal-bookmark"></i> Libro IVA</h1>
+        <p>Ventas con CAE y compras con datos fiscales, por fecha del comprobante.</p>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <input type="month" id="mes" class="form-control form-control-sm" style="width:160px;" aria-label="Período">
+        <div class="form-check form-switch mb-0" title="Solo para probar la pantalla: nunca para presentar">
+          <input class="form-check-input" type="checkbox" id="pruebas">
+          <label class="form-check-label" for="pruebas" style="font-size:0.84rem;">Incluir pruebas de ARCA</label>
+        </div>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-download"></i> Libro IVA Digital</button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#" onclick="bajar('ventas-cbte');return false;">Ventas · comprobantes</a></li>
+            <li><a class="dropdown-item" href="#" onclick="bajar('ventas-alicuotas');return false;">Ventas · alícuotas</a></li>
+            <li><a class="dropdown-item" href="#" onclick="bajar('compras-cbte');return false;">Compras · comprobantes</a></li>
+            <li><a class="dropdown-item" href="#" onclick="bajar('compras-alicuotas');return false;">Compras · alícuotas</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><span class="dropdown-item-text" style="font-size:0.78rem;color:#6b7685;max-width:260px;white-space:normal;">Archivos de texto para importar en ARCA. Que el contador valide la primera importación.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+    <div id="avisos"></div>
+
+    <div class="tabs" id="tabs">
+      <button type="button" data-t="ventas" class="on">Ventas</button>
+      <button type="button" data-t="compras">Compras</button>
+      <button type="button" data-t="alicuotas">Por alícuota</button>
+      <span class="ms-auto d-flex align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCsv"><i class="bi bi-filetype-csv"></i> Excel</button>
+      </span>
+    </div>
+    <div class="caja"><div class="tabla-wrap" id="cuerpo"><div class="vacio">Cargando…</div></div></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="layout.js"></script>
+  <script>
+    if (!Auth.requireSession()) { /* redirect */ }
+    var esc = TB.esc;
+    var fmt = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2 });
+    function pesos(v) { return fmt.format(Number(v) || 0); }
+    var datos = null, tab = "ventas", pedido = 0;
+    var ALIC = { 3: "0%", 4: "10,5%", 5: "21%", 6: "27%", 8: "5%", 9: "2,5%" };
+
+    function rango() {
+      var m = document.getElementById("mes").value;           // AAAA-MM
+      var y = parseInt(m.slice(0, 4), 10), mm = parseInt(m.slice(5, 7), 10);
+      return { desde: TB.iso(new Date(y, mm - 1, 1)), hasta: TB.iso(new Date(y, mm, 0)) };
+    }
+    function numeroCbte(pv, n) { return String(pv).padStart(5, "0") + "-" + String(n).padStart(8, "0"); }
+    function docTxt(t, n) {
+      if (Number(t) === 99) return "Consumidor final";
+      n = String(n || "");
+      if (Number(t) === 80 && n.length === 11) n = n.slice(0, 2) + "-" + n.slice(2, 10) + "-" + n.slice(10);
+      return (Number(t) === 80 ? "CUIT " : Number(t) === 96 ? "DNI " : "") + n;
+    }
+
+    function cargar() {
+      var mio = ++pedido, r = rango();
+      document.getElementById("cuerpo").innerHTML = '<div class="vacio">Cargando…</div>';
+      TB.get("LibroIva", { desde: r.desde, hasta: r.hasta, pruebas: document.getElementById("pruebas").checked })
+        .then(function (d) { if (mio !== pedido) return; datos = d; pintar(); })
+        .catch(function (m) {
+          if (mio !== pedido) return;
+          document.getElementById("cuerpo").innerHTML = '<div class="vacio">' + esc(typeof m === "string" ? m : "No se pudo armar el libro.") + '</div>';
+        });
+    }
+
+    // IVA de un comprobante por alicuota
+    function ivaPor(lista, campoId, id) {
+      var o = {};
+      lista.filter(function (i) { return i[campoId] === id; }).forEach(function (i) { o[i.IdArcaIva] = i; });
+      return o;
+    }
+
+    function totales() {
+      var V = datos.Ventas, C = datos.Compras;
+      var deb = V.reduce(function (a, c) { return a + c.Signo * Number(c.ImporteIva); }, 0);
+      var cred = C.reduce(function (a, c) { return a + c.Signo * Number(c.CreditoFiscal); }, 0);
+      var perc = C.reduce(function (a, c) { return a + c.Signo * Number(c.PercepcionIva); }, 0);
+      var ventas = V.reduce(function (a, c) { return a + c.Signo * Number(c.ImporteTotal); }, 0);
+      var compras = C.reduce(function (a, c) { return a + c.Signo * Number(c.ImporteTotal); }, 0);
+      return { deb: deb, cred: cred, perc: perc, saldo: deb - cred - perc, ventas: ventas, compras: compras };
+    }
+
+    function pintar() {
+      var t = totales();
+      document.getElementById("kpis").innerHTML =
+        kpi("IVA débito fiscal", pesos(t.deb), datos.Ventas.length + " comprobantes de venta · " + pesos(t.ventas)) +
+        kpi("IVA crédito fiscal", pesos(t.cred), datos.Compras.length + " comprobantes de compra · " + pesos(t.compras)) +
+        kpi("Percepciones de IVA sufridas", pesos(t.perc), "a cuenta del impuesto") +
+        '<div class="kpi saldo"><div class="l">Saldo estimado del mes</div><div class="v" style="color:' + (t.saldo > 0 ? '#b02a37' : '#146c43') + ';">' +
+          pesos(Math.abs(t.saldo)) + '</div><div class="s">' + (t.saldo > 0 ? "a pagar" : "a favor") + ' · sin retenciones ni saldos anteriores</div></div>';
+
+      var av = "";
+      if (datos.VentasSinAutorizar.length)
+        av += '<div class="aviso amarillo"><i class="bi bi-exclamation-triangle"></i><div><strong>' + datos.VentasSinAutorizar.length +
+              ' comprobantes de venta del mes no tienen CAE de producción</strong> y no entran al libro. ' +
+              '<a href="Comprobantes.html">Ver en Comprobantes</a></div></div>';
+      if (datos.ComprasSinDatos.length) {
+        var porProv = {};
+        datos.ComprasSinDatos.forEach(function (c) { (porProv[c.IdProveedor] = porProv[c.IdProveedor] || { n: c.Proveedor, k: 0, imp: 0 }).k++; porProv[c.IdProveedor].imp += Number(c.Importe); });
+        av += '<div class="aviso amarillo"><i class="bi bi-receipt"></i><div><strong>' + datos.ComprasSinDatos.length +
+              ' facturas de compra del mes sin datos fiscales</strong> (no suman crédito fiscal):<ul>' +
+              Object.keys(porProv).map(function (id) { var p = porProv[id];
+                return '<li><a href="CuentaProveedores.html?id=' + Number(id) + '">' + esc(p.n) + '</a>: ' + p.k + ' por ' + pesos(p.imp) + '</li>'; }).join("") +
+              '</ul></div></div>';
+      }
+      if (document.getElementById("pruebas").checked)
+        av += '<div class="aviso violeta"><i class="bi bi-info-circle"></i><div>Incluye comprobantes de <strong>prueba</strong> (homologación). Sirve para ver la pantalla: los archivos para ARCA nunca los incluyen.</div></div>';
+      document.getElementById("avisos").innerHTML = av;
+      pintarTab();
+    }
+    function kpi(l, v, s) { return '<div class="kpi"><div class="l">' + esc(l) + '</div><div class="v">' + esc(v) + '</div><div class="s">' + esc(s) + '</div></div>'; }
+
+    function pintarTab() {
+      var el = document.getElementById("cuerpo");
+      if (tab === "ventas") {
+        var V = datos.Ventas;
+        if (!V.length) { el.innerHTML = '<div class="vacio">No hay ventas con CAE en este mes.</div>'; return; }
+        var tot = { n: 0, i21: 0, i105: 0, i27: 0, otros: 0, t: 0 };
+        el.innerHTML = '<table class="li"><thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th class="num">Neto gravado</th>' +
+          '<th class="num">IVA 21%</th><th class="num">IVA 10,5%</th><th class="num">IVA 27%</th><th class="num">No grav. / exento</th><th class="num">Total</th></tr></thead><tbody>' +
+          V.map(function (c) {
+            var iv = ivaPor(datos.VentasIva, "IdComprobante", c.Id), s = c.Signo;
+            var i21 = Number((iv[5] || {}).Importe || 0), i105 = Number((iv[4] || {}).Importe || 0), i27 = Number((iv[6] || {}).Importe || 0);
+            var otros = Number(c.ImporteNoGravado) + Number(c.ImporteExento);
+            tot.n += s * c.ImporteNeto; tot.i21 += s * i21; tot.i105 += s * i105; tot.i27 += s * i27; tot.otros += s * otros; tot.t += s * c.ImporteTotal;
+            var m = function (v) { return v ? (s < 0 ? "−" : "") + pesos(v) : ""; };
+            return '<tr class="' + (s < 0 ? "nc" : "") + '"><td>' + TB.fecha(c.Fecha) + '</td>' +
+              '<td>' + esc(c.Tipo) + '<div class="doc">' + numeroCbte(c.PuntoVenta, c.Numero) + '</div></td>' +
+              '<td>' + esc(c.ReceptorNombre) + '<div class="doc">' + esc(docTxt(c.ReceptorDocTipo, c.ReceptorDocNumero)) + '</div></td>' +
+              '<td class="num">' + m(Number(c.ImporteNeto)) + '</td><td class="num">' + m(i21) + '</td><td class="num">' + m(i105) + '</td>' +
+              '<td class="num">' + m(i27) + '</td><td class="num">' + m(otros) + '</td><td class="num"><strong>' + m(Number(c.ImporteTotal)) + '</strong></td></tr>';
+          }).join("") + '</tbody><tfoot><tr><td colspan="3">Total del mes (notas de crédito restan)</td>' +
+          [tot.n, tot.i21, tot.i105, tot.i27, tot.otros, tot.t].map(function (v) { return '<td class="num">' + pesos(v) + '</td>'; }).join("") + '</tr></tfoot></table>';
+        return;
+      }
+      if (tab === "compras") {
+        var C = datos.Compras;
+        if (!C.length) { el.innerHTML = '<div class="vacio">No hay compras con datos fiscales en este mes.</div>'; return; }
+        var tc = { n: 0, iva: 0, pi: 0, pb: 0, o: 0, t: 0, cf: 0 };
+        el.innerHTML = '<table class="li"><thead><tr><th>Fecha</th><th>Comprobante</th><th>Proveedor</th><th class="num">Neto gravado</th><th class="num">IVA</th>' +
+          '<th class="num">Percep. IVA</th><th class="num">Percep. IIBB</th><th class="num">Otros</th><th class="num">Total</th><th class="num">Crédito fiscal</th></tr></thead><tbody>' +
+          C.map(function (c) {
+            var s = c.Signo, otros = Number(c.ImporteNoGravado) + Number(c.ImporteExento) + Number(c.ImpuestosInternos) + Number(c.OtrosTributos);
+            tc.n += s * c.ImporteNeto; tc.iva += s * c.ImporteIva; tc.pi += s * c.PercepcionIva; tc.pb += s * c.PercepcionIibb; tc.o += s * otros; tc.t += s * c.ImporteTotal; tc.cf += s * c.CreditoFiscal;
+            var m = function (v) { return Number(v) ? (s < 0 ? "−" : "") + pesos(v) : ""; };
+            var tipo = { FC: "Factura", ND: "Nota de débito", NC: "Nota de crédito" }[c.Clase] + " " + c.Letra;
+            return '<tr class="' + (s < 0 ? "nc" : "") + '"><td>' + TB.fecha(c.Fecha) + '</td>' +
+              '<td>' + esc(tipo) + '<div class="doc">' + numeroCbte(c.PuntoVenta, c.Numero) + (c.Constatado === true ? ' · <i class="bi bi-patch-check"></i> constatado' : '') + '</div></td>' +
+              '<td>' + esc(c.Proveedor) + '<div class="doc">' + esc(docTxt(80, c.CuitProveedor)) + '</div></td>' +
+              '<td class="num">' + m(c.ImporteNeto) + '</td><td class="num">' + m(c.ImporteIva) + '</td><td class="num">' + m(c.PercepcionIva) + '</td>' +
+              '<td class="num">' + m(c.PercepcionIibb) + '</td><td class="num">' + m(otros) + '</td><td class="num"><strong>' + m(c.ImporteTotal) + '</strong></td>' +
+              '<td class="num">' + m(c.CreditoFiscal) + '</td></tr>';
+          }).join("") + '</tbody><tfoot><tr><td colspan="3">Total del mes (notas de crédito restan)</td>' +
+          [tc.n, tc.iva, tc.pi, tc.pb, tc.o, tc.t, tc.cf].map(function (v) { return '<td class="num">' + pesos(v) + '</td>'; }).join("") + '</tr></tfoot></table>';
+        return;
+      }
+      // Por alicuota
+      var resumen = function (lista, filas, campoId, filtro) {
+        var o = {};
+        lista.forEach(function (i) {
+          var c = filas.find(function (x) { return x.Id === i[campoId]; });
+          if (!c || (filtro && !filtro(c))) return;
+          var r = o[i.IdArcaIva] = o[i.IdArcaIva] || { b: 0, i: 0 };
+          r.b += c.Signo * Number(i.BaseImponible); r.i += c.Signo * Number(i.Importe);
+        });
+        var ks = Object.keys(o);
+        if (!ks.length) return '<div class="doc">Sin movimientos.</div>';
+        return '<table class="li"><thead><tr><th>Alícuota</th><th class="num">Neto gravado</th><th class="num">IVA</th></tr></thead><tbody>' +
+          ks.map(function (k) { return '<tr><td>' + (ALIC[k] || k) + '</td><td class="num">' + pesos(o[k].b) + '</td><td class="num">' + pesos(o[k].i) + '</td></tr>'; }).join("") + '</tbody></table>';
+      };
+      el.innerHTML = '<div class="alic"><div><h6>Ventas: débito fiscal</h6>' + resumen(datos.VentasIva, datos.Ventas, "IdComprobante") + '</div>' +
+        '<div><h6>Compras A: crédito fiscal</h6>' + resumen(datos.ComprasIva, datos.Compras, "IdCompraFiscal", function (c) { return c.Letra === "A"; }) + '</div></div>';
+    }
+
+    /* ---------- Exportar ---------- */
+    function csv() {
+      if (!datos) return;
+      var filas, nombre, r = rango();
+      var n = function (v) { return (Number(v) || 0).toFixed(2).replace(".", ","); };
+      if (tab === "compras") {
+        nombre = "Libro IVA compras " + r.desde.slice(0, 7) + ".csv";
+        filas = [["Fecha", "Tipo", "Letra", "Punto de venta", "Número", "Proveedor", "CUIT", "Neto gravado", "IVA", "No gravado", "Exento", "Percepción IVA", "Percepción IIBB", "Impuestos internos", "Otros tributos", "Total", "Crédito fiscal", "CAE"]]
+          .concat(datos.Compras.map(function (c) { return [TB.fecha(c.Fecha), c.Clase, c.Letra, c.PuntoVenta, c.Numero, c.Proveedor, c.CuitProveedor || "",
+            n(c.Signo * c.ImporteNeto), n(c.Signo * c.ImporteIva), n(c.Signo * c.ImporteNoGravado), n(c.Signo * c.ImporteExento), n(c.Signo * c.PercepcionIva),
+            n(c.Signo * c.PercepcionIibb), n(c.Signo * c.ImpuestosInternos), n(c.Signo * c.OtrosTributos), n(c.Signo * c.ImporteTotal), n(c.Signo * c.CreditoFiscal), c.Cae || ""]; }));
+      } else {
+        nombre = "Libro IVA ventas " + r.desde.slice(0, 7) + ".csv";
+        filas = [["Fecha", "Tipo", "Punto de venta", "Número", "Cliente", "Documento", "Neto gravado", "IVA 21%", "IVA 10,5%", "IVA 27%", "No gravado", "Exento", "Total", "CAE"]]
+          .concat(datos.Ventas.map(function (c) {
+            var iv = ivaPor(datos.VentasIva, "IdComprobante", c.Id), s = c.Signo;
+            return [TB.fecha(c.Fecha), c.Tipo, c.PuntoVenta, c.Numero, c.ReceptorNombre, docTxt(c.ReceptorDocTipo, c.ReceptorDocNumero),
+              n(s * c.ImporteNeto), n(s * ((iv[5] || {}).Importe || 0)), n(s * ((iv[4] || {}).Importe || 0)), n(s * ((iv[6] || {}).Importe || 0)),
+              n(s * c.ImporteNoGravado), n(s * c.ImporteExento), n(s * c.ImporteTotal), c.Cae || ""]; }));
+      }
+      var txt = "﻿" + filas.map(function (f) { return f.map(function (x) { var t = String(x === null || x === undefined ? "" : x); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(";"); }).join("\r\n");
+      guardar(new Blob([txt], { type: "text/csv;charset=utf-8" }), nombre);
+    }
+
+    function bajar(archivo) {
+      var r = rango();
+      fetchAuth(API_BASE + "LibroIva/Archivo?archivo=" + archivo + "&desde=" + r.desde + "&hasta=" + r.hasta).then(function (x) {
+        if (!x.ok) return x.json().then(function (e) { throw new Error((e && e.Message) || "No se pudo armar el archivo."); }, function () { throw new Error("No se pudo armar el archivo."); });
+        return x.blob();
+      }).then(function (b) {
+        guardar(b, "LIBRO_IVA_DIGITAL_" + archivo.toUpperCase().replace("-", "_") + "_" + r.desde.slice(0, 7).replace("-", "") + ".txt");
+      }).catch(function (e) { Swal.fire("Libro IVA Digital", (e && e.message) || "No se pudo armar el archivo.", "error"); });
+    }
+
+    function guardar(blob, nombre) {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = nombre;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    }
+
+    window.onload = function () {
+      var hoy = new Date(), ant = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+      document.getElementById("mes").value = ant.getFullYear() + "-" + String(ant.getMonth() + 1).padStart(2, "0");
+      document.getElementById("mes").addEventListener("change", cargar);
+      document.getElementById("pruebas").addEventListener("change", cargar);
+      document.querySelectorAll("#tabs button[data-t]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          tab = b.dataset.t;
+          document.querySelectorAll("#tabs button[data-t]").forEach(function (x) { x.classList.toggle("on", x === b); });
+          document.getElementById("btnCsv").style.visibility = tab === "alicuotas" ? "hidden" : "";
+          if (datos) pintarTab();
+        });
+      });
+      document.getElementById("btnCsv").addEventListener("click", csv);
+      cargar();
+    };
+  </script>
+</body>
+</html>

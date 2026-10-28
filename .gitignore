@@ -89,3 +89,10 @@ Importaciones/
 
 # Generado por Visual Studio al publicar en Azure
 **/Properties/ServiceDependencies/
+
+# Certificados y claves de ARCA: nunca al repositorio
+*.pfx
+*.p12
+*.key
+*.csr
+*.crt

@@ -32,7 +32,57 @@ namespace WebApi.Controllers
         {
             DataSet ds = new Comprobante().Obtener(id);
             if (ds.Tables.Count < 4 || ds.Tables[0].Rows.Count == 0) return NotFound();
-            return Ok(new { Comprobante = ds.Tables[0], Renglones = ds.Tables[1], Iva = ds.Tables[2], Notas = ds.Tables[3] });
+            DataTable emisor = new Comprobante().Emisor();
+            DataRow c = ds.Tables[0].Rows[0];
+            string qr = null;
+            if (Convert.ToString(c["Estado"]) == "AUTORIZADO" && emisor.Rows.Count > 0)
+                qr = ArcaEmision.QrUrl(c, Convert.ToString(emisor.Rows[0]["Cuit"]));
+            return Ok(new { Comprobante = ds.Tables[0], Renglones = ds.Tables[1], Iva = ds.Tables[2], Notas = ds.Tables[3],
+                            Emisor = emisor, Qr = qr });
+        }
+
+        // POST api/Comprobantes/5/Autorizar — pide el CAE a ARCA
+        [HttpPost, Route("api/Comprobantes/{id:int}/Autorizar")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor")]
+        public IHttpActionResult Autorizar(int id)
+        {
+            int idUsuario = ObtenerIdUsuarioActual();
+            if (idUsuario <= 0) return Unauthorized();
+            try { return Ok(new ArcaEmision().Autorizar(id, idUsuario)); }
+            catch (ArcaException ex) { return BadRequest(ex.Message); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo pedir el CAE.")); }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return BadRequest("No se pudo usar el certificado de ARCA: revisá el archivo .pfx y su clave en la configuración.");
+            }
+        }
+
+        // POST api/Comprobantes/5/Rehacer — anula un borrador o rechazado y lo genera de nuevo
+        [HttpPost, Route("api/Comprobantes/{id:int}/Rehacer")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor")]
+        public IHttpActionResult Rehacer(int id)
+        {
+            int idUsuario = ObtenerIdUsuarioActual();
+            if (idUsuario <= 0) return Unauthorized();
+            try { return Ok(Primera(new Comprobante().Rehacer(id, idUsuario))); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo rehacer el comprobante.")); }
+        }
+
+        // GET api/Comprobantes/5/Arca — lo que se le pidio a ARCA y que contesto
+        [HttpGet, Route("api/Comprobantes/{id:int}/Arca")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor")]
+        public IHttpActionResult HistorialArca(int id)
+        {
+            return Ok(new Comprobante().HistorialArca(id));
+        }
+
+        // GET api/Arca/Estado — prueba la conexion paso a paso
+        [HttpGet, Route("api/Arca/Estado")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador")]
+        public IHttpActionResult EstadoArca()
+        {
+            try { return Ok(new ArcaEmision().Estado()); }
+            catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo leer la configuración de ARCA.")); }
         }
 
         // GET api/Comprobantes/Pendientes — ventas y notas sin comprobante
