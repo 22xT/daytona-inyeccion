@@ -742,6 +742,19 @@
             r._txt = normalizar([r.Codigo, r.Descripcion, r.Marca, r.Rubro, r.Modelo, r.MarcaFabricante].join(" "));
           return palabras.every(function (w) { return r._txt.indexOf(w) !== -1; });
         });
+        // Relevancia (igual que la API, script 88): primero la pieza buscada
+        // (la descripcion empieza con la 1ra palabra o el rubro la nombra),
+        // despues las palabras juntas, al final el resto. Empate: orden de antes.
+        var rel = function (r) {
+          var d = normalizar(r.Descripcion), ru = normalizar(r.Rubro);
+          if (d.indexOf(palabras[0]) === 0) return 1;
+          if (palabras.slice(0, 2).some(function (w) { return w.length >= 4 && !/\d/.test(w) && ru.indexOf(w) !== -1; })) return 1;
+          if (palabras.length > 1 && (d.indexOf(palabras[0] + " " + palabras[1]) !== -1 || d.indexOf(palabras[0] + " de " + palabras[1]) !== -1)) return 2;
+          return 3;
+        };
+        lista = lista.map(function (r, i) { return { r: r, k: rel(r), i: i }; })
+          .sort(function (a, b) { return a.k - b.k || a.i - b.i; })
+          .map(function (x) { return x.r; });
       }
       ultimoLocal = { lista: lista.slice(0, 60), total: lista.length };
       if (texto !== textoProv) { externosVenta = []; textoProv = ""; }
