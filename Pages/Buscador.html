@@ -63,92 +63,169 @@
     .chip-menu button { display: block; width: 100%; text-align: left; border: none; background: none; padding: 8px 10px; border-radius: 6px; font-size: 0.86rem; color: var(--text); }
     .chip-menu button:hover, .chip-menu button.activo { background: var(--nav-accent-soft); color: var(--nav-accent-dark); }
 
-    /* ---------- Resumen: la respuesta en una linea ---------- */
-    .resumen { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 0.9rem; color: #4a5568; padding: 2px 2px 12px; min-height: 30px; }
-    .resumen strong { color: var(--text); }
-    .res-dato { display: inline; }
-    .res-dato .ind { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
-    .ind.si { background: #198754; } .ind.no { background: #c0392b; } .ind.prov { background: var(--nav-accent); }
+    /* =================================================================
+       VISTA 28/10: dos respuestas claras, en este orden
+         1) ¿Lo tenemos en el local?   2) ¿Se consigue y a cuánto?
+       Arriba un veredicto en dos tarjetas; abajo "En el local" y
+       "Se consigue en proveedores" (lo que no tenemos). Lo que solo
+       nombra la búsqueda (accesorios, kits) queda en "relacionados".
+       ================================================================= */
+
+    /* ---------- Veredicto ---------- */
+    .veredicto { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 2px 0 14px; }
+    .veredicto.una { grid-template-columns: 1fr; }
+    .veredicto:empty { display: none; }
+    .ver-card {
+      display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: #fff; color: var(--text);
+      border: 1px solid #dde3ea; border-left: 5px solid var(--vc, #c9d3e0); border-radius: 12px; text-decoration: none;
+      transition: box-shadow .12s, transform .12s;
+    }
+    a.ver-card:hover { box-shadow: 0 6px 18px rgba(16,42,80,.08); transform: translateY(-1px); color: var(--text); }
+    a.ver-card:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+    .vc-ico { width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+              font-size: 1.25rem; background: var(--vs, #f1f4f7); color: var(--vc, #5f6b7a); }
+    .vc-tit { display: block; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7685; }
+    .vc-val { display: block; font-size: 1.15rem; font-weight: 800; line-height: 1.2; color: var(--vc, var(--navy)); font-variant-numeric: tabular-nums; }
+    .vc-sub { display: block; font-size: .84rem; color: #4a5568; }
+    .ver-card.si   { --vc: #146c43; --vs: #e6f4ec; }
+    .ver-card.no   { --vc: #a8281e; --vs: #fdeceb; }
+    .ver-card.nada { --vc: #6b7685; --vs: #f1f4f7; }
+    .ver-card.prov { --vc: #1d5fa8; --vs: #e8f0fb; }
 
     /* ---------- Bloques ---------- */
-    .bloque { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; margin-bottom: 16px; }
-    .bloque-head { display: flex; align-items: baseline; gap: 10px; padding: 13px 18px 9px; }
+    .bloque { background: #fff; border: 1px solid #dde3ea; border-radius: 12px; margin-bottom: 14px; overflow: hidden; scroll-margin-top: 80px; }
+    .bloque-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 18px; border-bottom: 1px solid #edf0f4; }
     .bloque-head h2 { font-size: 1rem; font-weight: 700; color: var(--navy); margin: 0; }
-    .bloque-head .cont { font-size: 0.82rem; color: var(--text-muted); }
+    .bloque-head .cont { font-size: .84rem; color: var(--text-muted); }
+    .bh-ico { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: .95rem; }
+    .bh-ico.local { background: #e6f4ec; color: #146c43; }
+    .bh-ico.prov { background: #e8f0fb; color: #1d5fa8; }
+    .bh-tag { font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #a8281e; background: #fdeceb; border-radius: 6px; padding: 2px 7px; }
 
-    .fila, .cabecera { display: grid; align-items: center; column-gap: 18px; padding: 11px 18px; }
-    .propio .fila, .propio .cabecera { grid-template-columns: minmax(0, 1fr) 128px 200px 236px; }
-    .externo .fila, .externo .cabecera { grid-template-columns: minmax(0, 1fr) 150px 200px 236px; }
-    .cabecera { padding-top: 6px; padding-bottom: 6px; font-size: 0.74rem; font-weight: 600; color: #6b7685; border-top: 1px solid #edf0f4; border-bottom: 1px solid #edf0f4; background: #fafbfc; }
-    .fila { border-bottom: 1px solid #f0f2f5; }
+    /* ---------- Filas ---------- */
+    .fila { display: grid; align-items: center; column-gap: 16px; padding: 10px 18px; border-bottom: 1px solid #f0f2f5; }
     .fila:last-child { border-bottom: none; }
     .fila:hover { background: #f8fafd; }
     .fila:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
+    .propio .fila { grid-template-columns: minmax(0, 1fr) 118px 150px 340px; }
+    .externo .fila { grid-template-columns: minmax(0, 1fr) 150px 340px; }
     .der { text-align: right; }
 
-    .prod-desc { font-size: 0.93rem; font-weight: 600; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .prod-meta { font-size: 0.8rem; color: #5f6b7a; margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .marca { display: inline-block; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.3px; color: var(--navy); background: #e8eef7; border-radius: 5px; padding: 1px 7px; }
-    .codfab { font-family: Consolas, 'Courier New', monospace; font-weight: 700; color: var(--text); font-size: 0.85rem; }
+    /* Una linea por repuesto: la descripcion completa queda en el tooltip */
+    .prod-desc { font-size: .93rem; font-weight: 600; color: var(--text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prod-meta { font-size: .8rem; color: #5f6b7a; margin-top: 3px; display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
+    .codfab { font-family: Consolas, 'Courier New', monospace; font-weight: 700; color: var(--text); font-size: .84rem; }
     .sec { color: #8a94a3; }
+    .prov-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--pc, #1d5fa8); white-space: nowrap; }
+    .prov-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--pc, #1d5fa8); }
+    .tag-rel { font-size: .7rem; font-weight: 700; color: #6b7685; background: #f1f4f7; border-radius: 5px; padding: 1px 6px; }
 
-    .stock { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 3px 9px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+    .stock { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 3px 9px; font-size: .8rem; font-weight: 700; white-space: nowrap; }
     .stock .punto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
     .stock.ok { background: #e6f4ec; color: #146c43; }
     .stock.critico { background: #fff3d1; color: #7a5600; }
     .stock.sin { background: #fdeceb; color: #a8281e; }
 
-    .precio { font-size: 1.12rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
-    .precio-sub { font-size: 0.76rem; color: #6b7685; font-variant-numeric: tabular-nums; }
-    .prov { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+    .precio { font-size: 1.1rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .precio-sub { font-size: .75rem; color: #6b7685; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mejor-tag { font-size: .72rem; font-weight: 700; color: #146c43; }
+    .dif { font-size: .74rem; color: #a8281e; font-weight: 600; }
 
-    /* Acciones: una principal, el resto discretas */
-    .acciones { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
-    .btn-a {
-      height: 34px; border-radius: 8px; padding: 0 12px; font-size: 0.82rem; font-weight: 700; white-space: nowrap;
-      display: inline-flex; align-items: center; gap: 6px; border: 1px solid #c9d3e0; background: #fff; color: var(--navy);
+    /* ---------- Acciones: un solo control por fila ---------- */
+    .acc { display: inline-flex; justify-self: end; border: 1px solid #c9d3e0; border-radius: 9px; overflow: hidden; background: #fff; }
+    .acc button {
+      border: 0; background: none; height: 34px; padding: 0 11px; font-size: .8rem; font-weight: 700; color: var(--navy);
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
     }
-    .btn-a:hover { border-color: var(--nav-accent); background: #f0f6ff; }
-    .btn-a.prim { background: var(--navy); border-color: var(--navy); color: #fff; }
-    .btn-a.prim:hover { background: #0b2c55; }
-    .btn-a.icono { width: 34px; padding: 0; justify-content: center; color: #5f6b7a; }
-    .btn-a:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
+    .acc button + button { border-left: 1px solid #e3e8ef; }
+    .acc button:hover { background: #f0f6ff; }
+    .acc button.prim { background: #eaf2fc; color: #0d3b78; }
+    .acc button.prim:hover { background: var(--navy); color: #fff; }
+    .acc button.icono { width: 36px; padding: 0; color: #5f6b7a; }
+    .acc button.quitar:hover { background: #fdeceb; color: #a8281e; }
+    .acc button:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
+    .acc.chica button { height: 28px; font-size: .76rem; padding: 0 9px; }
+    .acc.chica button.icono { width: 30px; padding: 0; }
 
-    /* Grupo: el mismo articulo en varias listas */
+    /* ---------- Proveedores de un repuesto del local (plegados) ---------- */
+    .ver-prov { border: 0; background: none; padding: 0; font-size: .8rem; font-weight: 600; color: #1d5fa8; display: inline-flex; align-items: center; gap: 5px; }
+    .ver-prov:hover { text-decoration: underline; }
+    .ver-prov .bi-chevron-down { transition: transform .15s; font-size: .7rem; }
+    .ver-prov[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+    .sub-prov { padding: 2px 18px 8px 34px; background: #fbfcfe; border-bottom: 1px solid #f0f2f5; }
+    .sub-prov[hidden] { display: none; }
+    .sp-fila { display: grid; grid-template-columns: minmax(0, 1fr) 180px auto; column-gap: 16px; align-items: center; padding: 6px 0; font-size: .82rem; border-bottom: 1px dashed #e3e8ef; }
+    .sp-fila:last-child { border-bottom: 0; }
+    .sp-prov { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; color: #374151; }
+    .sp-costo { font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+    .pend-tag { font-size: .72rem; font-weight: 700; color: #7a5600; background: #fff3d1; border-radius: 5px; padding: 1px 6px; }
+
+    /* ---------- Grupos: el mismo articulo en varias listas ---------- */
     .grupo { border-bottom: 1px solid #e3e8ef; }
     .grupo:last-child { border-bottom: none; }
-    .grupo-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 18px 4px; font-size: 0.82rem; color: #4a5568; }
+    .grupo-head { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 9px 18px 2px; font-size: .8rem; color: #4a5568; }
     .grupo-head .tag { font-weight: 700; color: var(--navy); }
     .grupo-head .tag.duda { color: #7a5600; }
-    .grupo-head .btn-a { height: 28px; font-size: 0.76rem; margin-left: auto; }
-    /* Proveedores de un repuesto del local: debajo de su fila, no repetidos abajo */
-    .sub-prov { padding: 0 18px 10px; margin-top: -4px; }
-    .sp-fila { display: grid; align-items: center; column-gap: 18px; grid-template-columns: minmax(0, 1fr) 128px 200px 236px;
-               padding: 5px 0 5px 14px; border-left: 2px solid #dde3ea; font-size: 0.82rem; }
-    .sp-fila:hover { background: #f8fafd; }
-    .sp-prov { color: #374151; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .sp-prov b { color: var(--text); }
-    .sp-costo { font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
-    .sp-fila .btn-a { height: 28px; font-size: 0.76rem; padding: 0 10px; }
-    @media (max-width: 1100px) { .sp-fila { grid-template-columns: minmax(0, 1fr) 120px 150px 200px; } }
-    @media (max-width: 860px) { .sp-fila { grid-template-columns: 1fr auto; } .sp-fila > :nth-child(2) { display: none; } }
-    /* Modo cliente: el ojito oculta costos y comparaciones de costo */
+    .grupo-head .acc { margin-left: auto; }
+    .grupo .fila { border-bottom: none; padding-top: 7px; padding-bottom: 7px; }
+    .grupo .fila.mejor { box-shadow: inset 3px 0 0 #198754; }
+
+    /* ---------- Relacionados (plegados) ---------- */
+    .mas-rel { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; border-top: 1px solid #edf0f4; background: #fafbfc;
+               padding: 10px 18px; font-size: .85rem; font-weight: 700; color: #1d5fa8; text-align: left; }
+    .mas-rel:hover { background: #f0f6ff; }
+    .mas-rel span { font-weight: 400; color: #6b7685; }
+    .mas-rel .bi-chevron-down { transition: transform .15s; }
+    .mas-rel[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+    .rel-lista { border-top: 1px solid #edf0f4; }
+    .rel-lista[hidden] { display: none; }
+
+    /* ---------- Marcas y carrito ---------- */
+    .marca-fuerte { display: inline-block; background: var(--navy); color: #fff; font-weight: 800; font-size: .72rem;
+                    letter-spacing: .4px; border-radius: 5px; padding: 1px 7px; margin-right: 8px; vertical-align: 1px; }
+    .marca-aviso { color: #b45309; margin: 0 6px 0 -4px; font-size: .8rem; cursor: help; vertical-align: 1px; }
+    .en-carrito { font-size: .72rem; font-weight: 700; color: #0d3b78; background: #e6eefb; border-radius: 5px; padding: 1px 7px; white-space: nowrap; }
+
+    /* ---------- Modo cliente: el ojito oculta costos ---------- */
     body.sin-costos .dato-costo { display: none !important; }
     .btn-ojo { height: 48px; width: 48px; border: 1px solid #c9d3e0; border-radius: 10px; background: #fff; color: #4a5568;
                font-size: 1.15rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .btn-ojo:hover { border-color: var(--nav-accent); color: var(--navy); }
     .btn-ojo:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 2px; }
     body.sin-costos .btn-ojo { background: var(--navy); border-color: var(--navy); color: #fff; }
-    .marca-fuerte { display: inline-block; background: var(--navy); color: #fff; font-weight: 800; font-size: 0.74rem;
-                    letter-spacing: 0.4px; border-radius: 5px; padding: 2px 8px; margin-right: 8px; vertical-align: 2px; }
-    .marca-aviso { color: #b45309; margin: 0 6px 0 -4px; font-size: 0.8rem; cursor: help; vertical-align: 1px; }
-    .pend-tag { font-size: 0.72rem; font-weight: 700; color: #7a5600; background: #fff3d1; border-radius: 5px; padding: 1px 6px; }
-    .grupo .fila { border-bottom: none; padding-top: 8px; padding-bottom: 8px; }
-    .grupo .fila.mejor { box-shadow: inset 3px 0 0 #198754; }
-    .mejor-tag { font-size: 0.72rem; font-weight: 700; color: #146c43; }
-    /* Lo que ya esta en el carrito de compras */
-    .en-carrito { font-size: 0.72rem; font-weight: 700; color: #0d3b78; background: #e6eefb; border-radius: 5px; padding: 1px 7px; white-space: nowrap; }
-    .dif { font-size: 0.74rem; color: #a8281e; font-weight: 600; }
+
+    /* ---------- Presupuesto / venta en armado (barra de abajo) ---------- */
+    body.con-armado .busc-main { padding-bottom: 96px !important; }
+    .armado {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 40;
+      display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px);
+      background: var(--navy); color: #fff; border-radius: 14px; padding: 9px 10px 9px 14px; box-shadow: 0 14px 34px rgba(0,31,63,.28);
+    }
+    .armado[hidden] { display: none; }
+    .armado .a-ico { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .armado .a-txt { font-size: .78rem; line-height: 1.25; color: #c9d7ea; white-space: nowrap; }
+    .armado .a-txt b { display: block; font-size: .98rem; color: #fff; }
+    .armado button { border: 0; border-radius: 9px; height: 36px; padding: 0 13px; font-weight: 700; font-size: .84rem; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .armado .a-ver { background: rgba(255,255,255,.14); color: #fff; }
+    .armado .a-ver:hover { background: rgba(255,255,255,.24); }
+    .armado .a-ir { background: #fff; color: var(--navy); }
+    .armado .a-ir:hover { background: #e8eef7; }
+    .armado .l-corto { display: none; }
+    .armado.pulso { animation: pulso .45s ease; }
+    @keyframes pulso { 0% { transform: translateX(-50%) scale(1); } 40% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); } }
+    .armado-lista {
+      position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); z-index: 40; width: min(600px, calc(100% - 32px));
+      background: #fff; border: 1px solid #dde3ea; border-radius: 12px; box-shadow: 0 14px 34px rgba(0,31,63,.18); padding: 6px 0; max-height: 50vh; overflow: auto;
+    }
+    .armado-lista[hidden] { display: none; }
+    .al-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid #f0f2f5; font-size: .86rem; }
+    .al-fila:last-child { border-bottom: 0; }
+    .al-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+    .al-desc small { display: block; font-weight: 400; color: #6b7685; }
+    .al-fila .quitar { border: 0; background: none; color: #a8281e; width: 30px; height: 30px; border-radius: 7px; }
+    .al-fila .quitar:hover { background: #fdeceb; }
+    .al-pie { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 4px; font-size: .82rem; color: #6b7685; }
+    .al-pie button { border: 0; background: none; color: #a8281e; font-weight: 600; font-size: .82rem; }
 
     /* ---------- Estados ---------- */
     .estado { text-align: center; padding: 64px 20px; color: #5f6b7a; }
@@ -166,17 +243,31 @@
     .cargando { padding: 26px; text-align: center; color: #5f6b7a; font-size: 0.9rem; }
 
     @media (max-width: 1100px) {
-      .propio .fila, .propio .cabecera { grid-template-columns: minmax(0, 1fr) 120px 150px 200px; }
-      .externo .fila, .externo .cabecera { grid-template-columns: minmax(0, 1fr) 130px 150px 200px; }
-      .btn-a .txt-largo { display: none; }
+      .propio .fila { grid-template-columns: minmax(0, 1fr) 110px 130px 280px; }
+      .externo .fila { grid-template-columns: minmax(0, 1fr) 130px 280px; }
+      .acc button:not(.icono) > i { display: none; }
     }
     @media (max-width: 860px) {
       .busc-main { padding: 0 12px 24px !important; }
       .fuentes { width: 100%; overflow-x: auto; }
-      .cabecera { display: none; }
+      .veredicto { grid-template-columns: 1fr; }
       .propio .fila, .externo .fila { grid-template-columns: 1fr auto; row-gap: 8px; }
       .fila > .col-prod { grid-column: 1 / -1; }
-      .fila > .acciones { grid-column: 1 / -1; justify-content: flex-start; }
+      .fila > .acc { grid-column: 1 / -1; justify-self: stretch; }
+      .fila > .acc button { flex: 1; }
+      .acc button:not(.icono) > i { display: inline-block; }
+      .prod-desc { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+      .sub-prov { padding-left: 18px; }
+      .sp-fila { grid-template-columns: 1fr auto; row-gap: 6px; }
+      .sp-fila > .acc { grid-column: 1 / -1; justify-self: start; }
+      .armado { left: 12px; right: 12px; transform: none; max-width: none; }
+      .armado.pulso { animation: none; }
+      .armado { gap: 8px; padding: 8px; }
+      .armado .a-ico, .armado .a-ver span, .armado .l-largo { display: none; }
+      .armado .l-corto { display: inline; }
+      .armado .a-txt { flex: 1; min-width: 0; overflow: hidden; }
+      .armado .a-txt b { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; }
+      .armado-lista { left: 12px; right: 12px; transform: none; width: auto; }
     }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
@@ -207,7 +298,7 @@
     </div>
 
     <!-- Respuesta en una linea: lo tengo o no, y desde cuanto se consigue -->
-    <div class="resumen" id="resumen" aria-live="polite"></div>
+    <div class="veredicto" id="resumen" aria-live="polite"></div>
 
     <div id="zonaResultados">
       <div class="estado" id="estadoInicial">
@@ -225,26 +316,23 @@
       <!-- En el local -->
       <section class="bloque propio" id="secPropio" style="display:none;" aria-labelledby="tituloPropio">
         <div class="bloque-head">
+          <span class="bh-ico local" aria-hidden="true"><i class="bi bi-shop"></i></span>
           <h2 id="tituloPropio">En el local</h2>
           <span class="cont" id="contTengo"></span>
-        </div>
-        <div class="cabecera">
-          <span>Repuesto</span><span>Stock</span><span class="der">Precio</span><span></span>
         </div>
         <div id="listaTengo"></div>
       </section>
 
-      <!-- Se mantiene por compatibilidad: el aviso ahora va en el resumen -->
+      <!-- Se mantiene por compatibilidad: el aviso ahora va en el veredicto -->
       <div id="sinPropio" style="display:none;"></div>
 
-      <!-- En proveedores -->
+      <!-- Lo que no tenemos y se consigue -->
       <section class="bloque externo" id="secExterno" style="display:none;" aria-labelledby="tituloExterno">
         <div class="bloque-head">
-          <h2 id="tituloExterno">En proveedores</h2>
+          <span class="bh-ico prov" aria-hidden="true"><i class="bi bi-truck"></i></span>
+          <h2 id="tituloExterno">Se consigue en proveedores</h2>
+          <span class="bh-tag">no lo tenemos</span>
           <span class="cont" id="contConsigo"></span>
-        </div>
-        <div class="cabecera">
-          <span>Artículo</span><span>Proveedor</span><span class="der">Precio de venta</span><span></span>
         </div>
         <div id="listaConsigo"></div>
       </section>
@@ -252,6 +340,17 @@
       <div class="estado" id="estadoVacio" style="display:none;"></div>
     </div>
   </div>
+
+  <!-- Lo que se va juntando para el cliente: pasa a la Venta -->
+  <div class="armado" id="armado" hidden role="region" aria-label="Presupuesto en armado">
+    <span class="a-ico" aria-hidden="true"><i class="bi bi-receipt"></i></span>
+    <span class="a-txt"><span id="armadoTitulo">Presupuesto en armado</span><b id="armadoResumen"></b></span>
+    <button type="button" class="a-ver" id="armadoVer" aria-expanded="false" aria-controls="armadoLista" onclick="toggleListaArmado()">
+      <i class="bi bi-list-ul" aria-hidden="true"></i><span>Ver</span>
+    </button>
+    <button type="button" class="a-ir" onclick="irALaVenta()"><span class="l-largo" id="armadoIr">Hacer el presupuesto</span><span class="l-corto" id="armadoIrCorto">Presupuesto</span> <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+  </div>
+  <div class="armado-lista" id="armadoLista" hidden></div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="layout.js"></script>
@@ -421,8 +520,6 @@
       }
 
       mostrar("sinPropio", false);
-      // Primero los proveedores: los que son de un repuesto del local van
-      // debajo de esa fila, y abajo quedan solo los que no tenes
       // "En el local" es lo que el negocio trabaja (stock, minimo, ventas,
       // compras o encargos). Una ficha armada solo al vincular listas no
       // cuenta como del local: se ve abajo, en proveedores.
@@ -430,36 +527,98 @@
       fichasActuales = propios.filter(function (p) { return p.EnLocal === 0 || p.EnLocal === false; });
       propiosActuales = locales;
       subProv = {};
-      var quedanAbajo = externos.length > 0 ? pintarExternos(externos) : 0;
-      mostrar("secExterno", quedanAbajo > 0);
+      // Primero los proveedores: los que son de un repuesto del local van
+      // debajo de esa fila (plegados) y abajo quedan solo los que no tenemos
+      // ¿Hay en algun lado "la pieza" buscada? Si no (busqueda por vehiculo,
+      // por ejemplo), no se marca nada como relacionado
+      hayPiezaBuscada = propios.concat(externos).some(function (r) { return rel(r) <= 1; });
+      var info = externos.length > 0 ? pintarExternos(externos) : { total: 0, principales: [] };
+      mostrar("secExterno", info.total > 0);
 
       if (locales.length > 0) { mostrar("secPropio", true); pintarPropios(locales); }
       else mostrar("secPropio", false);
 
-      pintarResumen(locales, externos);
+      pintarVeredicto(locales, info);
     }
 
-    // La respuesta a "¿lo tenés?" en una linea, antes de cualquier tabla
-    function pintarResumen(propios, externos) {
+    /* ================= RELEVANCIA (scripts 88 y 89) =================
+       La API devuelve Relevancia: 0 coincide por código · 1 es la pieza
+       buscada · 2 las palabras aparecen juntas (accesorios) · 3 las
+       nombra de pasada. Si la API todavía no la manda, todo es principal. */
+    var hayPiezaBuscada = true;
+    function rel(r) { var v = Number(r.Relevancia); return (r.Relevancia === undefined || r.Relevancia === null || isNaN(v)) ? 1 : v; }
+
+    // Color fijo por proveedor: se reconoce de un vistazo en la lista
+    var PALETA_PROV = ["#1d5fa8", "#0f766e", "#6b3fa0", "#b45309", "#be185d", "#4d7c0f", "#475569"];
+    function colorProv(idProv) {
+      var k = -1;
+      for (var i = 0; i < proveedores.length; i++) if (proveedores[i].Id === idProv) { k = i; break; }
+      if (k < 0) k = Math.abs(Number(idProv) || 0);
+      return PALETA_PROV[k % PALETA_PROV.length];
+    }
+    function provChip(r) {
+      return '<span class="prov-chip" style="--pc:' + colorProv(r.IdProveedor) + '">' + escapeHtml(r.Proveedor) + '</span>';
+    }
+
+    function boton(clase, onclick, icono, texto, titulo) {
+      return '<button type="button" class="' + clase + '" onclick="' + onclick + '" title="' + escapeHtml(titulo || texto) + '"' +
+             (texto ? '' : ' aria-label="' + escapeHtml(titulo) + '"') + '>' +
+             '<i class="bi ' + icono + '" aria-hidden="true"></i>' + (texto ? '<span class="txt-largo">' + texto + '</span>' : '') + '</button>';
+    }
+
+    // Quien puede sumar a la venta / presupuesto (las mismas que entran a Venta)
+    function puedeVender() {
+      var u = (window.Auth && Auth.getUsuario && Auth.getUsuario()) || {};
+      return ["Administrador", "Supervisor", "Vendedor"].indexOf(u.Rol) !== -1;
+    }
+
+    // La respuesta en dos tarjetas: ¿lo tenemos? y ¿se consigue?
+    function tarjeta(clase, icono, titulo, valor, sub, destino) {
+      var tag = destino ? 'a' : 'div';
+      return '<' + tag + ' class="ver-card ' + clase + '"' + (destino ? ' href="' + destino + '"' : '') + '>' +
+        '<span class="vc-ico"><i class="bi ' + icono + '" aria-hidden="true"></i></span>' +
+        '<span><span class="vc-tit">' + titulo + '</span><span class="vc-val">' + valor + '</span>' +
+        '<span class="vc-sub">' + sub + '</span></span></' + tag + '>';
+    }
+
+    function pintarVeredicto(locales, info) {
+      var principales = hayPiezaBuscada ? locales.filter(function (r) { return rel(r) <= 1; }) : locales;
+      var relacionados = locales.length - principales.length;
+      var conStock = principales.filter(function (r) { return r.Stock > 0; });
       var html = "";
-      var conStock = propios.filter(function (r) { return r.Stock > 0; });
-      if (provActivo !== -1 || propios.length) {
-        if (conStock.length)
-          html += '<span class="res-dato"><span class="ind si"></span><strong>Hay en el local</strong>' +
-                  (conStock.length > 1 ? ' (' + conStock.length + ' opciones)' : '') + '</span>';
-        else if (propios.length)
-          html += '<span class="res-dato"><span class="ind no"></span><strong>Sin stock en el local</strong></span>';
-        else
-          html += '<span class="res-dato"><span class="ind no"></span><strong>No está en el local</strong></span>';
+
+      if (conStock.length) {
+        var u = conStock.reduce(function (s, r) { return s + (Number(r.Stock) || 0); }, 0);
+        var min = Math.min.apply(null, conStock.map(function (r) { return Number(r.PrecioDeVenta) || Infinity; }));
+        html += tarjeta("si", "bi-check-circle-fill", "En el local",
+          "Hay " + u + (u === 1 ? " unidad" : " unidades"),
+          (conStock.length > 1 ? conStock.length + " opciones · desde " : "") + formatearMoneda(min), "#secPropio");
+      } else if (principales.length) {
+        html += tarjeta("no", "bi-x-circle-fill", "En el local", "Sin stock",
+          "Lo trabajamos" + (info.total ? ": se puede encargar" : ""), "#secPropio");
+      } else {
+        html += tarjeta("nada", "bi-dash-circle", "En el local", "No lo tenemos",
+          relacionados ? relacionados + " relacionado" + (relacionados === 1 ? "" : "s") + " en el local" : "No está en el catálogo del local",
+          relacionados ? "#secPropio" : null);
       }
-      if (externos.length) {
-        var minimo = Math.min.apply(null, externos.map(function (r) { return Number(r.PrecioSugerido) || Infinity; }));
-        var provs = {}; externos.forEach(function (r) { provs[r.Proveedor] = 1; });
-        var n = Object.keys(provs).length;
-        html += '<span class="res-dato"><span class="ind prov"></span>Se consigue en <strong>' + n + ' proveedor' + (n === 1 ? '' : 'es') + '</strong>' +
-                (isFinite(minimo) ? ', desde <strong>' + formatearMoneda(minimo) + '</strong> de venta' : '') + '</span>';
+
+      if (provActivo !== -1) {
+        if (info.principales.length) {
+          var provs = {};
+          info.principales.forEach(function (r) { provs[r.Proveedor] = 1; });
+          var n = Object.keys(provs).length;
+          var minP = Math.min.apply(null, info.principales.map(function (r) { return Number(r.PrecioSugerido) || Infinity; }));
+          html += tarjeta("prov", "bi-truck", "Se consigue en proveedores",
+            isFinite(minP) ? "Desde " + formatearMoneda(minP) : "Se consigue",
+            info.principales.length + " opci" + (info.principales.length === 1 ? "ón" : "ones") + " en " + n + " proveedor" + (n === 1 ? "" : "es"),
+            "#secExterno");
+        } else {
+          html += tarjeta("nada", "bi-truck", "Se consigue en proveedores", "No aparece", "en las listas de los proveedores", null);
+        }
       }
-      document.getElementById("resumen").innerHTML = html;
+      var cont = document.getElementById("resumen");
+      cont.innerHTML = html;
+      cont.classList.toggle("una", provActivo === -1);
     }
 
     function pintarPropios(lista) {
@@ -467,54 +626,73 @@
       var cont = document.getElementById("listaTengo");
       var conStock = lista.filter(function (r) { return r.Stock > 0; }).length;
       document.getElementById("contTengo").textContent =
-        lista.length + " resultado" + (lista.length === 1 ? "" : "s") + ", " + conStock + " con stock";
+        lista.length + " en el catálogo · " + (conStock ? conStock + " con stock" : "ninguno con stock");
+      var vende = puedeVender();
 
       var html = "";
       lista.forEach(function (r) {
-        var sinStock = r.EstadoStock === "SinStock";
+        var sinStock = !(r.Stock > 0);
         var stock = sinStock
           ? '<span class="stock sin"><span class="punto"></span>Sin stock</span>'
           : r.EstadoStock === "Critico"
             ? '<span class="stock critico"><span class="punto"></span>Quedan ' + r.Stock + '</span>'
             : '<span class="stock ok"><span class="punto"></span>' + r.Stock + ' en stock</span>';
 
-        // Sin stock, lo natural es encargarlo; con stock, pedir es reponer (secundario)
-        var acciones = "";
+        // Con stock se vende; sin stock se presupuesta (queda "a pedido") o se encarga
+        var acc = "";
+        if (vende)
+          acc += sinStock
+            ? boton("prim", "presupuestarPropio(" + r.Id + ")", "bi-file-earmark-plus", "Presupuestar", "Sumar al presupuesto del cliente: queda a pedido")
+            : boton("prim", "presupuestarPropio(" + r.Id + ")", "bi-bag-plus", "Vender", "Sumar a la venta del cliente");
         if (r.MejorCosto) {
-          acciones += sinStock
-            ? '<button class="btn-a prim" onclick="encargarPropio(' + r.Id + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i>Encargar</button>' +
-              '<button class="btn-a" onclick="pedirPropio(' + r.Id + ')" title="Sumar al carrito de compras"><i class="bi bi-cart-plus"></i>Pedir</button>'
-            : '<button class="btn-a" onclick="pedirPropio(' + r.Id + ')" title="Sumar al carrito de compras"><i class="bi bi-cart-plus"></i>Pedir</button>' +
-              '<button class="btn-a" onclick="encargarPropio(' + r.Id + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i><span class="txt-largo">Encargar</span></button>';
+          acc += boton("", "encargarPropio(" + r.Id + ")", "bi-bookmark-star", "Encargar", "Encargo de un cliente, con seña") +
+                 boton("", "pedirPropio(" + r.Id + ")", "bi-cart-plus", "Pedir", "Sumar al carrito de compras");
         }
-        acciones += '<button class="btn-a icono" onclick="abrirVinculacion(' + r.Id + ', { alTerminar: refrescarEquivalencias })" ' +
-                    'title="Mismo artículo en otras listas y equivalentes de otras marcas" aria-label="Vincular y equivalentes"><i class="bi bi-link-45deg"></i></button>';
+        acc += boton("icono", "abrirVinculacion(" + r.Id + ", { alTerminar: refrescarEquivalencias })", "bi-link-45deg", "",
+                     "Mismo artículo en otras listas y equivalentes de otras marcas");
 
+        // Proveedores del repuesto: una linea; el detalle se despliega
+        var subs = subProv[r.Id] || [];
+        var provTxt = "";
+        if (subs.length) {
+          var minC = Math.min.apply(null, subs.map(function (s) { return Number(s.PrecioCompra) || Infinity; }));
+          provTxt = '<button type="button" class="ver-prov" aria-expanded="false" onclick="toggleSubProv(' + r.Id + ', this)">' +
+            '<i class="bi bi-truck" aria-hidden="true"></i>' + subs.length + ' proveedor' + (subs.length === 1 ? '' : 'es') +
+            '<span class="dato-costo">&nbsp;· costo desde ' + formatearMoneda(minC) + '</span><i class="bi bi-chevron-down" aria-hidden="true"></i></button>';
+        } else if (r.MejorCosto) {
+          provTxt = '<span class="sec dato-costo">costo ' + formatearMoneda(r.MejorCosto) + ' en ' + escapeHtml(r.MejorProveedor || "") +
+            (r.ProveedoresDisponibles > 1 ? ' (+' + (r.ProveedoresDisponibles - 1) + ')' : '') + '</span>';
+        } else {
+          provTxt = '<span class="sec">sin proveedor vinculado</span>';
+        }
+
+        var fab = fabDe(r.CodigoFabricante, r.Descripcion, r.Codigo);
         html += '<div class="fila" tabindex="0">' +
           '<div class="col-prod">' +
-            '<div class="prod-desc">' + marcaDe(r.MarcaFabricante, r.Descripcion, r.Rubro) + escapeHtml(r.Descripcion) + '</div>' +
+            '<div class="prod-desc" title="' + escapeHtml(r.Descripcion) + '">' + marcaDe(r.MarcaFabricante, r.Descripcion, r.Rubro) + escapeHtml(r.Descripcion) + '</div>' +
             '<div class="prod-meta">' +
-              (function () { var f = fabDe(r.CodigoFabricante, r.Descripcion, r.Codigo);
-                return f ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(f) + '</span>' : ''; })() +
+              (hayPiezaBuscada && rel(r) > 1 ? '<span class="tag-rel" title="Nombra lo que buscaste, pero no es la pieza">relacionado</span>' : '') +
+              (fab ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(fab) + '</span>' : '') +
               '<span class="sec" title="Tu código">tu cód. ' + escapeHtml(r.Codigo || "-") + '</span>' +
-              marcaCarrito(r.Id) +
               (r.Rubro && r.Rubro !== "-" ? '<span class="sec">' + escapeHtml(rubroSinMarca(r.Rubro)) + '</span>' : '') +
+              marcaCarrito(r.Id) + provTxt +
             '</div>' +
-            (r.Stock <= 0 ? Equivalencias.chips(r.Id, 'irAEquivalente') : '') +
+            (sinStock ? Equivalencias.chips(r.Id, 'irAEquivalente') : '') +
           '</div>' +
           '<div>' + stock + '</div>' +
-          '<div class="der"><div class="precio">' + formatearMoneda(r.PrecioDeVenta) + '</div>' +
-            ((subProv[r.Id] || []).length ? ''   // el detalle por proveedor va justo debajo
-            : r.MejorCosto
-              ? '<div class="precio-sub dato-costo">costo ' + formatearMoneda(r.MejorCosto) + ' en ' + escapeHtml(r.MejorProveedor || "") +
-                (r.ProveedoresDisponibles > 1 ? ' (+' + (r.ProveedoresDisponibles - 1) + ')' : '') + '</div>'
-              : '<div class="precio-sub">sin proveedor vinculado</div>') +
-          '</div>' +
-          '<div class="acciones">' + acciones + '</div>' +
+          '<div class="der"><div class="precio">' + formatearMoneda(r.PrecioDeVenta) + '</div><div class="precio-sub">precio de venta</div></div>' +
+          '<div class="acc">' + acc + '</div>' +
         '</div>' +
         subProveedoresHtml(r.Id);
       });
       cont.innerHTML = html;
+    }
+
+    function toggleSubProv(id, btn) {
+      var el = document.getElementById("sp-" + id);
+      if (!el) return;
+      el.hidden = !el.hidden;
+      btn.setAttribute("aria-expanded", el.hidden ? "false" : "true");
     }
 
     /* Proveedores agrupados por articulo:
@@ -583,25 +761,24 @@
       var filas = (subProv[idRep] || []).slice().sort(function (a, b) { return a.PrecioCompra - b.PrecioCompra; });
       if (!filas.length) return "";
       var base = filas[0].PrecioCompra;
-      return '<div class="sub-prov">' + filas.map(function (r, k) {
+      return '<div class="sub-prov" id="sp-' + idRep + '" hidden>' + filas.map(function (r, k) {
         var dif = base > 0 ? Math.round((r.PrecioCompra - base) / base * 100) : 0;
         var tag = r._pend ? '<span class="pend-tag">sin vincular</span>'
                 : (filas.length > 1 && k === 0 ? '<span class="mejor-tag dato-costo">más barato</span>'
                 : (dif > 0 ? '<span class="dif dato-costo">+' + dif + '%</span>' : ''));
+        var fab = fabDe(r.Articulo, r.Descripcion, r.CodigoProveedor);
         return '<div class="sp-fila">' +
-          '<div class="sp-prov"><i class="bi bi-truck" aria-hidden="true"></i><b>' + escapeHtml(r.Proveedor) + '</b>' +
+          '<div class="sp-prov">' + provChip(r) +
             '<span class="sec">cód. ' + escapeHtml(r.CodigoProveedor) + '</span>' +
-            (function () { var f = fabDe(r.Articulo, r.Descripcion, r.CodigoProveedor);
-              return f ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(f) + '</span>' : ''; })() +
+            (fab ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(fab) + '</span>' : '') +
             tag + '</div>' +
-          '<div></div>' +
           '<div class="der"><span class="sp-costo dato-costo">costo ' + formatearMoneda(r.PrecioCompra) + '</span>' +
             '<div class="precio-sub">venta sugerida ' + formatearMoneda(r.PrecioSugerido) + '</div></div>' +
-          '<div class="acciones">' +
+          '<div class="acc chica">' +
             (r._pend
-              ? '<button class="btn-a" onclick="vincularPendientes(' + idRep + ')" title="Mismo código de fábrica: vincular para comparar precios"><i class="bi bi-link-45deg"></i>Vincular</button>'
-              : '<button class="btn-a" onclick="pedirExterno(' + r._i + ')" title="Sumar al carrito, comprándole a ' + escapeHtml(r.Proveedor) + '"><i class="bi bi-cart-plus"></i>Pedir acá</button>' +
-                '<button class="btn-a icono" onclick="desvincular(' + r._i + ')" title="No es el mismo artículo: desvincular" aria-label="Desvincular"><i class="bi bi-x-lg"></i></button>') +
+              ? boton("", "vincularPendientes(" + idRep + ")", "bi-link-45deg", "Vincular", "Mismo código de fábrica: vincular para comparar precios")
+              : boton("", "pedirExterno(" + r._i + ")", "bi-cart-plus", "Pedir acá", "Sumar al carrito, comprándole a " + r.Proveedor) +
+                boton("icono quitar", "desvincular(" + r._i + ")", "bi-x-lg", "", "No es el mismo artículo: desvincular")) +
           '</div>' +
         '</div>';
       }).join("") + '</div>';
@@ -683,15 +860,11 @@
 
     function pintarExternos(lista) {
       externosActuales = lista;
-      lista.forEach(function (r, i) { r._i = i; });
+      lista.forEach(function (r, i) { r._i = i; delete r._pend; });
       var cont = document.getElementById("listaConsigo");
-      var provs = {};
-      lista.forEach(function (r) { provs[r.Proveedor] = 1; });
-      var nProv = Object.keys(provs).length;
-      document.getElementById("contConsigo").textContent =
-        lista.length + " oferta" + (lista.length === 1 ? "" : "s") + " en " + nProv + " proveedor" + (nProv === 1 ? "" : "es");
+      var vende = puedeVender();
 
-      // 1) Confirmados
+      // 1) Confirmados: ya vinculados al mismo repuesto
       var grupos = {}, ordenGrupos = [], libres = [];
       lista.forEach(function (r) {
         if (r.IdRepuesto) {
@@ -708,8 +881,7 @@
       var limpiar = function (s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); };
       var vale = function (c) { return c.length >= 5 && /[A-Z]/.test(c) && /[0-9]/.test(c); };
 
-      // 1b) Sueltos con el mismo codigo DE FABRICA que un repuesto confirmado
-      //     (el de su columna, no cualquier palabra de la descripcion):
+      // 1b) Sueltos con el mismo codigo DE FABRICA que un repuesto confirmado:
       //     van dentro de ese grupo, marcados "sin vincular"
       var pendientes = {};
       ordenGrupos.forEach(function (id) {
@@ -739,84 +911,123 @@
         g.forEach(function (r) { usados[r._i] = 1; });
         gruposDuda.push({ codigo: c, filas: g });
       });
-      var sueltos = libres.filter(function (r) { return !usados[r._i]; });
 
-      function filaExterna(r, mejor, base) {
+      function filaExterna(r, mejor, base, conDesvincular) {
         var dif = (base && !mejor && base > 0) ? Math.round((r.PrecioCompra - base) / base * 100) : null;
         var fab = codigosDe(r)[0] || "";
         var rubro = r.Rubro || r.RubroTexto || "";
         if (/^[\d.,\s]+$/.test(rubro)) rubro = "";   // listas que mandan un numero en esa columna
+        var acc = (vende ? boton("prim", "presupuestarExterno(" + r._i + ")", "bi-file-earmark-plus", "Presupuestar",
+                                 "Sumar al presupuesto del cliente: queda a pedido") : "") +
+                  boton("", "encargarExterno(" + r._i + ")", "bi-bookmark-star", "Encargar", "Encargo de un cliente, con seña") +
+                  boton("", "pedirExterno(" + r._i + ")", "bi-cart-plus", "Pedir", "Sumar al carrito, comprándole a " + r.Proveedor) +
+                  (conDesvincular ? boton("icono quitar", "desvincular(" + r._i + ")", "bi-x-lg", "", "No es el mismo artículo: desvincular") : "");
         return '<div class="fila' + (mejor ? ' mejor' : '') + '" tabindex="0">' +
           '<div class="col-prod">' +
             '<div class="prod-desc" title="' + escapeHtml(r.Descripcion) + '">' + marcaDe(null, r.Descripcion, rubro) + escapeHtml(r.Descripcion) + '</div>' +
-            '<div class="prod-meta">' +
+            '<div class="prod-meta">' + provChip(r) +
               (fab ? '<span class="codfab" title="Código de fábrica">' + escapeHtml(fab) + '</span>' : '') +
               (rubro ? '<span class="sec">' + escapeHtml(rubroSinMarca(rubro)) + '</span>' : '') +
+              '<span class="sec" title="Código del proveedor">cód. ' + escapeHtml(r.CodigoProveedor) + '</span>' +
               (r._pend ? '<span class="pend-tag">sin vincular</span>' : '') +
               (r.IdRepuesto && !r._pend ? marcaCarrito(r.IdRepuesto) : '') +
             '</div>' +
           '</div>' +
-          '<div><div class="prov">' + escapeHtml(r.Proveedor) + '</div>' +
-            '<div class="precio-sub" title="Código del proveedor">cód. ' + escapeHtml(r.CodigoProveedor) + '</div></div>' +
           '<div class="der"><div class="precio">' + formatearMoneda(r.PrecioSugerido) + '</div>' +
             '<div class="precio-sub dato-costo">costo ' + formatearMoneda(r.PrecioCompra) + '</div>' +
             (mejor ? '<div class="mejor-tag dato-costo">más barato</div>' : (dif !== null && dif > 0 ? '<div class="dif dato-costo">+' + dif + '% de costo</div>' : '')) +
           '</div>' +
-          '<div class="acciones">' +
-            '<button class="btn-a prim" onclick="encargarExterno(' + r._i + ')" title="Encargo de un cliente, con seña"><i class="bi bi-bookmark-star"></i>Encargar</button>' +
-            '<button class="btn-a" onclick="pedirExterno(' + r._i + ')" title="Sumar al carrito, comprándole a ' + escapeHtml(r.Proveedor) + '"><i class="bi bi-cart-plus"></i>Pedir</button>' +
-            (r.IdRepuesto && !r._pend ? '<button class="btn-a icono" onclick="desvincular(' + r._i + ')" title="No es el mismo artículo: desvincular" aria-label="Desvincular"><i class="bi bi-x-lg"></i></button>' : '') +
-          '</div>' +
+          '<div class="acc">' + acc + '</div>' +
         '</div>';
       }
 
-      function filasOrdenadas(g) {
+      function filasOrdenadas(g, conDesvincular) {
         var o = g.slice().sort(function (a, b) { return a.PrecioCompra - b.PrecioCompra; });
         var base = o[0].PrecioCompra;
-        return o.map(function (r, k) { return filaExterna(r, o.length > 1 && k === 0, base); }).join("");
+        return o.map(function (r, k) { return filaExterna(r, o.length > 1 && k === 0, base, conDesvincular && r.IdRepuesto && !r._pend); }).join("");
       }
+      function minRel(filas) { return Math.min.apply(null, filas.map(rel)); }
 
-      var html = "", abajo = 0;
+      /* Cada bloque (un grupo o una oferta suelta) con su relevancia y su
+         posicion en la respuesta de la API, que ya viene ordenada. */
+      var bloques = [];
       var enLocal = {};
       (propiosActuales || []).forEach(function (p) { enLocal[p.Id] = 1; });
       ordenGrupos.forEach(function (id) {
         var g = grupos[id], r0 = g[0], pend = pendientes[id] || [];
         if (enLocal[id]) { subProv[id] = g.concat(pend); return; }
-        abajo += g.length + pend.length;
+        var filas = g.concat(pend);
         var esFicha = (fichasActuales || []).some(function (p) { return p.Id === id; });
-        html += '<div class="grupo">' +
-          (esFicha
-            ? '<div class="grupo-head"><span class="tag"><i class="bi bi-link-45deg"></i> Mismo artículo en ' + g.length + ' lista' + (g.length === 1 ? '' : 's') + '</span>' +
-              '<span>vinculadas para comparar precios · no lo trabajás en el local' +
-              (pend.length ? '; ' + pend.map(function (r) { return escapeHtml(r.Proveedor); }).join(", ") + ' tiene el mismo código sin vincular' : '') + '</span>'
-            : '<div class="grupo-head"><span class="tag"><i class="bi bi-check2-circle"></i> Es tu repuesto ' +
-            escapeHtml(r0.CodigoPropio || "") + '</span>' +
-            '<span>' + (r0.StockPropio > 0 ? 'tenés ' + r0.StockPropio + ' en el local' : 'sin stock en el local') +
-            ' · vinculado en ' + g.length + ' proveedor' + (g.length === 1 ? '' : 'es') +
-            (pend.length ? '; ' + pend.map(function (r) { return escapeHtml(r.Proveedor); }).join(", ") + ' tiene el mismo código sin vincular' : '') + '</span>') +
-            (pend.length ? '<button class="btn-a" onclick="vincularPendientes(' + id + ')" title="Vincular para comparar precios"><i class="bi bi-link-45deg"></i>Vincular</button>' : '') +
-          '</div>' +
-          filasOrdenadas(g.concat(pend)) +
-        '</div>';
+        var html;
+        if (filas.length === 1) {
+          // Una sola lista: es una oferta mas, sin encabezado de grupo
+          html = filaExterna(r0, false, null, false);
+        } else {
+          html = '<div class="grupo">' +
+            '<div class="grupo-head">' +
+              (esFicha
+                ? '<span class="tag"><i class="bi bi-link-45deg"></i> Mismo artículo en ' + g.length + ' listas</span><span>se comparan los precios</span>'
+                : '<span class="tag"><i class="bi bi-check2-circle"></i> Es tu repuesto ' + escapeHtml(r0.CodigoPropio || "") + '</span>' +
+                  '<span>' + (r0.StockPropio > 0 ? 'tenés ' + r0.StockPropio + ' en el local' : 'sin stock en el local') + '</span>') +
+              (pend.length ? '<span>· ' + pend.map(function (r) { return escapeHtml(r.Proveedor); }).join(", ") + ' tiene el mismo código sin vincular</span>' +
+                '<div class="acc chica">' + boton("", "vincularPendientes(" + id + ")", "bi-link-45deg", "Vincular", "Vincular para comparar precios") + '</div>' : '') +
+            '</div>' +
+            filasOrdenadas(filas, true) +
+          '</div>';
+        }
+        bloques.push({ rel: minRel(filas), pos: Math.min.apply(null, filas.map(function (r) { return r._i; })), filas: filas, html: html });
       });
       pendientesActuales = pendientes;
       gruposDuda.forEach(function (gd, k) {
-        abajo += gd.filas.length;
-        html += '<div class="grupo">' +
-          '<div class="grupo-head"><span class="tag duda"><i class="bi bi-question-circle"></i> Mismo código de fábrica ' +
-            escapeHtml(gd.codigo) + ' en ' + gd.filas.length + ' listas</span>' +
-            '<span>Revisá la marca en la descripción.</span>' +
-            '<button class="btn-a" onclick="confirmarGrupo(' + k + ')" title="Lo suma al catálogo y vincula las listas: se comparan los precios"><i class="bi bi-link-45deg"></i>Son el mismo</button>' +
-          '</div>' +
-          filasOrdenadas(gd.filas) +
-        '</div>';
+        bloques.push({
+          rel: minRel(gd.filas), pos: Math.min.apply(null, gd.filas.map(function (r) { return r._i; })), filas: gd.filas,
+          html: '<div class="grupo">' +
+            '<div class="grupo-head"><span class="tag duda"><i class="bi bi-question-circle"></i> Mismo código de fábrica ' +
+              escapeHtml(gd.codigo) + ' en ' + gd.filas.length + ' listas</span><span>Revisá la marca en la descripción.</span>' +
+              '<div class="acc chica">' + boton("", "confirmarGrupo(" + k + ")", "bi-link-45deg", "Son el mismo", "Lo suma al catálogo y vincula las listas: se comparan los precios") + '</div>' +
+            '</div>' +
+            filasOrdenadas(gd.filas, false) +
+          '</div>'
+        });
       });
-      sueltos.forEach(function (r) { html += filaExterna(r, false, null); });
-      abajo += sueltos.length;
+      libres.filter(function (r) { return !usados[r._i]; }).forEach(function (r) {
+        bloques.push({ rel: rel(r), pos: r._i, filas: [r], html: filaExterna(r, false, null, false) });
+      });
+      bloques.sort(function (a, b) { return a.pos - b.pos; });
+
+      // Lo que buscas arriba; lo que solo nombra la busqueda, plegado.
+      // Si nada es "la pieza" (busqueda por vehiculo, por ejemplo), va todo junto.
+      var hayPrincipal = bloques.some(function (b) { return b.rel <= 1; });
+      var arriba = bloques.filter(function (b) { return !hayPrincipal || b.rel <= 1; });
+      var abajo = bloques.filter(function (b) { return hayPrincipal && b.rel > 1; });
+      var principales = [], nRel = 0;
+      arriba.forEach(function (b) { principales = principales.concat(b.filas); });
+      abajo.forEach(function (b) { nRel += b.filas.length; });
+
+      var html = arriba.map(function (b) { return b.html; }).join("");
+      if (abajo.length) {
+        html += '<button type="button" class="mas-rel" aria-expanded="false" onclick="toggleRel(this)">' +
+          '<i class="bi bi-chevron-down" aria-hidden="true"></i> Ver ' + nRel + ' relacionado' + (nRel === 1 ? '' : 's') +
+          ' <span>· accesorios y otros repuestos que nombran la búsqueda</span></button>' +
+          '<div class="rel-lista" hidden>' + abajo.map(function (b) { return b.html; }).join("") + '</div>';
+      }
       cont.innerHTML = html;
-      document.getElementById("contConsigo").textContent =
-        abajo + " oferta" + (abajo === 1 ? "" : "s");
-      return abajo;
+
+      var provs = {};
+      principales.forEach(function (r) { provs[r.Proveedor] = 1; });
+      var nProv = Object.keys(provs).length;
+      document.getElementById("contConsigo").textContent = principales.length
+        ? principales.length + " opci" + (principales.length === 1 ? "ón" : "ones") + " en " + nProv + " proveedor" + (nProv === 1 ? "" : "es") +
+          (nRel ? " · " + nRel + " relacionado" + (nRel === 1 ? "" : "s") : "")
+        : "";
+      return { total: principales.length + nRel, principales: principales };
+    }
+
+    function toggleRel(btn) {
+      var el = btn.nextElementSibling;
+      if (!el) return;
+      el.hidden = !el.hidden;
+      btn.setAttribute("aria-expanded", el.hidden ? "false" : "true");
     }
 
     /* "Son el mismo": el mas barato entra al catalogo (con rubro si hace
@@ -1163,6 +1374,99 @@
       });
     }
 
+    /* ================= PRESUPUESTO / VENTA EN ARMADO (28/10) =================
+       "Presupuestar" (o "Vender", si hay stock) junta los repuestos que pide
+       el cliente que está en el mostrador, también los que NO tenemos.
+       Se guardan en este navegador y pasan a la Venta, donde se confirma la
+       venta o se hace el presupuesto (lo que no hay queda "a pedido"). */
+    var CLAVE_ARMADO = "daytona.ventaEnArmado";
+    function leerArmado() {
+      try { var v = JSON.parse(localStorage.getItem(CLAVE_ARMADO)); return Array.isArray(v) ? v : []; }
+      catch (e) { return []; }
+    }
+    function guardarArmado(lista) {
+      try { localStorage.setItem(CLAVE_ARMADO, JSON.stringify(lista)); } catch (e) { }
+      pintarArmado();
+    }
+    function sumarArmado(item) {
+      var lista = leerArmado();
+      var ex = null;
+      for (var i = 0; i < lista.length; i++) if (lista[i].IdRepuesto === item.IdRepuesto) { ex = lista[i]; break; }
+      if (ex) ex.Cantidad += 1;
+      else lista.push({ IdRepuesto: item.IdRepuesto, Cantidad: 1, Descripcion: item.Descripcion, Precio: item.Precio, Stock: item.Stock });
+      guardarArmado(lista);
+      var bar = document.getElementById("armado");
+      bar.classList.remove("pulso"); void bar.offsetWidth; bar.classList.add("pulso");
+    }
+    function quitarArmado(id) {
+      guardarArmado(leerArmado().filter(function (x) { return x.IdRepuesto !== id; }));
+    }
+    function vaciarArmado() {
+      try { localStorage.removeItem(CLAVE_ARMADO); } catch (e) { }
+      pintarArmado();
+    }
+    function aPedido(x) { return (Number(x.Stock) || 0) < x.Cantidad; }
+    function pintarArmado() {
+      var lista = leerArmado();
+      var bar = document.getElementById("armado"), pop = document.getElementById("armadoLista");
+      bar.hidden = lista.length === 0;
+      document.body.classList.toggle("con-armado", lista.length > 0);
+      if (!lista.length) { pop.hidden = true; return; }
+      var unidades = 0, total = 0, faltan = false;
+      lista.forEach(function (x) { unidades += x.Cantidad; total += x.Cantidad * (Number(x.Precio) || 0); if (aPedido(x)) faltan = true; });
+      document.getElementById("armadoTitulo").textContent = faltan ? "Presupuesto en armado" : "Venta en armado";
+      document.getElementById("armadoResumen").textContent = unidades + " repuesto" + (unidades === 1 ? "" : "s") + " · " + formatearMoneda(total);
+      document.getElementById("armadoIr").textContent = faltan ? "Hacer el presupuesto" : "Ir a la venta";
+      document.getElementById("armadoIrCorto").textContent = faltan ? "Presupuesto" : "Venta";
+      pop.innerHTML = lista.map(function (x) {
+        return '<div class="al-fila"><div class="al-desc" title="' + escapeHtml(x.Descripcion) + '">' + escapeHtml(x.Descripcion) +
+          '<small>' + (aPedido(x) ? 'a pedido (no hay en el local)' : 'hay en el local') + '</small></div>' +
+          '<div class="precio-sub">' + x.Cantidad + ' × ' + formatearMoneda(Number(x.Precio) || 0) + '</div>' +
+          '<button type="button" class="quitar" onclick="quitarArmado(' + x.IdRepuesto + ')" title="Sacar" aria-label="Sacar"><i class="bi bi-x-lg"></i></button></div>';
+      }).join("") +
+      '<div class="al-pie"><span>Las cantidades se ajustan en la venta.</span><button type="button" onclick="vaciarArmado()">Vaciar</button></div>';
+    }
+    function toggleListaArmado() {
+      var pop = document.getElementById("armadoLista");
+      pop.hidden = !pop.hidden;
+      document.getElementById("armadoVer").setAttribute("aria-expanded", pop.hidden ? "false" : "true");
+    }
+    function irALaVenta() { window.location.href = "CargarVenta.html?armado=1"; }
+
+    function presupuestarPropio(id) {
+      var r = propiosActuales.find(function (x) { return x.Id === id; });
+      if (!r) return;
+      sumarArmado({ IdRepuesto: r.Id, Descripcion: r.Descripcion, Precio: Number(r.PrecioDeVenta) || 0, Stock: Number(r.Stock) || 0 });
+    }
+
+    // Un articulo que solo esta en la lista del proveedor se suma al catalogo
+    // (stock 0, minimo 0: igual que al encargarlo) y va al presupuesto
+    function presupuestarExterno(i) {
+      var ext = externosActuales[i];
+      if (!ext) return;
+      cargarRubros().then(function () {
+        if (!necesitaRubro(ext)) return asegurarRepuesto(ext, null);
+        return Swal.fire({
+          title: "¿En qué rubro va?",
+          html: '<div style="text-align:left;font-size:0.9rem;"><p class="mb-2">' + escapeHtml(ext.Descripcion) +
+                ' · <strong>' + escapeHtml(ext.Proveedor) + '</strong></p>' + rubroSelectHtml(ext) + '</div>',
+          showCancelButton: true, confirmButtonText: "Sumar al presupuesto", cancelButtonText: "Cancelar", confirmButtonColor: "#0d3b78",
+          preConfirm: function () {
+            var idRubro = rubroElegido();
+            if (!idRubro) { Swal.showValidationMessage("Elegí un rubro."); return false; }
+            return asegurarRepuesto(ext, idRubro).catch(function (err) {
+              Swal.showValidationMessage(err.message || "No se pudo sumar."); return false;
+            });
+          }
+        }).then(function (res) { return res.isConfirmed ? res.value : null; });
+      }).then(function (idRep) {
+        if (!idRep) return;
+        sumarArmado({ IdRepuesto: idRep, Descripcion: ext.Descripcion, Precio: Number(ext.PrecioSugerido) || 0, Stock: Number(ext.StockPropio) || 0 });
+      }).catch(function (err) {
+        Swal.fire("No se pudo sumar", (err && err.message) || "Intentá de nuevo.", "error");
+      });
+    }
+
     // Vincular y equivalentes: ver vincular.js
 
     // Otra marca con stock: se busca por su codigo para verla con todos sus datos
@@ -1225,6 +1529,9 @@
       cargarRubros().then(armarMarcas).catch(function () { });
       pintarBotones();
       cargarCarrito();
+      pintarArmado();
+      // Si se sumo algo desde otra pestaña, la barra se actualiza sola
+      window.addEventListener("storage", function (e) { if (e.key === CLAVE_ARMADO) pintarArmado(); });
 
       var ocultos = false;
       try { ocultos = localStorage.getItem("buscadorSinCostos") === "1"; } catch (e) { }
