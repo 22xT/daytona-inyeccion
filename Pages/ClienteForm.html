@@ -10,11 +10,15 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="telefono.js"></script>
   <style>
     .cred-estado { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; }
     .cred-estado strong { color: var(--navy); }
     .cred-estado .mal { color: #c0392b; font-weight: 700; }
     .solo-lectura { font-size: 0.8rem; color: var(--text-muted); }
+    .letra-fiscal { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.88rem; color: var(--text-muted); }
+    .letra-fiscal b { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+                      border: 2px solid var(--navy); border-radius: 6px; font-size: 1.05rem; color: var(--navy); }
   </style>
 </head>
 
@@ -59,14 +63,42 @@
       </div>
 
       <div class="panel">
-        <div class="panel-header"><span class="num">2</span> Contacto y dirección</div>
+        <div class="panel-header"><span class="num">2</span> Datos para facturar</div>
+        <div class="panel-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="condicionIva">Condición frente al IVA <span class="required">*</span></label>
+              <select id="condicionIva" class="form-select">
+                <option value="Consumidor Final">Consumidor final</option>
+                <option value="Responsable Inscripto">Responsable inscripto</option>
+                <option value="Monotributo">Monotributista</option>
+                <option value="Exento">Exento</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="cuit">CUIT <span class="required" id="cuitReq" style="display:none;">*</span></label>
+              <input type="text" id="cuit" class="form-control" maxlength="13" inputmode="numeric" placeholder="20-12345678-3">
+              <div class="form-text" id="cuitAyuda">Opcional para consumidor final.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="razonSocial">Razón social</label>
+              <input type="text" id="razonSocial" class="form-control" maxlength="120" placeholder="Taller San Martín SRL">
+              <div class="form-text">Si factura como empresa. Vacío = apellido y nombre.</div>
+            </div>
+          </div>
+          <div class="letra-fiscal"><b id="letraFiscal">B</b><span id="letraTexto">Se le emite factura B.</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="num">3</span> Contacto y dirección</div>
         <div class="panel-body">
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label class="form-label">Teléfono</label>
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-telephone"></i></span>
-                <input type="text" id="telefono" class="form-control" placeholder="351 222-1111">
+                <input type="text" id="telefono" class="form-control" placeholder="351 7585566">
               </div>
             </div>
             <div class="col-md-6">
@@ -91,7 +123,7 @@
       </div>
 
       <div class="panel">
-        <div class="panel-header"><span class="num">3</span> Mecánico y cuenta corriente</div>
+        <div class="panel-header"><span class="num">4</span> Mecánico y cuenta corriente</div>
         <div class="panel-body">
           <div class="row g-3">
             <div class="col-md-6">
@@ -153,6 +185,34 @@
     const idInput = document.getElementById("id");
     const esMecanico = document.getElementById("esMecanico");
     const limite = document.getElementById("limite");
+    const condicionIva = document.getElementById("condicionIva");
+    const cuit = document.getElementById("cuit");
+    const razonSocial = document.getElementById("razonSocial");
+
+    // CUIT: 11 numeros con el digito verificador correcto. Devuelve los 11 numeros o null.
+    function cuitNormalizado(txt) {
+      const c = String(txt || "").replace(/[\s.\-]/g, "");
+      if (!/^\d{11}$/.test(c)) return null;
+      const pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+      let suma = 0;
+      for (let i = 0; i < 10; i++) suma += Number(c[i]) * pesos[i];
+      let dv = 11 - (suma % 11);
+      if (dv === 11) dv = 0;
+      if (dv === 10 || dv !== Number(c[10])) return null;
+      return c;
+    }
+    function cuitConGuiones(c) { return c.slice(0, 2) + "-" + c.slice(2, 10) + "-" + c.slice(10); }
+
+    // A responsables inscriptos y monotributistas: factura A (a confirmar con el contador)
+    function estadoFiscal() {
+      const cond = condicionIva.value;
+      const letra = (cond === "Responsable Inscripto" || cond === "Monotributo") ? "A" : "B";
+      const exige = cond !== "Consumidor Final";
+      document.getElementById("letraFiscal").textContent = letra;
+      document.getElementById("letraTexto").textContent = "Se le emite factura " + letra + ".";
+      document.getElementById("cuitReq").style.display = exige ? "" : "none";
+      document.getElementById("cuitAyuda").textContent = exige ? "Obligatorio: va en la factura." : "Opcional para consumidor final.";
+    }
 
     const params = new URLSearchParams(window.location.search);
     const idCliente = params.get("id");
@@ -163,6 +223,7 @@
     }
     soloLetras(nombre); soloLetras(apellido);
     telefono.addEventListener("input", () => { telefono.value = telefono.value.replace(/[^0-9+\-() ]/g, ""); });
+    Telefono.activar(telefono);   // al salir del campo queda "351 7585566"
     numero.addEventListener("input", () => { numero.value = numero.value.replace(/[^A-Za-z0-9/\- ]/g, ""); });
 
     function mostrarError(err) {
@@ -177,11 +238,15 @@
     function validar(c) {
       if (c.Dni !== "" && (c.Dni.length < 7 || c.Dni.length > 8)) return "El DNI debe tener 7 u 8 dígitos.";
       if (c.EsMecanico && c.Telefono === "") return "El teléfono es obligatorio para un mecánico.";
+      var errTel = Telefono.validar(c.Telefono, false);
+      if (errTel) return errTel;
       if (c.LimiteCredito !== null && c.LimiteCredito !== undefined && !(c.LimiteCredito >= 0)) return "El límite de crédito no es válido.";
       if (c.Nombre === "") return "Debe ingresar el nombre.";
       if (c.Apellido === "") return "Debe ingresar el apellido.";
       if (c.Mail !== "" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.Mail))
         return "El correo no es válido.";
+      if (c.Cuit !== "" && !cuitNormalizado(c.Cuit)) return "El CUIT no es válido: revisá los 11 números.";
+      if (c.CondicionIva !== "Consumidor Final" && c.Cuit === "") return "Para un cliente " + c.CondicionIva + " el CUIT es obligatorio.";
       return "";
     }
 
@@ -202,6 +267,10 @@
         calle.value = c.Calle || "";
         numero.value = c.Numero || "";
         esMecanico.checked = !!c.EsMecanico;
+        condicionIva.value = c.CondicionIva || "Consumidor Final";
+        cuit.value = c.Cuit ? (cuitNormalizado(c.Cuit) ? cuitConGuiones(cuitNormalizado(c.Cuit)) : c.Cuit) : "";
+        razonSocial.value = c.RazonSocial || "";
+        estadoFiscal();
         limite.value = c.LimiteCredito !== null && c.LimiteCredito !== undefined ? numeroAPrecio(c.LimiteCredito) : "";
         estadoCredito();
         cargarSituacion(c.Id);
@@ -215,11 +284,14 @@
         Dni: dni.value.trim(),
         Nombre: nombre.value.trim(),
         Apellido: apellido.value.trim(),
-        Telefono: telefono.value.trim(),
+        Telefono: Telefono.formatear(telefono.value.trim()),
         Mail: mail.value.trim(),
         Calle: calle.value.trim(),
         Numero: numero.value.trim(),
-        EsMecanico: esMecanico.checked
+        EsMecanico: esMecanico.checked,
+        CondicionIva: condicionIva.value,
+        Cuit: cuit.value.trim(),
+        RazonSocial: razonSocial.value.trim()
       };
       if (puedeCredito) {
         cliente.CambiarLimite = true;
@@ -269,6 +341,10 @@
       activarInputPrecio("limite");
       esMecanico.addEventListener("change", estadoCredito);
       estadoCredito();
+      condicionIva.addEventListener("change", estadoFiscal);
+      cuit.addEventListener("input", () => { cuit.value = cuit.value.replace(/[^0-9\-]/g, ""); });
+      cuit.addEventListener("blur", () => { const c = cuitNormalizado(cuit.value); if (c) cuit.value = cuitConGuiones(c); });
+      estadoFiscal();
       if (idCliente) {
         document.getElementById("tituloPagina").innerHTML =
           '<i class="bi bi-pencil-square"></i> Editar Cliente <span class="mode-badge">Edición</span>';

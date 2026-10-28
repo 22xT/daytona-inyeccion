@@ -185,15 +185,13 @@ namespace WebApi.Controllers
             if (!SoloLetras(cliente.Apellido))
                 return "El apellido solo puede contener letras.";
 
-            // Telefono: opcional; si se carga, numeros y signos - + ( )
+            // Telefono: opcional; si se carga, un celular argentino valido (28/10).
+            // Se guarda con formato: "351 7585566"
             if (!string.IsNullOrWhiteSpace(cliente.Telefono))
             {
-                foreach (char c in cliente.Telefono)
-                {
-                    if (!char.IsDigit(c) && c != ' ' && c != '-' &&
-                        c != '+' && c != '(' && c != ')')
-                        return "El teléfono solo puede contener números y los signos - + ( ).";
-                }
+                string tel = Telefono.Formatear(cliente.Telefono);
+                if (tel == null) return Telefono.Error;
+                cliente.Telefono = tel;
             }
 
             // Mail: opcional; si se carga, formato real
@@ -229,7 +227,47 @@ namespace WebApi.Controllers
             if (cliente.LimiteCredito.HasValue && (cliente.LimiteCredito.Value < 0 || cliente.LimiteCredito.Value > 1000000000m))
                 return "El límite de crédito tiene que ser un monto entre 0 y 1.000.000.000. Vacío = sin límite.";
 
+            // Datos fiscales (script 92): deciden si le corresponde factura A o B
+            if (!string.IsNullOrWhiteSpace(cliente.CondicionIva))
+            {
+                string cond = cliente.CondicionIva.Trim();
+                if (System.Array.IndexOf(CondicionesIva, cond) < 0)
+                    return "La condición frente al IVA no es válida.";
+                cliente.CondicionIva = cond;
+
+                if (!string.IsNullOrWhiteSpace(cliente.Cuit))
+                {
+                    string cuit = CuitNormalizado(cliente.Cuit);
+                    if (cuit == null) return "El CUIT no es válido: revisá los 11 números.";
+                    cliente.Cuit = cuit;
+                }
+                else if (cond != "Consumidor Final")
+                    return "Para un cliente " + cond + " el CUIT es obligatorio.";
+
+                if (!string.IsNullOrWhiteSpace(cliente.RazonSocial) && cliente.RazonSocial.Trim().Length > 120)
+                    return "La razón social puede tener hasta 120 caracteres.";
+            }
+
             return "";
+        }
+
+        private static readonly string[] CondicionesIva =
+            { "Consumidor Final", "Responsable Inscripto", "Monotributo", "Exento" };
+
+        // 11 digitos con el verificador correcto (modulo 11). Acepta guiones,
+        // puntos y espacios. Devuelve los 11 digitos o null.
+        public static string CuitNormalizado(string cuit)
+        {
+            if (cuit == null) return null;
+            string c = Regex.Replace(cuit, @"[\s\.\-]", "");
+            if (!Regex.IsMatch(c, @"^\d{11}$")) return null;
+            int[] pesos = { 5, 4, 3, 2, 7, 6, 5, 4, 3, 2 };
+            int suma = 0;
+            for (int i = 0; i < 10; i++) suma += (c[i] - '0') * pesos[i];
+            int dv = 11 - (suma % 11);
+            if (dv == 11) dv = 0;
+            if (dv == 10 || dv != c[10] - '0') return null;
+            return c;
         }
 
         // El limite de credito solo lo cambia el Dueño o un Administrador.

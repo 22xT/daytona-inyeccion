@@ -77,6 +77,8 @@
       items: [
         { key: 'caja', label: 'Caja', icon: 'bi-cash-stack', href: 'Caja.html',
           desc: 'Abrir, cerrar y arqueo.', roles: ['Dueño', 'Administrador', 'Vendedor'] },
+        { key: 'comprobantes', label: 'Comprobantes', icon: 'bi-file-earmark-text', href: 'Comprobantes.html',
+          desc: 'Facturas y notas de crédito y débito.', roles: ['Dueño', 'Administrador', 'Supervisor', 'Analista'] },
         { key: 'movimientos-especiales', label: 'Movimientos especiales', icon: 'bi-arrow-left-right', href: 'MovimientosEspeciales.html',
           desc: 'Aportes, retiros y transferencias.', roles: ['Dueño', 'Administrador', 'Analista'] },
         { key: 'gastos', label: 'Gastos', icon: 'bi-receipt-cutoff', href: 'Gastos.html',

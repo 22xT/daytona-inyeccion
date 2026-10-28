@@ -39,7 +39,10 @@ namespace WebApi.Controllers
             try
             {
                 DataTable dt = new NotaCliente().Credito(d, idUsuario);
-                return Ok(new { IdNota = dt.Rows[0]["IdNota"], Importe = dt.Rows[0]["Importe"] });
+                int idNota = Convert.ToInt32(dt.Rows[0]["IdNota"]);
+                // Su nota de credito fiscal (script 92), asociada a la factura
+                object comprobante = Comprobante.IntentarDesdeNota(idNota, idUsuario);
+                return Ok(new { IdNota = idNota, Importe = dt.Rows[0]["Importe"], Comprobante = comprobante });
             }
             catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo registrar la nota de crédito.")); }
         }
@@ -51,7 +54,12 @@ namespace WebApi.Controllers
             int idUsuario = ObtenerIdUsuarioActual();
             if (idUsuario <= 0) return Unauthorized();
             if (d == null || d.IdCliente <= 0) return BadRequest("Faltan los datos de la nota de débito.");
-            try { return Ok(new { IdNota = new NotaCliente().Debito(d, idUsuario) }); }
+            try
+            {
+                int idNota = Convert.ToInt32(new NotaCliente().Debito(d, idUsuario));
+                object comprobante = Comprobante.IntentarDesdeNota(idNota, idUsuario);
+                return Ok(new { IdNota = idNota, Comprobante = comprobante });
+            }
             catch (SqlException ex) { return BadRequest(TraducirErrorSql(ex, "No se pudo registrar la nota de débito.")); }
         }
 

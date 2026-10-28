@@ -135,6 +135,12 @@ namespace WebApi.Controllers
             {
                 venta.Guardar();
                 if (conToken) venta.CompletarOperacion();
+
+                // Su factura (script 92). Si no se puede generar (por ejemplo,
+                // cliente inscripto sin CUIT) la venta queda hecha igual y
+                // aparece en Administracion > Comprobantes > Pendientes.
+                object comprobante = Comprobante.IntentarDesdeVenta(venta.Id, idUsuario);
+
                 // Se devuelve el saldo generado: en una venta a cuenta
                 // corriente es lo que el cliente quedo debiendo, y el
                 // vendedor tiene que verlo al confirmar.
@@ -145,7 +151,8 @@ namespace WebApi.Controllers
                     Descuento     = venta.Descuento,
                     Entrega       = venta.Entrega,
                     SaldoGenerado = venta.SaldoGenerado,
-                    Comision      = venta.Comision
+                    Comision      = venta.Comision,
+                    Comprobante   = comprobante
                 });
             }
             catch (SqlException ex)
@@ -176,7 +183,11 @@ namespace WebApi.Controllers
             {
                 // Anular corrige un error del dia; despues, la devolucion es una nota de credito
                 new NotaCliente().ValidarAnulacionVenta(id);
+                // Si su factura ya fue a ARCA no se anula: va nota de credito
+                Comprobante comp = new Comprobante();
+                comp.AnularDeVenta(id, idUsuario, true);
                 oVenta.Anular(idUsuario);
+                comp.AnularDeVenta(id, idUsuario, false);   // la factura en borrador queda anulada
             }
             catch (SqlException ex)
             {

@@ -106,6 +106,15 @@ namespace WebApi.Controllers
             return Ok(new { Items = ds.Tables[0], Opciones = ds.Tables.Count > 1 ? ds.Tables[1] : new DataTable() });
         }
 
+        // GET api/Compras/EnCamino — repuestos ya pedidos y sin recibir (script 91)
+        [HttpGet, Route("api/Compras/EnCamino")]
+        [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor,Analista")]
+        public IHttpActionResult EnCamino()
+        {
+            try { return Ok(new Compras().EnCamino()); }
+            catch (SqlException) { return Ok(new DataTable()); }   // sin el script 91 no avisa, pero no rompe
+        }
+
         // POST api/Compras/Carrito — sumar (si ya estaba, suma la cantidad)
         [HttpPost, Route("api/Compras/Carrito")]
         [AuthorizeJwt(Roles = "Dueño,Administrador,Supervisor,Vendedor")]

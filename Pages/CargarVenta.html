@@ -10,6 +10,7 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="telefono.js"></script>
   <script src="vincular.js"></script>
   <style>
     /* ============================================================
@@ -1128,7 +1129,7 @@
             '<input id="pNombre" class="form-control" placeholder="Juan" value="' +
               escapeHtml(presupActual.nombre) + '">' +
             '<label class="form-label mb-1 mt-2">WhatsApp</label>' +
-            '<input id="pTel" class="form-control" placeholder="3511234567" value="' +
+            '<input id="pTel" class="form-control" placeholder="351 7585566" inputmode="tel" value="' +
               escapeHtml(presupActual.telefono) + '">' +
             '<button type="button" class="btn-guardar-presup" onclick="presupGuardar()">' +
               '<i class="bi bi-save"></i> Guardar presupuesto</button>' +
@@ -1152,7 +1153,7 @@
       var n = document.getElementById("pNombre");
       var t = document.getElementById("pTel");
       if (n) presupActual.nombre = n.value.trim();
-      if (t) presupActual.telefono = t.value.trim();
+      if (t) presupActual.telefono = Telefono.formatear(t.value.trim());
       return presupActual;
     }
 
@@ -1172,6 +1173,10 @@
         presupPintarEstado("Ya está guardado como N° " + d.numero + ".", "text-success");
         return Promise.resolve(true);
       }
+
+      // El telefono es opcional; si se carga, que sirva para WhatsApp
+      var errTel = Telefono.validar(d.telefono, false);
+      if (errTel) { presupPintarEstado(errTel, "text-danger"); return Promise.resolve(false); }
 
       presupPintarEstado("Guardando…", "");
 
@@ -1274,7 +1279,8 @@
     // PDF e Imprimir abren el mismo dialogo del navegador:
     // en "Destino" se elige la impresora o "Guardar como PDF".
     function presupImprimir() {
-      presupAsegurarGuardado().then(function () {
+      presupAsegurarGuardado().then(function (ok) {
+        if (ok === false) return;   // no se guardo (ej. telefono mal cargado): no sale un presupuesto sin numero
         armarHoja(leerDatosModal());
         window.print();
       });
@@ -1282,7 +1288,7 @@
     function presupPdf() { presupImprimir(); }
 
     function presupImagen() {
-      presupAsegurarGuardado().then(presupImagenDibujar);
+      presupAsegurarGuardado().then(function (ok) { if (ok !== false) presupImagenDibujar(); });
     }
 
     function presupImagenDibujar() {
@@ -1355,7 +1361,7 @@
     }
 
     function presupWhatsapp() {
-      presupAsegurarGuardado().then(presupWhatsappEnviar);
+      presupAsegurarGuardado().then(function (ok) { if (ok !== false) presupWhatsappEnviar(); });
     }
 
     function presupWhatsappEnviar() {
@@ -1372,9 +1378,9 @@
       txt += "\n*TOTAL: " + formatearMoneda(d.total) + "*\n";
       txt += "\n_Precios sujetos a modificación._";
 
-      var tel = (d.telefono || "").replace(/\D/g, "");
+      var tel = Telefono.normalizar(d.telefono);
       var url = tel
-        ? "https://wa.me/54" + tel + "?text=" + encodeURIComponent(txt)
+        ? "https://wa.me/" + Telefono.whatsapp(tel) + "?text=" + encodeURIComponent(txt)
         : "https://wa.me/?text=" + encodeURIComponent(txt);
       window.open(url, "_blank");
     }
@@ -2030,6 +2036,14 @@
               html += "<br><small class='text-muted'>Comisiones: " + formatearMoneda(comision) + "</small>";
             if (res && res.Duplicada)
               html += "<br><small class='text-muted'>Esta venta ya estaba registrada: no se duplicó.</small>";
+            // Su factura (script 92). Si no se pudo generar, la venta queda igual
+            if (res && res.Comprobante) {
+              if (res.Comprobante.Aviso)
+                html += "<br><span style='color:#b45309;font-size:0.88rem;'><i class='bi bi-exclamation-triangle'></i> Quedó sin factura: " +
+                        escapeHtml(res.Comprobante.Aviso) + "</span>";
+              else if (res.Comprobante.Tipo)
+                html += "<br><small class='text-muted'>" + escapeHtml(res.Comprobante.Tipo) + " generada (borrador hasta conectar ARCA).</small>";
+            }
             if (presupuestoOrigen)
               html += "<br><small class='text-muted'>Presupuesto N° " + presupuestoOrigen.Numero + " marcado como convertido.</small>";
             if (encargoOrigen)

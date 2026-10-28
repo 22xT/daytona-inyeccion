@@ -28,6 +28,12 @@ namespace WebApi.Models
         public bool CambiarLimite { get; set; }
         public bool CambiarCredito { get; set; }
 
+        // Datos fiscales (script 92): deciden la letra del comprobante.
+        // CondicionIva vacia en una edicion = no se tocan.
+        public string CondicionIva { get; set; }
+        public string Cuit { get; set; }
+        public string RazonSocial { get; set; }
+
         // Listar todos
         public DataTable ListarTodos()
         {
@@ -89,6 +95,7 @@ namespace WebApi.Models
             sqlCom.Parameters.Add("@Numero", SqlDbType.NVarChar).Value = (object)Numero ?? DBNull.Value;
             sqlCom.Parameters.Add("@EsMecanico", SqlDbType.Bit).Value = EsMecanico;
             AgregarCredito(sqlCom);
+            AgregarFiscal(sqlCom);
 
             sqlCnn.Open();
             object resultado = sqlCom.ExecuteScalar();
@@ -117,10 +124,21 @@ namespace WebApi.Models
             sqlCom.Parameters.Add("@Numero", SqlDbType.NVarChar).Value = (object)Numero ?? DBNull.Value;
             sqlCom.Parameters.Add("@EsMecanico", SqlDbType.Bit).Value = EsMecanico;
             AgregarCredito(sqlCom);
+            AgregarFiscal(sqlCom);
 
             sqlCnn.Open();
             sqlCom.ExecuteNonQuery();
             sqlCnn.Close();
+        }
+
+        private void AgregarFiscal(SqlCommand sqlCom)
+        {
+            sqlCom.Parameters.Add("@CondicionIva", SqlDbType.VarChar, 30).Value =
+                string.IsNullOrWhiteSpace(CondicionIva) ? (object)DBNull.Value : CondicionIva.Trim();
+            sqlCom.Parameters.Add("@Cuit", SqlDbType.VarChar, 20).Value =
+                string.IsNullOrWhiteSpace(Cuit) ? (object)DBNull.Value : Cuit.Trim();
+            sqlCom.Parameters.Add("@RazonSocial", SqlDbType.NVarChar, 120).Value =
+                string.IsNullOrWhiteSpace(RazonSocial) ? (object)DBNull.Value : RazonSocial.Trim();
         }
 
         private void AgregarCredito(SqlCommand sqlCom)

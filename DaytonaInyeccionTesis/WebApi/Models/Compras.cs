@@ -167,6 +167,12 @@ namespace WebApi.Models
             return ConsultarDs("SP_Carrito_Get", c => { });
         }
 
+        // Lo que esta pedido y todavia no llego (script 91): para avisar antes de pedir de nuevo
+        public DataTable EnCamino()
+        {
+            return ConsultarDs("SP_Compras_EnCamino", c => { }).Tables[0];
+        }
+
         public DataTable CarritoAgregar(int idRepuesto, int cantidad, int? idProveedor, string origen)
         {
             return ConsultarDs("SP_Carrito_Agregar", c =>

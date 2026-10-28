@@ -237,7 +237,13 @@
             IdCuentaReintegro: resolucion === "REINTEGRO" ? parseInt(cuentaSel.value, 10) : null }) })
           .then(x => x.ok ? x.json() : leerError(x).then(m => Promise.reject(m)))
           .then(res => {
-            Swal.fire({ icon: "success", title: "Nota de crédito registrada", text: "N° " + res.IdNota + " por " + formatearMoneda(res.Importe) + "." });
+            // Su nota de credito fiscal (script 92), asociada a la factura de la venta
+            const comp = res.Comprobante || {};
+            const extra = comp.Aviso
+              ? "<br><span style='color:#b45309;font-size:0.88rem;'>Quedó sin comprobante fiscal: " + escapeHtml(comp.Aviso) + "</span>"
+              : (comp.Tipo ? "<br><small class='text-muted'>" + escapeHtml(comp.Tipo) + " generada (borrador hasta conectar ARCA).</small>" : "");
+            Swal.fire({ icon: comp.Aviso ? "warning" : "success", title: "Nota de crédito registrada",
+                        html: "N° " + res.IdNota + " por " + formatearMoneda(res.Importe) + "." + extra });
             document.getElementById("motivo").value = ""; document.getElementById("importeBon").value = "";
             cargar();
           })

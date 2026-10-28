@@ -10,6 +10,8 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="encamino.js"></script>
+  <script src="telefono.js"></script>
   <script src="vincular.js"></script>
   <style>
     /* =================================================================
@@ -486,10 +488,11 @@
       mostrar("secExterno", false);
       mostrar("sinPropio", false);
 
-      fetchAuth(url).then(function (r) {
+      Promise.all([fetchAuth(url).then(function (r) {
         if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
         return r.json();
-      }).then(function (ds) {
+      }), cargarReservas()]).then(function (res) {
+        var ds = res[0];
         if (texto !== document.getElementById("buscar").value.trim()) return; // llego tarde
         var d = partirDataSet(ds);
         var externos = provActivo === -1 ? [] : d.externos;
@@ -503,7 +506,24 @@
       });
     }
 
+    /* Stock reservado para encargos (prueba E3 de Sofi): el Buscador decia
+       "Quedan 1" cuando esa unidad estaba apartada. Ahora se muestra lo
+       disponible y lo reservado por separado. */
+    var reservas = {};
+    function cargarReservas() {
+      return fetchAuth(api + "Encargos/Reservas")
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (d) { reservas = {}; (d || []).forEach(function (x) { reservas[x.IdRepuesto] = Number(x.Reservado) || 0; }); })
+        .catch(function () { reservas = {}; });
+    }
+    function prepararStock(r) {
+      r.StockFisico = Number(r.Stock) || 0;
+      r.Reservado = reservas[r.Id] || 0;
+      r.Disponible = Math.max(0, r.StockFisico - r.Reservado);
+    }
+
     function pintarResultado(texto, propios, externos) {
+      propios.forEach(prepararStock);
       if (propios.length === 0 && externos.length === 0) {
         mostrar("secPropio", false); mostrar("secExterno", false); mostrar("sinPropio", false);
         document.getElementById("resumen").innerHTML = "";
@@ -584,18 +604,21 @@
     function pintarVeredicto(locales, info) {
       var principales = hayPiezaBuscada ? locales.filter(function (r) { return rel(r) <= 1; }) : locales;
       var relacionados = locales.length - principales.length;
-      var conStock = principales.filter(function (r) { return r.Stock > 0; });
+      var conStock = principales.filter(function (r) { return r.Disponible > 0; });
+      var reservado = principales.reduce(function (s, r) { return s + (r.Reservado || 0); }, 0);
       var html = "";
 
       if (conStock.length) {
-        var u = conStock.reduce(function (s, r) { return s + (Number(r.Stock) || 0); }, 0);
+        var u = conStock.reduce(function (s, r) { return s + r.Disponible; }, 0);
         var min = Math.min.apply(null, conStock.map(function (r) { return Number(r.PrecioDeVenta) || Infinity; }));
         html += tarjeta("si", "bi-check-circle-fill", "En el local",
           "Hay " + u + (u === 1 ? " unidad" : " unidades"),
-          (conStock.length > 1 ? conStock.length + " opciones · desde " : "") + formatearMoneda(min), "#secPropio");
+          (conStock.length > 1 ? conStock.length + " opciones · desde " : "") + formatearMoneda(min) +
+          (reservado ? " · " + reservado + " reservado" + (reservado === 1 ? "" : "s") : ""), "#secPropio");
       } else if (principales.length) {
-        html += tarjeta("no", "bi-x-circle-fill", "En el local", "Sin stock",
-          "Lo trabajamos" + (info.total ? ": se puede encargar" : ""), "#secPropio");
+        html += tarjeta("no", "bi-x-circle-fill", "En el local", reservado ? "Todo reservado" : "Sin stock",
+          reservado ? reservado + " apartado" + (reservado === 1 ? "" : "s") + " para encargos: no se puede vender"
+                    : "Lo trabajamos" + (info.total ? ": se puede encargar" : ""), "#secPropio");
       } else {
         html += tarjeta("nada", "bi-dash-circle", "En el local", "No lo tenemos",
           relacionados ? relacionados + " relacionado" + (relacionados === 1 ? "" : "s") + " en el local" : "No está en el catálogo del local",
@@ -624,19 +647,23 @@
     function pintarPropios(lista) {
       propiosActuales = lista;
       var cont = document.getElementById("listaTengo");
-      var conStock = lista.filter(function (r) { return r.Stock > 0; }).length;
+      var conStock = lista.filter(function (r) { return r.Disponible > 0; }).length;
       document.getElementById("contTengo").textContent =
         lista.length + " en el catálogo · " + (conStock ? conStock + " con stock" : "ninguno con stock");
       var vende = puedeVender();
 
       var html = "";
       lista.forEach(function (r) {
-        var sinStock = !(r.Stock > 0);
-        var stock = sinStock
-          ? '<span class="stock sin"><span class="punto"></span>Sin stock</span>'
-          : r.EstadoStock === "Critico"
-            ? '<span class="stock critico"><span class="punto"></span>Quedan ' + r.Stock + '</span>'
-            : '<span class="stock ok"><span class="punto"></span>' + r.Stock + ' en stock</span>';
+        var sinStock = !(r.Disponible > 0);
+        var res = r.Reservado > 0
+          ? '<div class="precio-sub" title="Apartado para encargos de clientes">' + r.Reservado + ' reservado' + (r.Reservado === 1 ? '' : 's') + '</div>' : '';
+        var stock = (sinStock
+          ? (r.Reservado > 0
+              ? '<span class="stock critico" title="Hay ' + r.StockFisico + ' en el local, apartado' + (r.StockFisico === 1 ? '' : 's') + ' para encargos"><span class="punto"></span>Reservado</span>'
+              : '<span class="stock sin"><span class="punto"></span>Sin stock</span>')
+          : r.Disponible <= (Number(r.StockMinimo) || 0)
+            ? '<span class="stock critico"><span class="punto"></span>Quedan ' + r.Disponible + '</span>'
+            : '<span class="stock ok"><span class="punto"></span>' + r.Disponible + ' en stock</span>') + res;
 
         // Con stock se vende; sin stock se presupuesta (queda "a pedido") o se encarga
         var acc = "";
@@ -1101,7 +1128,8 @@
       return c ? '<i class="bi bi-cart-check"></i> ' + c.Cantidad + ' en el carrito' + (c.Proveedor ? ' · ' + escapeHtml(c.Proveedor) : '') : '';
     }
     function marcaCarrito(idRep) {
-      return '<span class="en-carrito" data-carrito="' + idRep + '"' + (enCarrito[idRep] ? '' : ' hidden') + '>' + textoCarrito(idRep) + '</span>';
+      return '<span class="en-carrito" data-carrito="' + idRep + '"' + (enCarrito[idRep] ? '' : ' hidden') + '>' + textoCarrito(idRep) + '</span>' +
+             EnCamino.chip(idRep);   // ya esta en un pedido (prueba C3)
     }
     function cargarCarrito() {
       return fetchAuth(api + "Compras/Carrito")
@@ -1125,8 +1153,8 @@
     }
     function avisoCarrito(idRep) {
       var c = idRep ? enCarrito[idRep] : null;
-      return c ? '<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.85rem;"><i class="bi bi-cart-check"></i> Ya hay <strong>' +
-                 c.Cantidad + '</strong> en el carrito' + (c.Proveedor ? ' (' + escapeHtml(c.Proveedor) + ')' : '') + '. Lo que pongas se suma.</div>' : '';
+      return (idRep ? EnCamino.aviso(idRep) : '') + (c ? '<div class="alert alert-info py-2 px-3 mb-2" style="font-size:0.85rem;"><i class="bi bi-cart-check"></i> Ya hay <strong>' +
+                 c.Cantidad + '</strong> en el carrito' + (c.Proveedor ? ' (' + escapeHtml(c.Proveedor) + ')' : '') + '. Lo que pongas se suma.</div>' : '');
     }
     var externosActuales = [];
     var mediosPago = null;
@@ -1294,7 +1322,7 @@
       var r = propiosActuales.find(function (x) { return x.Id === id; });
       if (!r) return;
       elegirProveedor(id).then(function (ops) {
-        dialogoEncargar({ descripcion: r.Descripcion, precio: Number(r.PrecioDeVenta) || 0 }, ops,
+        dialogoEncargar({ descripcion: r.Descripcion, precio: Number(r.PrecioDeVenta) || 0, extraHtml: EnCamino.aviso(id) }, ops,
           function (datos) { return enviarEncargo(datos, id, datos.idProv); });
       }).catch(function (err) { Swal.fire("No se puede encargar", err.message, "info"); });
     }
@@ -1323,7 +1351,7 @@
                   '<div class="form-text mt-2">Se suma al pedido en armado del proveedor, vinculado al encargo. La seña en efectivo requiere la caja abierta.</div>' +
                 '</div>',
           showCancelButton: true, confirmButtonText: "Tomar encargo", cancelButtonText: "Cancelar", confirmButtonColor: "#146c43",
-          didOpen: function () { activarInputPrecio("ePrecio"); activarInputPrecio("eSena"); document.getElementById("eNom").focus(); },
+          didOpen: function () { activarInputPrecio("ePrecio"); activarInputPrecio("eSena"); Telefono.activar(document.getElementById("eTel")); document.getElementById("eNom").focus(); },
           preConfirm: function () {
             var datos = {
               nombre: document.getElementById("eNom").value.trim(),
@@ -1338,7 +1366,9 @@
             };
             if (document.getElementById("swRubro") && !datos.idRubro) { Swal.showValidationMessage("Elegí un rubro."); return false; }
             if (datos.nombre.length < 2) { Swal.showValidationMessage("Falta el nombre del cliente."); return false; }
-            if (datos.tel.replace(/\D/g, "").length < 6) { Swal.showValidationMessage("Falta el teléfono: es para avisarle cuando llegue."); return false; }
+            var errTel = Telefono.validar(datos.tel, true);   // se le avisa por WhatsApp
+            if (errTel) { Swal.showValidationMessage(errTel); return false; }
+            datos.tel = Telefono.formatear(datos.tel);
             if (!(datos.cant > 0)) { Swal.showValidationMessage("Revisá la cantidad."); return false; }
             if (datos.precio <= 0) { Swal.showValidationMessage("Indicá el precio que le pasaste al cliente."); return false; }
             if (datos.sena > datos.cant * datos.precio + 0.01) { Swal.showValidationMessage("La seña no puede superar el total."); return false; }
@@ -1436,7 +1466,7 @@
     function presupuestarPropio(id) {
       var r = propiosActuales.find(function (x) { return x.Id === id; });
       if (!r) return;
-      sumarArmado({ IdRepuesto: r.Id, Descripcion: r.Descripcion, Precio: Number(r.PrecioDeVenta) || 0, Stock: Number(r.Stock) || 0 });
+      sumarArmado({ IdRepuesto: r.Id, Descripcion: r.Descripcion, Precio: Number(r.PrecioDeVenta) || 0, Stock: r.Disponible !== undefined ? r.Disponible : (Number(r.Stock) || 0) });
     }
 
     // Un articulo que solo esta en la lista del proveedor se suma al catalogo
@@ -1529,6 +1559,7 @@
       cargarRubros().then(armarMarcas).catch(function () { });
       pintarBotones();
       cargarCarrito();
+      EnCamino.cargar();
       pintarArmado();
       // Si se sumo algo desde otra pestaña, la barra se actualiza sola
       window.addEventListener("storage", function (e) { if (e.key === CLAVE_ARMADO) pintarArmado(); });

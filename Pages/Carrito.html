@@ -10,6 +10,7 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="encamino.js"></script>
   <style>
     /* =================================================================
        CARRITO DE COMPRAS
@@ -30,7 +31,7 @@
     .car-lista { flex: 1 1 auto; min-width: 0; background: #fff; border: 1px solid #dde3ea; border-radius: 12px; }
     .car-panel { flex: 0 0 340px; position: sticky; top: 12px; background: #fff; border: 1px solid #dde3ea; border-radius: 12px; }
 
-    .fila, .cab { display: grid; grid-template-columns: minmax(0, 1fr) 150px 120px 260px 120px 36px; column-gap: 16px; align-items: center; padding: 11px 18px; }
+    .fila, .cab { display: grid; grid-template-columns: minmax(0, 1fr) 150px 120px 260px 120px 78px; column-gap: 16px; align-items: center; padding: 11px 18px; }
     .cab { font-size: 0.76rem; font-weight: 600; color: #6b7685; background: #fafbfc; border-bottom: 1px solid #edf0f4; border-radius: 12px 12px 0 0; }
     .fila { border-bottom: 1px solid #f0f2f5; }
     .fila:last-child { border-bottom: none; }
@@ -57,7 +58,7 @@
     .prov .nota.caro { color: #a8281e; }
     .prov .nota.falta { color: #b45309; font-weight: 700; }
     .sub { font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
-    .sacar { width: 32px; height: 32px; border: 1px solid transparent; background: none; border-radius: 7px; color: #8a94a3; }
+    .sacar { height: 32px; padding: 0 9px; border: 1px solid #f1c4bf; background: #fff; border-radius: 7px; color: #a8281e; font-size: .78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
     .sacar:hover { border-color: #f1b8b4; background: #fdeceb; color: #a8281e; }
 
     .panel-h { padding: 14px 18px 8px; font-weight: 700; color: var(--navy); }
@@ -164,6 +165,7 @@
           });
           items = (d.Items || []).map(function (it) { it.Opciones = ops[it.IdRepuesto] || []; return it; });
           pintar();
+          EnCamino.cargar();   // marca lo que ya esta en un pedido (prueba C3)
         })
         .catch(function (e) {
           document.getElementById("lista").innerHTML = '<div class="vacio"><i class="bi bi-exclamation-triangle"></i><h5>No se pudo cargar el carrito</h5><p>' + esc(e.message) + '</p></div>';
@@ -192,7 +194,8 @@
           '<div class="meta">' + (it.CodigoFabricante ? '<span class="fab">' + esc(it.CodigoFabricante) + '</span>' : '') +
             '<span>tu cód. ' + esc(it.Codigo || "-") + '</span>' +
             (it.Rubro ? '<span>' + esc(rubroSinMarca(it.Rubro)) + '</span>' : '') +
-            '<span class="origen">· desde ' + (it.Origen === "BUSCADOR" ? 'el Buscador' : 'la reposición') + '</span></div></div>' +
+            '<span class="origen">· desde ' + (it.Origen === "BUSCADOR" ? 'el Buscador' : it.Origen === "ENCARGO" ? 'un encargo' : 'la reposición') + '</span>' +
+            EnCamino.chip(it.IdRepuesto) + '</div></div>' +
         '<div class="sit">Tenés <b>' + it.Stock + '</b>' + (it.Minimo > 0 ? ' de <b>' + it.Minimo + '</b>' : '') +
           (it.Encargado > 0 ? '<br><span class="enc">' + it.Encargado + ' encargado' + (it.Encargado === 1 ? '' : 's') + '</span>' : '') + '</div>' +
         '<div><div class="cant">' +
@@ -205,10 +208,11 @@
                 return '<option value="' + o.IdProveedor + '"' + (op && o.IdProveedor === op.IdProveedor ? ' selected' : '') + '>' +
                   esc(o.Proveedor) + ' — ' + formatearMoneda(o.Precio) + (k === 0 && it.Opciones.length > 1 ? ' (más barato)' : '') +
                   (o.CondicionIva && o.CondicionIva !== "Responsable Inscripto" ? ' · sin IVA' : '') + '</option>';
-              }).join("") + '</select>'
+              }).join("") + '</select>' +
+              (it.Opciones.length === 1 ? '<div class="nota" title="Para comparar precios, vinculalo con otras listas desde el Buscador">único proveedor vinculado</div>' : '')
           : '') + nota + '</div>' +
         '<div class="der sub">' + (op ? formatearMoneda(op.Precio * it.Cantidad) : '—') + '</div>' +
-        '<div><button type="button" class="sacar" title="Sacar del carrito" aria-label="Sacar del carrito" onclick="sacar(' + i + ')"><i class="bi bi-x-lg"></i></button></div>' +
+        '<div><button type="button" class="sacar" title="Sacar del carrito" onclick="sacar(' + i + ')"><i class="bi bi-trash3"></i> Sacar</button></div>' +
       '</div>';
     }
 
@@ -218,14 +222,15 @@
         var op = opcionDe(it);
         if (!op) { faltan++; return; }
         var k = op.IdProveedor;
-        g[k] = g[k] || { nombre: op.Proveedor, n: 0, sub: 0 };
-        g[k].n++; g[k].sub += op.Precio * it.Cantidad; total += op.Precio * it.Cantidad;
+        g[k] = g[k] || { nombre: op.Proveedor, n: 0, u: 0, sub: 0 };
+        g[k].n++; g[k].u += it.Cantidad; g[k].sub += op.Precio * it.Cantidad; total += op.Precio * it.Cantidad;
       });
       var lista = Object.keys(g).map(function (k) { return g[k]; }).sort(function (a, b) { return b.sub - a.sub; });
-      document.getElementById("panelTitulo").innerHTML = (items.length ? items.length + ' repuesto' + (items.length === 1 ? '' : 's') + ' para ' + lista.length + ' proveedor' + (lista.length === 1 ? '' : 'es') : 'Resumen') +
+      var unidades = items.reduce(function (s, it) { return s + (Number(it.Cantidad) || 0); }, 0);
+      document.getElementById("panelTitulo").innerHTML = (items.length ? items.length + ' repuesto' + (items.length === 1 ? '' : 's') + ' · ' + unidades + ' unidad' + (unidades === 1 ? '' : 'es') + ' para ' + lista.length + ' proveedor' + (lista.length === 1 ? '' : 'es') : 'Resumen') +
         '<small>Un pedido por proveedor</small>';
       document.getElementById("grupos").innerHTML = lista.map(function (x) {
-        return '<div class="grupo"><div><b>' + esc(x.nombre) + '</b><div class="n">' + x.n + ' repuesto' + (x.n === 1 ? '' : 's') + '</div></div><b>' + formatearMoneda(x.sub) + '</b></div>';
+        return '<div class="grupo"><div><b>' + esc(x.nombre) + '</b><div class="n">' + x.n + ' repuesto' + (x.n === 1 ? '' : 's') + ' · ' + x.u + ' unidad' + (x.u === 1 ? '' : 'es') + '</div></div><b>' + formatearMoneda(x.sub) + '</b></div>';
       }).join("");
       document.getElementById("total").textContent = formatearMoneda(total);
       var btn = document.getElementById("btnConfirmar");

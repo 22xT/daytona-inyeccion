@@ -10,6 +10,7 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="encamino.js"></script>
   <style>
 
     .required { color:#dc3545; font-weight:bold; }
@@ -66,8 +67,8 @@
             <select id="marca" class="form-select"><option value="">Todas</option></select>
           </div>
           <div class="col-md-4 d-flex align-items-end">
-            <button id="btnFiltrar" type="button" class="btn btn-primary w-100">
-              <i class="bi bi-funnel"></i> Aplicar filtros
+            <button id="btnFiltrar" type="button" class="btn btn-outline-secondary w-100" title="Volver a ver todos los repuestos">
+              <i class="bi bi-x-circle"></i> Limpiar filtros
             </button>
           </div>
         </div>
@@ -79,7 +80,7 @@
             <thead>
               <tr>
                 <th>Descripción</th><th>Marca</th><th>Rubro</th>
-                <th class="text-end">Precio</th><th class="text-center">Acción</th>
+                <th class="text-end" id="thPrecio">Costo</th><th class="text-center">Acción</th>
               </tr>
             </thead>
             <tbody id="tablaRepuestos"></tbody>
@@ -210,11 +211,10 @@
   }
 
   /* ===================== REPUESTOS ===================== */
-  function cargarRepuestos(filtrar) {
-    let url = api + "Repuesto";
-    const idRubro = document.getElementById("rubro").value;
-    const idMarca = document.getElementById("marca").value;
-    if (filtrar && idRubro && idMarca) url = api + "Repuesto/Filtrar?IdRubro=" + idRubro + "&IdMarca=" + idMarca;
+  /* Se cargan todos una vez y se filtra aca: rubro, marca y texto, cada
+     uno solo o combinados (antes el filtro andaba solo con rubro Y marca). */
+  function cargarRepuestos() {
+    const url = api + "Repuesto";
 
     const tbody = document.getElementById("tablaRepuestos");
     tbody.innerHTML = '<tr class="loading-row"><td colspan="5" class="text-center p-3">' +
@@ -225,7 +225,10 @@
       return r.json();
     }).then(datos => {
       repuestosCache = datos;
-      mostrarRepuestos(datos);
+      // Costo si la lista lo trae; si no, se muestra el precio de venta y se aclara
+      const hayCosto = datos.some(r => parseFloat(r.PrecioCompra) > 0);
+      document.getElementById("thPrecio").textContent = hayCosto ? "Costo" : "Precio de venta";
+      aplicarFiltros();
     }).catch(() => {
       tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger p-3">' +
                         'Error al cargar repuestos. ' +
@@ -242,10 +245,10 @@
     let html = "";
     datos.slice(0, 50).forEach(r => {
       const yaEsta = pedidoItems.some(i => i.IdRepuesto === r.Id);
-      const precio = parseFloat(r.PrecioDeVenta) || 0;
+      const precio = costoDe(r);
       html += '<tr' + (yaEsta ? ' class="item-dup"' : '') + '>' +
         '<td>' + escapeHtml(r.Descripcion) +
-          (yaEsta ? ' <span class="badge bg-warning text-dark ms-1">En el pedido</span>' : '') + '</td>' +
+          (yaEsta ? ' <span class="badge bg-warning text-dark ms-1">En el pedido</span>' : '') + ' ' + EnCamino.chip(r.Id) + '</td>' +
         '<td>' + escapeHtml(r.Marca || "-") + '</td>' +
         '<td><span class="badge-rubro">' + escapeHtml(r.Rubro || "-") + '</span></td>' +
         '<td class="text-end precio">' + fmt(precio) + '</td>' +
@@ -257,15 +260,41 @@
     tbody.innerHTML = html;
   }
 
-  document.addEventListener("input", function (e) {
-    if (e.target.id !== "busqueda") return;
-    const texto = e.target.value.toLowerCase().trim();
-    const filtrados = repuestosCache.filter(r =>
-      (r.Descripcion || "").toLowerCase().includes(texto) ||
-      (r.Marca && r.Marca.toLowerCase().includes(texto)) ||
-      (r.Rubro && r.Rubro.toLowerCase().includes(texto))
-    );
+  // Lo que se paga al proveedor: el costo cargado; si no hay, el precio de venta
+  function costoDe(r) {
+    const c = parseFloat(r.PrecioCompra);
+    return c > 0 ? c : (parseFloat(r.PrecioDeVenta) || 0);
+  }
+
+  function textoOpcion(idSel) {
+    const sel = document.getElementById(idSel);
+    return sel.value ? sel.options[sel.selectedIndex].text.trim().toLowerCase() : "";
+  }
+
+  // Rubro, marca y texto: cada uno filtra solo y se pueden combinar
+  function aplicarFiltros() {
+    const idRubro = document.getElementById("rubro").value;
+    const idMarca = document.getElementById("marca").value;
+    const rubroTxt = textoOpcion("rubro"), marcaTxt = textoOpcion("marca");
+    const palabras = document.getElementById("busqueda").value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const filtrados = repuestosCache.filter(r => {
+      if (idRubro && !(r.IdRubro !== undefined ? String(r.IdRubro) === idRubro : (r.Rubro || "").trim().toLowerCase() === rubroTxt)) return false;
+      if (idMarca && !(r.IdMarca !== undefined ? String(r.IdMarca) === idMarca : (r.Marca || "").trim().toLowerCase() === marcaTxt)) return false;
+      const t = ((r.Codigo || "") + " " + (r.Descripcion || "") + " " + (r.Marca || "") + " " + (r.Rubro || "")).toLowerCase();
+      return palabras.every(w => t.includes(w));
+    });
     mostrarRepuestos(filtrados);
+  }
+
+  function limpiarFiltros() {
+    document.getElementById("rubro").value = "";
+    document.getElementById("marca").value = "";
+    document.getElementById("busqueda").value = "";
+    aplicarFiltros();
+  }
+
+  document.addEventListener("input", function (e) {
+    if (e.target.id === "busqueda") aplicarFiltros();
   });
 
   /* ===================== AGREGAR ÍTEM ===================== */
@@ -273,7 +302,7 @@
     const rep = repuestosCache.find(r => r.Id === idRepuesto);
     if (!rep) return;
 
-    const precioSugerido = parseFloat(rep.PrecioDeVenta) || 0;
+    const precioSugerido = costoDe(rep);
     const existente = pedidoItems.find(i => i.IdRepuesto === idRepuesto);
 
     const rangoTxt = precioSugerido > 0
@@ -285,6 +314,7 @@
       html:
         '<div style="text-align:left;">' +
           '<strong>' + escapeHtml(rep.Descripcion) + '</strong>' +
+          EnCamino.aviso(idRepuesto) +
           (existente ? '<div class="text-warning small mt-1">Ya cargaste ' + existente.Cantidad +
                        ' unidad(es). Lo que ingreses se suma a esa cantidad.</div>' : '') +
           '<div class="mt-3"><label class="form-label mb-1">Cantidad</label>' +
@@ -295,7 +325,7 @@
             '<input type="text" inputmode="decimal" id="swPrecio" class="form-control text-end" ' +
             'value="' + numeroAPrecio(precioSugerido) + '">' +
           '</div>' +
-          '<div class="form-text">Precio de lista: ' + fmt(precioSugerido) + '. ' + rangoTxt + '</div></div>' +
+          '<div class="form-text">' + (parseFloat(rep.PrecioCompra) > 0 ? 'Costo cargado: ' : 'Precio de venta (no tiene costo cargado): ') + fmt(precioSugerido) + '. ' + rangoTxt + '</div></div>' +
         '</div>',
       showCancelButton: true,
       confirmButtonText: existente ? "Sumar cantidad" : "Agregar",
@@ -633,7 +663,7 @@
             '<strong>Proveedor:</strong> ' + escapeHtml(nombreProv) + '<br>' +
             '<strong>Ítems:</strong> ' + pedidoItems.length + '<br>' +
             '<strong>Total:</strong> ' + fmt(total) + '<br><br>' +
-            '<span class="text-muted">El pedido queda en armado: cargalo en la web del proveedor y marcalo como enviado desde el listado.</span>' +
+            '<span class="text-muted">Se suma al pedido en armado de este proveedor (si no hay, se crea). Después lo cargás en su web y lo marcás como enviado desde Pedidos.</span>' +
             '</div>',
       icon: "question",
       showCancelButton: true,
@@ -642,51 +672,38 @@
     }).then(res => { if (res.isConfirmed) enviarPedido(total); });
   }
 
+  /* Se suma al pedido EN ARMADO de ese proveedor, igual que el carrito y
+     el buscador: un solo pedido en armado por proveedor (prueba C4 de Sofi,
+     antes creaba otro). Todo o nada: si un renglon falla, no se carga nada. */
   function enviarPedido(total) {
     const idProveedor = parseInt(document.getElementById("proveedor").value, 10);
     setLoading(true);
 
-    fetchAuth(api + "Pedido", {
+    fetchAuth(api + "Compras/Pedidos/Generar", {
       method: "POST",
-      body: JSON.stringify({ IdProveedor: idProveedor, Total: total, IdEstado: 1 })
+      body: JSON.stringify({
+        Lineas: pedidoItems.map(item => ({
+          IdProveedor: idProveedor, IdRepuesto: item.IdRepuesto,
+          Cantidad: item.Cantidad, PrecioUnitario: item.PrecioUnitario
+        }))
+      })
     }).then(r => {
-      if (!r.ok) return r.text().then(t => { throw new Error(extraerMensaje(t) || "No se pudo crear el pedido."); });
+      if (!r.ok) return r.text().then(t => { throw new Error(extraerMensaje(t) || "No se pudo guardar el pedido."); });
       return r.json();
-    }).then(idPedido => {
-      const promesas = pedidoItems.map(item =>
-        fetchAuth(api + "DetallePedido", {
-          method: "POST",
-          body: JSON.stringify({
-            IdPedido: idPedido, IdRepuesto: item.IdRepuesto,
-            Cantidad: item.Cantidad, PrecioUnitario: item.PrecioUnitario
-          })
-        }).then(r => {
-          if (!r.ok) throw new Error('No se pudo agregar "' + item.Descripcion + '" al pedido.');
-          return true;
-        })
-      );
-
-      return Promise.all(promesas).then(() => {
-        guardadoOk = true;
-        Swal.fire({
-          icon: "success",
-          title: "Pedido N° " + idPedido + " creado",
-          text: "El pedido quedó registrado en estado Pendiente.",
-          timer: 1800, showConfirmButton: false
-        }).then(() => window.location.href = "ListadoPedido.html");
-      }).catch(err => {
-        Swal.fire({
-          icon: "error",
-          title: "Pedido incompleto",
-          html: 'Se creó el pedido N° ' + idPedido + ' pero hubo un problema al cargar el detalle:<br><br>' +
-                '<strong>' + escapeHtml(err.message) + '</strong><br><br>' +
-                'Revisá el pedido en el listado y completalo o cancelalo.',
-          confirmButtonText: "Ir al listado"
-        }).then(() => window.location.href = "ListadoPedido.html");
-      });
+    }).then(res => {
+      const p = (res && res[0]) || {};
+      const sumado = (p.Renglones || 0) > pedidoItems.length;   // ya tenia renglones: se sumo a uno existente
+      guardadoOk = true;
+      Swal.fire({
+        icon: "success",
+        title: (sumado ? "Sumado al pedido N° " : "Pedido N° ") + (p.IdPedido || "") + (p.Proveedor ? " de " + p.Proveedor : ""),
+        html: (sumado ? "Ya había un pedido en armado para este proveedor: se agregó ahí." : "Quedó en armado.") +
+              "<br>Cuando lo cargues en la web del proveedor, marcalo como enviado desde Pedidos.",
+        confirmButtonText: "Ver pedidos"
+      }).then(() => window.location.href = "ListadoPedido.html");
     }).catch(err => {
       setLoading(false);
-      Swal.fire("No se pudo guardar", err.message || "Ocurrió un error al crear el pedido.", "error");
+      Swal.fire("No se pudo guardar", (err.message || "Ocurrió un error.") + "<br><small>No se cargó ningún repuesto.</small>", "error");
     });
   }
 
@@ -713,10 +730,12 @@
     activarInputsPrecioPorClase("precio-input", PRECIO_TOPE);
 
     cargarCombos();
-    cargarRepuestos();
+    EnCamino.cargar().then(cargarRepuestos);
     actualizarTabla();
 
-    document.getElementById("btnFiltrar").onclick = () => cargarRepuestos(true);
+    document.getElementById("btnFiltrar").onclick = limpiarFiltros;
+    document.getElementById("rubro").addEventListener("change", aplicarFiltros);
+    document.getElementById("marca").addEventListener("change", aplicarFiltros);
     document.getElementById("btnGuardar").onclick = guardarPedido;
 
     ["linkVolver", "btnCancelar"].forEach(id => {

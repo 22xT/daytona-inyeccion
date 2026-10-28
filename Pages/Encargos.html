@@ -10,6 +10,7 @@
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script src="precio.js"></script>
+  <script src="telefono.js"></script>
   <style>
     .enc-nro { font-weight: 700; color: var(--navy); }
     .enc-tel { font-size: 0.8rem; color: var(--text-muted); }
@@ -35,6 +36,8 @@
     .btn-icono.entregar { border-color: #b7dfc4; color: #1e7e34; }
     .btn-icono.entregar:hover { background: var(--green); border-color: var(--green); color: #fff; }
     .btn-icono.peligro:hover { border-color: var(--red); color: var(--red); }
+    .btn-icono.pedir { border-color: #c3d6f0; color: #1d5fa8; font-weight: 600; }
+    .btn-icono.pedir:hover { background: #1d5fa8; border-color: #1d5fa8; color: #fff; }
     .tabs-estado .btn { font-size: 0.85rem; }
     /* Modal de alta */
     .enc-form label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 2px; }
@@ -56,7 +59,7 @@
     <div class="header-bar">
       <div>
         <h2><i class="bi bi-bookmark-star"></i> Encargos</h2>
-        <span class="subtitle">Lo que piden los clientes y no hay en stock</span>
+        <span class="subtitle">Lo que pidieron los clientes, con o sin seña: apartado del stock o pedido al proveedor</span>
       </div>
       <div class="header-actions">
         <button type="button" class="btn btn-danger" id="btnNuevo">
@@ -75,7 +78,7 @@
       <div class="col-md-4">
         <div class="stat-card">
           <div class="stat-icon green"><i class="bi bi-whatsapp"></i></div>
-          <div><p class="stat-value" id="kpiAvisar">0</p><p class="stat-label">Llegaron y falta avisar</p></div>
+          <div><p class="stat-value" id="kpiAvisar">0</p><p class="stat-label">Listos para retirar · falta avisar</p></div>
         </div>
       </div>
       <div class="col-md-4">
@@ -137,7 +140,8 @@
     var medios = [];      // medios de pago para la seña
     var lineas = [];      // renglones del encargo en armado
 
-    var TEXTO_DISP = { EN_STOCK: "Llegó: hay stock", PEDIDO: "Pedido al proveedor", EN_ARMADO: "En un pedido sin enviar", SIN_PEDIR: "Sin pedir" };
+    // "Listo para retirar": ya está en el local (porque llegó o porque se apartó del stock al tomarlo)
+    var TEXTO_DISP = { EN_STOCK: "Listo para retirar", PEDIDO: "Pedido al proveedor", EN_ARMADO: "En un pedido sin enviar", SIN_PEDIR: "Sin pedir" };
 
     function esc(s) {
       if (s === null || s === undefined) return "";
@@ -202,6 +206,10 @@
           if (e.Disponibilidad === "EN_STOCK")
             acciones += '<a class="btn-icono entregar" href="CargarVenta.html?encargo=' + e.Id + '" title="Entregar: abre la venta">' +
                         '<i class="bi bi-bag-check"></i> Entregar</a> ';
+          // Sin pedir: se manda al carrito de compras desde acá (prueba E4 de Sofi)
+          if (e.Disponibilidad === "SIN_PEDIR")
+            acciones += '<button class="btn-icono pedir" onclick="pedirEncargo(' + e.Id + ')" title="Pedir al proveedor: va al carrito de compras">' +
+                        '<i class="bi bi-cart-plus"></i> Pedir</button> ';
           acciones += '<button class="btn-icono peligro" onclick="cancelar(' + e.Id + ')" title="Cancelar"><i class="bi bi-x-circle"></i></button>';
         }
 
@@ -320,7 +328,7 @@
             '<div class="row g-2">' +
               '<div class="col-12"><label>Cliente registrado (opcional)</label><select id="encCliente" class="form-select form-select-sm">' + opcClientes + '</select></div>' +
               '<div class="col-7"><label>Nombre</label><input id="encNombre" class="form-control form-control-sm" maxlength="80"></div>' +
-              '<div class="col-5"><label>Teléfono (WhatsApp)</label><input id="encTel" class="form-control form-control-sm" maxlength="30" placeholder="351 555-5555"></div>' +
+              '<div class="col-5"><label>Teléfono (WhatsApp)</label><input id="encTel" class="form-control form-control-sm" maxlength="30" placeholder="351 7585566"></div>' +
               '<div class="col-12"><label>Repuesto</label><input id="encBuscar" class="form-control form-control-sm" placeholder="Código o descripción...">' +
                 '<div class="enc-res" id="encRes" style="display:none;"></div></div>' +
               '<div class="col-12"><div class="enc-lin" style="font-weight:600;color:var(--text-muted);font-size:0.75rem;border:none;"><span>Repuesto</span><span>Cant.</span><span class="text-end">Precio pactado</span><span></span></div>' +
@@ -337,12 +345,13 @@
         confirmButtonColor: "#28a745",
         didOpen: function () {
           activarInputPrecio("encSena");
+          Telefono.activar(document.getElementById("encTel"));
           document.getElementById("encBuscar").addEventListener("input", function (e) { buscarRepuesto(e.target.value); });
           document.getElementById("encCliente").addEventListener("change", function (e) {
             var c = clientes.find(function (x) { return x.Id === +e.target.value; });
             if (c) {
               document.getElementById("encNombre").value = c.Apellido + ", " + c.Nombre;
-              document.getElementById("encTel").value = c.Telefono || "";
+              document.getElementById("encTel").value = Telefono.formatear(c.Telefono || "");
             }
           });
           pintarLineas();
@@ -353,7 +362,9 @@
           var tel = document.getElementById("encTel").value.trim();
           var sena = precioANumero(document.getElementById("encSena").value) || 0;
           if (nombre.length < 2) { Swal.showValidationMessage("Falta el nombre del cliente."); return false; }
-          if (tel.replace(/\D/g, "").length < 6) { Swal.showValidationMessage("Falta el teléfono: es para avisarle cuando llegue."); return false; }
+          var errTel = Telefono.validar(tel, true);   // se le avisa por WhatsApp
+          if (errTel) { Swal.showValidationMessage(errTel); return false; }
+          tel = Telefono.formatear(tel);
           if (lineas.length === 0) { Swal.showValidationMessage("Sumá al menos un repuesto."); return false; }
           if (sena > totalLineas() + 0.01) { Swal.showValidationMessage("La seña no puede superar el total."); return false; }
           var idCli = document.getElementById("encCliente").value;
@@ -440,11 +451,66 @@
 
     // Numero argentino para wa.me: solo digitos, sin el 0 del area,
     // con 54 9 adelante. Si ya viene con 54, se respeta.
-    function numeroWhatsApp(tel) {
-      var n = String(tel || "").replace(/\D/g, "");
-      if (n.indexOf("54") === 0) return n;
-      n = n.replace(/^0+/, "");
-      return "549" + n;
+    function numeroWhatsApp(tel) { return Telefono.whatsapp(tel); }
+
+    /* ---------- Pedir un encargo "sin pedir" ----------
+       Lo que falta (lo que no hay ni viene en camino) se suma al carrito de
+       compras con el proveedor elegido. Al confirmar el carrito queda en el
+       pedido en armado y el encargo pasa a "En un pedido sin enviar". */
+    function pedirEncargo(id) {
+      fetchAuth(API + "/" + id).then(function (r) { if (!r.ok) throw new Error("No se pudo leer el encargo."); return r.json(); }).then(function (d) {
+        var lineas = (d.Renglones || []).map(function (l) {
+          return { IdRepuesto: l.IdRepuesto, Descripcion: l.Descripcion, Codigo: l.Codigo,
+                   Falta: Math.max(0, (Number(l.Cantidad) || 0) - (Number(l.Stock) || 0) - (Number(l.EnCamino) || 0)) };
+        }).filter(function (l) { return l.Falta > 0; });
+        if (!lineas.length) { Swal.fire("Ya está cubierto", "Lo de este encargo está en el local o ya viene en un pedido.", "info"); return; }
+        return Promise.all(lineas.map(function (l) {
+          return fetchAuth(API_BASE + "Compras/Repuesto/" + l.IdRepuesto + "/Opciones")
+            .then(function (r) { return r.ok ? r.json() : []; }).then(function (ops) { l.Opciones = ops || []; });
+        })).then(function () {
+          Swal.fire({
+            title: "Pedir el encargo #" + id,
+            width: 620,
+            html: '<div style="text-align:left;font-size:0.88rem;">' + lineas.map(function (l, i) {
+                return '<div class="mb-3"><div><strong>' + esc(l.Descripcion) + '</strong> <small class="text-muted">' + esc(l.Codigo) + '</small></div>' +
+                  (l.Opciones.length
+                    ? '<div class="row g-2 mt-1"><div class="col-8"><select id="pProv' + i + '" class="form-select form-select-sm">' +
+                        l.Opciones.map(function (o, k) {
+                          return '<option value="' + o.IdProveedor + '">' + esc(o.Proveedor) + ' — costo ' + formatearMoneda(o.PrecioCompra) + (k === 0 ? ' (más barato)' : '') + '</option>';
+                        }).join("") + '</select></div>' +
+                      '<div class="col-4"><input id="pCant' + i + '" type="number" min="1" max="500" value="' + l.Falta + '" class="form-control form-control-sm" aria-label="Cantidad"></div></div>'
+                    : '<div class="text-danger mt-1"><i class="bi bi-exclamation-triangle"></i> No tiene proveedor vinculado: vinculalo desde el Buscador.</div>') +
+                '</div>';
+              }).join("") +
+              '<div class="form-text">Va al carrito de compras; ahí se confirma junto con lo demás que haya que pedir.</div></div>',
+            showCancelButton: true, confirmButtonText: "Sumar al carrito", cancelButtonText: "Cancelar", confirmButtonColor: "#1d5fa8",
+            preConfirm: function () {
+              var envios = [];
+              lineas.forEach(function (l, i) {
+                if (!l.Opciones.length) return;
+                var cant = parseInt(document.getElementById("pCant" + i).value, 10);
+                if (!(cant > 0 && cant <= 500)) return;
+                envios.push({ IdRepuesto: l.IdRepuesto, Cantidad: cant, IdProveedor: parseInt(document.getElementById("pProv" + i).value, 10), Origen: "ENCARGO" });
+              });
+              if (!envios.length) { Swal.showValidationMessage("No hay nada para pedir: revisá las cantidades o vinculá un proveedor."); return false; }
+              return envios.reduce(function (p, x) {
+                return p.then(function () {
+                  return fetchAuth(API_BASE + "Compras/Carrito", { method: "POST", body: JSON.stringify(x) }).then(function (r) {
+                    if (!r.ok) return leerError(r).then(function (m) { throw new Error(m); });
+                  });
+                });
+              }, Promise.resolve()).then(function () { return envios.length; })
+                .catch(function (err) { Swal.showValidationMessage(err.message || "No se pudo sumar al carrito."); return false; });
+            }
+          }).then(function (res) {
+            if (!res.isConfirmed || !res.value) return;
+            Swal.fire({ icon: "success", title: "Sumado al carrito",
+              html: "Confirmá el carrito para que quede en el pedido del proveedor.",
+              showCancelButton: true, confirmButtonText: "Ir al carrito", cancelButtonText: "Seguir acá" })
+              .then(function (r2) { if (r2.isConfirmed) window.location.href = "Carrito.html"; else cargar(); });
+          });
+        });
+      }).catch(function (err) { Swal.fire("No se pudo pedir", err.message || "", "error"); });
     }
 
     function avisar(id) {

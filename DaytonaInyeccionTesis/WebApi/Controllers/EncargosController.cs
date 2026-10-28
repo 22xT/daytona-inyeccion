@@ -46,6 +46,10 @@ namespace WebApi.Controllers
             int idUsuario = ObtenerIdUsuarioActual();
             if (idUsuario <= 0) return Unauthorized();
             if (d == null || d.Lineas == null || d.Lineas.Count == 0) return BadRequest("Indicá qué repuesto encarga.");
+            // Se le avisa por WhatsApp: tiene que ser un celular valido (script/prueba E1)
+            string tel = Telefono.Formatear(d.Telefono);
+            if (tel == null) return BadRequest(Telefono.Error);
+            d.Telefono = tel;
             try
             {
                 DataRow r = new Encargo().Crear(d, idUsuario);
